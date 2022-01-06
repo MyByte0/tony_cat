@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+*.pb.h
+*.pb.cc
 
 *.cmake
 
@@ -41,3 +43,4 @@ build/
 thirdparty/
 CMakeFiles/
 example/CMakeFiles/
+
