@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message CSHeartbeat
+{
+   string    trans_id = 2;
+   int64     req_time = 3;
+
+   enum SSMessageId
+   {
+        cs_msgid_invalid = 0;
+        cs_msgid_heartbeat = 1;
+   }
+}

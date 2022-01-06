@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message ServerHead
+{
+   string    trans_id = 1;
+   int64     req_time = 2;
+   int64     from_server = 3;
+   int64     dest_server = 4;
+   int64     user_id = 5;
+}
+
+enum SSMessageId
+{
+    ss_msgid_invalid = 0;
+    ss_msgid_heartbeat = 1073741824;
+}
