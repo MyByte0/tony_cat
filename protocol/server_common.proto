@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "server_base.proto";
+
+message SSHeartbeat
+{
+   int32     msg_id = 1;
+   string    trans_id = 2;
+   int64     req_time = 3;
+
+   enum SSMessageId
+   {
+        ss_msgid_invalid = 0;
+        ss_msgid = 1073741824;
+   }
+}
+
