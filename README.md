@@ -22,3 +22,4 @@ install python3 and openpyxl
   
 open the project with cmake  
   
+Please into protocol and execute pb_gen_code.sh/pb_gen_code.bat before build.
