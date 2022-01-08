@@ -1,6 +1,8 @@
 #include "common/loop.h"
 
+#include "common/config/xml_config_module.h"
 #include "common/module_manager.h"
+#include "common/service/service_government_module.h"
 #include "log/log_module.h"
 #include "net/net_module.h"
 #include "net/net_pb_module.h"
@@ -43,12 +45,18 @@ private:
     void RegisterModule()
     {
         REGISTER_MODULE(&m_moduleManager, LogModule);
+        REGISTER_MODULE(&m_moduleManager, XmlConfigModule);
         REGISTER_MODULE(&m_moduleManager, NetModule);
         REGISTER_MODULE(&m_moduleManager, NetPbModule);
+        REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
     }
 
     void InitModule()
     {
+        auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
+        pServiceGovernmentModule->SetServerName("logicServer");
+        pServiceGovernmentModule->SetServerId(1);
+
         m_moduleManager.Init();
 
         LOG_INFO("init server {}", m_name);

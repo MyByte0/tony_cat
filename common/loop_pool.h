@@ -19,8 +19,9 @@ public:
 	void Stop();
 
 	void Exec(std::size_t index, Loop::FunctionRun&& func);
-    	void Exec(std::size_t index, const Loop::FunctionRun& func);
+    void Exec(std::size_t index, const Loop::FunctionRun& func);
 
+	void Broadcast(Loop::FunctionRun&& func);
 	void Broadcast(const Loop::FunctionRun& func);
 
 	asio::io_context& GetIoContext(std::size_t index);

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package Pb;
+
 message ServerHead
 {
    string    trans_id = 1;
@@ -12,5 +14,6 @@ message ServerHead
 enum SSMessageId
 {
     ss_msgid_invalid = 0;
-    ss_msgid_heartbeat = 1073741824;
+    ss_msgid_heartbeat_req = 1073741824;
+    ss_msgid_heartbeat_rsp = 1073741825;
 }

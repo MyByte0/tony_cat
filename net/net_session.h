@@ -139,17 +139,17 @@ public:
       m_socket.set_option(lingerOpt);
     }
 
-    void OnSessionClose(const FunSessionClose& funOnSessionClose) {
+    void SetSessionCloseCb(const FunSessionClose& funOnSessionClose) {
       m_funSessionClose = funOnSessionClose;
     }
-    void OnSessionClose(FunSessionClose&& funOnSessionClose) {
+    void SetSessionCloseCb(FunSessionClose&& funOnSessionClose) {
         m_funSessionClose = std::move(funOnSessionClose);
     }
 
-    void OnSessionRead(const FunSessionRead& funOnSessionRead) {
+    void SetSessionReadCb(const FunSessionRead& funOnSessionRead) {
         m_funSessionRead = funOnSessionRead;
     }
-    void OnSessionRead(FunSessionRead&& funOnSessionRead) {
+    void SetSessionReadCb(FunSessionRead&& funOnSessionRead) {
         m_funSessionRead = std::move(funOnSessionRead);
     }
 

@@ -46,7 +46,7 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf) 
             return false;
         }
         
-        if (ReadPacket(sessionId, msgType, readBuff + enm_head_len, packetLen) == false) {
+        if (ReadPbPacket(sessionId, msgType, readBuff + enm_head_len, packetLen) == false) {
             LOG_ERROR("read msg fail, msgType:{}", msgType);
             return false;
         }
@@ -134,7 +134,7 @@ uint32_t NetPbModule::CheckCode(const void* dataHead, size_t lenHead, const void
     return CRC32(dataHead, lenHead, data, len);
 }
 
-bool NetPbModule::ReadPacket(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length) {
+bool NetPbModule::ReadPbPacket(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length) {
     auto itMapPackethandle = m_mapPackethandle.find(msgType);
     if (itMapPackethandle != m_mapPackethandle.end()) {
         auto& funcCb= itMapPackethandle->second;

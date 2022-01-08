@@ -39,9 +39,12 @@ void LoopPool::Exec(std::size_t index, const Loop::FunctionRun& func) {
   return;
 }
 
-void LoopPool::Broadcast(const Loop::FunctionRun& func)
-{
-    std::for_each(m_vecLoops.begin(), m_vecLoops.end(), [func](Loop& loop) { loop.Exec(std::move(func)); });
+void LoopPool::Broadcast(Loop::FunctionRun&& func) {
+    std::for_each(m_vecLoops.begin(), m_vecLoops.end(), [func(std::move(func))](Loop& loop) { loop.Exec(std::move(func)); });
+}
+
+void LoopPool::Broadcast(const Loop::FunctionRun& func) {
+    std::for_each(m_vecLoops.begin(), m_vecLoops.end(), [func](Loop& loop) { loop.Exec(func); });
 }
 
 asio::io_context& LoopPool::GetIoContext(std::size_t index) {

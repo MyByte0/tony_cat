@@ -20,10 +20,12 @@ public:
 	NetModule(ModuleManager* pModuleManager);
 	virtual ~NetModule();
 
-	virtual void BeforeInit();
+	virtual void BeforeInit() override;
+	virtual void AfterStop() override;
 
 public:
-    void Connect(const std::string strAddress, uint16_t addressPort);
+	void Listen(const std::string strAddress, uint16_t addressPort);
+	Session::session_id_t Connect(const std::string strAddress, uint16_t addressPort);
 	void Close(Session::session_id_t session_id);
 
 	typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
@@ -33,7 +35,7 @@ public:
 	}
 
 private:
-	void Accept();
+	void Accept(Acceptor* pAcceptor);
 	Session::session_id_t CreateSessionId();
 	void OnCloseSession(Session::session_id_t sessionId);
 
@@ -41,7 +43,7 @@ private:
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
 
     Loop m_loopAccpet;
-	Acceptor m_acceptor;
+	std::vector<Acceptor*> m_vecAcceptors;
 
 	Session::session_id_t m_nextSessionId;
     LoopPool m_poolSessionContext;

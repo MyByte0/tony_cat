@@ -23,8 +23,8 @@ public:
 	virtual void BeforeUpdate() {}
 	virtual void OnUpdate() {}
 
-	virtual void OnConfigChange() {}
-    virtual void AfterConfigChange() {}
+	virtual void OnLoadConfig() {}
+    virtual void AfterLoadConfig() {}
 
 protected:
 	ModuleManager* m_pModuleManager;

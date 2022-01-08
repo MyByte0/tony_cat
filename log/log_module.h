@@ -29,13 +29,13 @@ public:
 	LogModule(ModuleManager* pModuleManager);
 	virtual ~LogModule();
 
-	virtual void BeforeInit();
+	virtual void BeforeInit() override;
 
 	virtual void AfterStop();
 
 	virtual void OnUpdate();
 
-	virtual void OnConfigChange();
+	virtual void OnLoadConfig();
 
 public:
 	enum class LOG_LEVEL_TYPE {
