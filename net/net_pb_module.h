@@ -9,22 +9,26 @@
 
 #include "net_session.h"
 
+#include <cassert>
 #include <cstdint>
-#include <coroutine>
 #include <functional>
-#include <thread>
 #include <unordered_map>
 
 SER_NAME_SPACE_BEGIN
 
 class NetModule;
 
+// NetPacket:
+// || 4 bytes packetLen(PbPacket Len) || 4 bytes checkCode(for PbPacket) || 4 bytes msgType || PbPacket ||
+// the PbPacket in NetPacket:
+// || 4 bytes PbPacketHead Len || PbPacketHead || PbPacketBody ||
+
 class NetPbModule : public ModuleBase {
 public:
     NetPbModule(ModuleManager* pModuleManager);
     virtual ~NetPbModule();
 
-    virtual void BeforeInit();
+    virtual void BeforeInit() override;
 
 public:
     enum {
@@ -37,7 +41,7 @@ public:
     bool WriteData(Session::session_id_t sessionId, uint32_t msgType, const char* data, size_t length);
     bool WriteData(Session::session_id_t sessionId, uint32_t msgType, const char* dataHead,
          size_t lengthHead, const char* dataBody, size_t lengthBody);
-    bool ReadPacket(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length);
+    bool ReadPbPacket(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length);
 
     typedef std::function<void(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length)> FuncPacketHandleType;
     void RegisterPacketHandle(uint32_t msgType, FuncPacketHandleType func);
@@ -80,42 +84,30 @@ public:
     	using Type = _Fn&;
     };
 
-    // template<typename T> 
-    // struct FunctionTraits;  
-    // template<typename _Ret, typename _Fn, typename ...Args> 
-    // struct FunctionTraits<_Ret(_Fn::*)(Session::session_id_t, Args...)>
-    // {
-    //     typedef _Ret result_type;
-    //     template <size_t i>
-    //     struct Arg
-    //     {
-    //         typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
-    //     };
-    // };
-
     template<class _TypeMsgPacketHead, class _TypeMsgPacketBody>
     void RegisterHandleHelper(uint32_t msgType, 
         const std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>& func)
     {
         RegisterPacketHandle(msgType, [this, func] (Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length) {
-            uint32_t packetHeadLen = 0;
-            if (length < sizeof packetHeadLen) [[unlikely]] {
+            uint32_t pbPacketHeadLen = 0;
+            if (length < sizeof pbPacketHeadLen) [[unlikely]] {
                 return false;
             }
-            packetHeadLen = GetPacketHeadLength(reinterpret_cast<const uint32_t*>(data));
-            if (length < packetHeadLen + sizeof packetHeadLen) [[unlikely]] {
+            pbPacketHeadLen = GetPacketHeadLength(reinterpret_cast<const uint32_t*>(data));
+            if (length < pbPacketHeadLen + sizeof pbPacketHeadLen) [[unlikely]] {
                 return false;
             }
+            assert(length < UINT32_MAX);
             const char* pData = data;
-            uint32_t packetBodyLen = 0;
-            pData = data + sizeof packetHeadLen;
+            uint32_t pbPacketBodyLen = uint32_t(length) - pbPacketHeadLen - sizeof pbPacketHeadLen;
+            pData = data + sizeof pbPacketHeadLen;
             _TypeMsgPacketHead msgPacketHead;
             _TypeMsgPacketBody msgPacketBody;
-            if (false == msgPacketHead.ParseFromArray(pData, packetHeadLen)) [[unlikely]] {
+            if (false == msgPacketHead.ParseFromArray(pData, pbPacketHeadLen)) [[unlikely]] {
                 return false;
             }
-            pData += packetHeadLen;
-            if (false == msgPacketBody.ParseFromArray(pData, packetHeadLen)) [[unlikely]] {
+            pData += pbPacketHeadLen;
+            if (false == msgPacketBody.ParseFromArray(pData, pbPacketBodyLen)) [[unlikely]] {
                 return false;
             }
             func(sessionId, msgPacketHead, msgPacketBody);
@@ -127,33 +119,46 @@ public:
     bool SendPacket(Session::session_id_t sessionId, uint32_t msgType, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody) {
         char head[sizeof(uint32_t) + enm_packet_head_max_len + enm_packet_body_max_cache];
         char* pData = head;
-        uint32_t lenHead = static_cast<uint32_t>(packetHead.ByteSizeLong());
-        SetPacketHeadLength(reinterpret_cast<uint32_t*>(pData), lenHead);
-        pData += sizeof lenHead;
-        packetHead.SerializeToArray(pData, lenHead);
-        pData += lenHead;
+        uint32_t pbPacketHeadLen = static_cast<uint32_t>(packetHead.ByteSizeLong());
+        SetPacketHeadLength(reinterpret_cast<uint32_t*>(pData), pbPacketHeadLen);
+        pData += sizeof pbPacketHeadLen;
+        packetHead.SerializeToArray(pData, pbPacketHeadLen);
+        pData += pbPacketHeadLen;
 
-        uint32_t lenBody = static_cast<uint32_t>(packetBody.ByteSizeLong());
-        if (lenBody + lenHead + sizeof(uint32_t) < sizeof head) 
+        uint32_t pbPacketBodyLen = static_cast<uint32_t>(packetBody.ByteSizeLong());
+        if (pbPacketBodyLen + pbPacketHeadLen + sizeof(uint32_t) < sizeof head) 
         {
-            packetBody.SerializeToArray(pData, lenHead);
-            pData += lenBody;
+            packetBody.SerializeToArray(pData, pbPacketHeadLen);
+            pData += pbPacketBodyLen;
             return WriteData(sessionId, msgType, head, pData-head);
         }
 
         std::string strPacketBody;
         packetBody.SerializeToString(&strPacketBody);
-        return WriteData(sessionId, msgType, head, lenHead+sizeof(uint32_t), strPacketBody.data(), strPacketBody.size());
+        return WriteData(sessionId, msgType, head, pbPacketHeadLen+sizeof(uint32_t), strPacketBody.data(), strPacketBody.size());
+    }
+
+    template<class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    bool SendPacket(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody) {
+        return SendPacket(sessionId, _TypeMsgPacketBody::msgid, packetHead, packetBody);
     }
 
     template<class _TypeHandler>
     void RegisterHandle(uint32_t msgType, 
         const _TypeHandler& func)
     {
-        RegisterHandleHelper<
-            typename GetFunctionMessage_t<_TypeHandler>::TypeHead, 
-            typename GetFunctionMessage_t<_TypeHandler>::TypeBody>
-        (msgType, func);
+        using PbHeadType = typename GetFunctionMessage_t<_TypeHandler>::TypeHead;
+        using PbBodyType = typename GetFunctionMessage_t<_TypeHandler>::TypeBody;
+        RegisterHandleHelper<PbHeadType, PbBodyType>(msgType, func);
+    }
+
+    template<class _TypeHandler>
+    void RegisterHandle(const _TypeHandler& func)
+    {
+        using PbHeadType = typename GetFunctionMessage_t<_TypeHandler>::TypeHead;
+        using PbBodyType = typename GetFunctionMessage_t<_TypeHandler>::TypeBody;
+        uint32_t msgType = PbBodyType::msgid;
+        RegisterHandleHelper<PbHeadType, PbBodyType>(msgType, func);
     }
 
     template<class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody>
@@ -163,6 +168,14 @@ public:
         std::function<void(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
             = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         RegisterHandle(msgType, funHandle);
+    }
+
+    template<class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    void RegisterHandle(_TypeClass* pClass,
+        void(_TypeClass::* func)(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&))
+    {
+        uint32_t msgType = _TypeMsgPacketBody::msgid;
+        RegisterHandle(msgType, pClass, func);
     }
 
 private:

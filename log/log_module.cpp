@@ -45,7 +45,7 @@ void LogModule::AfterStop() {
 
 void LogModule::OnUpdate() {}
 
-void LogModule::OnConfigChange() {}
+void LogModule::OnLoadConfig() {}
 
 void LogModule::SetLogLevel(LOG_LEVEL_TYPE log_level)
 {

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package Pb;
+
 message ClientHead
 {
    int32     sync_id = 1;

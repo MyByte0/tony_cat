@@ -26,19 +26,19 @@ SER_NAME_SPACE_BEGIN
 
 #define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                           \
 public:                                                                                             \
-    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPEById(int64_t nId) const {                        \
+    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const {                      \
         auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                               \
         if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                 \
             return &it->second;                                                                     \
         }                                                                                           \
         return nullptr;                                                                             \
     }                                                                                               \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPEMap() {               \
+    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map() {             \
         return &m_map##_CONFIG_DATA_TYPE;                                                           \
     }                                                                                               \
     void Load##_CONFIG_DATA_TYPE() {                                                                \
-        m_map##_CONFIG_DATA_TYPE.clear();                                                           \
-        XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);                      \
+        m_map##_CONFIG_DATA_TYPE##.clear();                                                         \
+        XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);      \
     }                                                                                               \
 private:                                                                                            \
     std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;                        \
@@ -51,9 +51,7 @@ public:
     virtual ~XmlConfigModule();
 
 public:
-    virtual void BeforeInit();
-
-
+    virtual void BeforeInit() override;
 
     template<typename _TConfgData>
     static bool LoadXmlFile(const char* xmlPath, std::unordered_map<int64_t, _TConfgData>& mapData) {

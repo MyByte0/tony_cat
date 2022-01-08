@@ -76,11 +76,11 @@ void ModuleManager::StopModules() {
 
 void ModuleManager::LoadConfig() {
 	for (auto& moduleInfo : m_vecModules) {
-		moduleInfo.pModule->OnConfigChange();
+		moduleInfo.pModule->OnLoadConfig();
 	}
 
 	for (auto& moduleInfo : m_vecModules) {
-        moduleInfo.pModule->AfterConfigChange();
+        moduleInfo.pModule->AfterLoadConfig();
     }
 }
 

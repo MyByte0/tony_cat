@@ -20,6 +20,7 @@ if(MSVC)
 	   #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} /MTd")
 	   #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} /MTd")
 	   add_definitions("-D_WIN32_WINNT=0x0601")
+	   add_compile_options(/wd4251)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)

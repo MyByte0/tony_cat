@@ -17,18 +17,28 @@ NetModule::~NetModule() {
 
 void NetModule::BeforeInit() {
     m_loopAccpet.Start();
-    m_acceptor.Reset(
-        m_loopAccpet.GetIoContext(),
-        "127.0.0.1", 9999);
-    
+
     size_t netThreadNum = 4;
     m_poolSessionContext.Start(netThreadNum);
-    m_loopAccpet.Exec([this]() { this->Accept(); });
+}
+
+void NetModule::AfterStop() {
+    for (auto& elemMapSession : m_mapSession)
+    {
+        elemMapSession.second->AsyncClose();
+    }
+    m_poolSessionContext.Stop();
+
+    for (auto pAcceptor : m_vecAcceptors)
+    {
+        delete pAcceptor;
+    }
+    m_vecAcceptors.clear();
 }
 
 Session::session_id_t NetModule::CreateSessionId() {
-  auto session_id = ++m_nextSessionId;
-  return session_id;
+    auto session_id = ++m_nextSessionId;
+    return session_id;
 }
 
 SessionPtr NetModule::GetSessionById(Session::session_id_t sessionId) {
@@ -48,20 +58,30 @@ void NetModule::OnCloseSession(Session::session_id_t sessionId) {
       });
 }
 
-void NetModule::Accept() {
+void NetModule::Listen(const std::string strAddress, uint16_t addressPort) {
+    Acceptor* pAcceptor = new Acceptor();
+    pAcceptor->Reset(
+        m_loopAccpet.GetIoContext(),
+        strAddress, addressPort);
+    m_vecAcceptors.emplace_back(pAcceptor);
+
+    m_loopAccpet.Exec([this, pAcceptor]() { this->Accept(pAcceptor); });
+}
+
+void NetModule::Accept(Acceptor* pAcceptor) {
     auto session_id  = CreateSessionId();
     auto& context = m_poolSessionContext.GetIoContext(session_id);
 
     auto pSession = std::make_shared<Session>(context, session_id);
-    pSession->OnSessionClose(
+    pSession->SetSessionCloseCb(
         std::bind(&NetModule::OnCloseSession, this, std::placeholders::_1));
-    pSession->OnSessionRead([this, pSession](auto& buf) {
+    pSession->SetSessionReadCb([this, pSession](auto& buf) {
             if (nullptr == m_funNetRead || m_funNetRead(pSession->GetSessionId(), buf) == false) {
                 pSession->AsyncClose();
             }
         });
-    m_acceptor.OnAccept(*pSession,
-        [this, pSession](std::error_code ec)
+    pAcceptor->OnAccept(*pSession,
+        [this, pAcceptor, pSession](std::error_code ec)
         {
             if (!ec)
             {
@@ -78,21 +98,22 @@ void NetModule::Accept() {
                 });
             }
 
-            Accept();
+            Accept(pAcceptor);
         });
 }
 
-void NetModule::Connect(const std::string strAddressIP, uint16_t addressPort) {
+Session::session_id_t NetModule::Connect(const std::string strAddressIP, uint16_t addressPort) {
   auto endpoints = asio::ip::tcp::endpoint(asio::ip::make_address(strAddressIP),
                                            addressPort);
   auto session_id = CreateSessionId();
   auto& context = m_poolSessionContext.GetIoContext(session_id);
 
   auto pSession = std::make_shared<Session>(context, session_id);
-  pSession->OnSessionClose(
+  pSession->SetSessionCloseCb(
       std::bind(&NetModule::OnCloseSession, this, std::placeholders::_1));
   m_mapSession[pSession->GetSessionId()] = pSession;
   pSession->DoConnect(endpoints);
+  return session_id;
 }
 
 void NetModule::Close(Session::session_id_t session_id) {

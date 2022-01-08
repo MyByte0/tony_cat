@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package Pb;
+
 message CSHeartbeat
 {
    string    trans_id = 2;
@@ -7,7 +9,7 @@ message CSHeartbeat
 
    enum SSMessageId
    {
-        cs_msgid_invalid = 0;
+        msgid_invalid = 0;
         cs_msgid_heartbeat = 1;
    }
 }
