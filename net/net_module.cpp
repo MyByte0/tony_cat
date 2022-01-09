@@ -4,7 +4,7 @@
 #include "common/module_manager.h"
 #include "log/log_module.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 NetModule::NetModule(ModuleManager* pModuleManager) :
 	ModuleBase(pModuleManager) {
@@ -126,4 +126,4 @@ void NetModule::Close(Session::session_id_t session_id) {
   itMapSession->second->AsyncClose();
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

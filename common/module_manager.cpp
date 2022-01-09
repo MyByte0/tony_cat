@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 ModuleManager::ModuleManager() {}
 
@@ -110,4 +110,4 @@ Loop& ModuleManager::GetMainLoop() {
 	return m_loop; 
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

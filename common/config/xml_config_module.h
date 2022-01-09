@@ -22,7 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 #define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                           \
 public:                                                                                             \
@@ -83,6 +83,6 @@ public:
 };
 
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // XML_CONFIG_MODULE_H_

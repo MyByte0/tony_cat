@@ -11,7 +11,7 @@
 //#include <windows.h>
 
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 struct Task {
     // use co_await Waitable
@@ -222,6 +222,6 @@ struct ConnectCoroutine {
 
 typedef std::shared_ptr<ConnectCoroutine> ConnectCoroutinePtr;
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif // COMMON_LOOP_COROUTINE_H_

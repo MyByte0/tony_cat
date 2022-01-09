@@ -14,7 +14,7 @@
 #include <functional>
 #include <unordered_map>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class NetModule;
 
@@ -191,6 +191,6 @@ private:
     NetModule* m_pNetModule = nullptr;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // NET_NET_PB_MODULE_H_

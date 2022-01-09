@@ -3,7 +3,7 @@
 
 #include "core_define.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class ModuleManager;
 
@@ -30,6 +30,6 @@ protected:
 	ModuleManager* m_pModuleManager;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif // COMMON_MODULE_BASE_H_

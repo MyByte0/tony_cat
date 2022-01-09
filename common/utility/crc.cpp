@@ -70,7 +70,7 @@ static const uint32_t crc32table[] = {
  0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL
 };
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 uint16_t CRC16(const void* data, size_t len) {
     const uint8_t* pData = (const uint8_t*)data;
@@ -115,4 +115,4 @@ uint32_t CRC32(const void* dataHead, size_t lenHead, const void* data, size_t le
     return crc ^ 0xFFFFFFFF;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

@@ -4,7 +4,7 @@
 #include <cstring>
 #include <ctime>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 // maybe vecResult use string_view is better
 void SplitString(const char* pData, std::vector<std::string>& vecResult, const char cSplit) {
@@ -300,4 +300,4 @@ bool ConfigValueToStringMapString(const char* pData, std::unordered_map<std::str
     return true;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

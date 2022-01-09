@@ -15,7 +15,7 @@ namespace asio {
 class io_context;
 }
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class Loop {
  public:
@@ -57,6 +57,6 @@ class Loop {
   bool m_bRunning = false;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // COMMON_LOOP_H_

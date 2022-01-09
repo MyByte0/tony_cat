@@ -6,7 +6,7 @@
 
 #include "asio.hpp"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class LoopPool
 {
@@ -33,6 +33,6 @@ private:
      std::vector<Loop> m_vecLoops;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // COMMON_LOOP_POOL_H_

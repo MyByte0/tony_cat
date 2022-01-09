@@ -10,7 +10,7 @@
 
 #include "common/core_define.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 struct SessionBuffer{
 private:
@@ -313,6 +313,6 @@ private:
     asio::ip::tcp::acceptor* m_acceptor = nullptr;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif // NET_NET_SESSION_H_

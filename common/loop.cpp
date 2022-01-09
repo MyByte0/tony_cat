@@ -6,7 +6,7 @@
 
 #include "asio.hpp"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 THREAD_LOCAL_POD_VAR void* Loop::t_runingLoop = nullptr;
 
@@ -109,4 +109,4 @@ Loop::TimerHandle Loop::ExecEvery(uint32_t millSeconds,
 
 void Loop::Cancel(TimerHandle& timerHandle) { timerHandle->cancel(); }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

@@ -17,7 +17,7 @@
 #include <thread>
 #include <unordered_map>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class NetModule;
 class NetPbModule;
@@ -36,7 +36,7 @@ public:
 
 public:
     struct ServerInstanceInfo {
-        std::string strServerName;
+        int32_t nServerType = 0;
         int32_t nId = 0;
         Session::session_id_t nSessionId = 0;
         std::string strServerIp;
@@ -44,12 +44,13 @@ public:
     };
 
     DEFINE_MEMBER_STR(ServerName);
+    DEFINE_MEMBER_INT32(ServerType);
     DEFINE_MEMBER_UINT32(ServerId);
     DEFINE_MEMBER_STR(ServerIp);
     DEFINE_MEMBER_INT32(ServerPort);
     DEFINE_MEMBER_VAR(ServerInstanceInfo, ServerInfo);
 
-    Session::session_id_t GetServerSessionId(const std::string& strServerName, int32_t nServerId);
+    Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
 
 public:
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
@@ -62,10 +63,10 @@ private:
     NetPbModule*        m_pNetPbModule = nullptr;
     XmlConfigModule*    m_pXmlConfigModule = nullptr;
 
-    // map<ServerName, map<ServerId, ServerInstanceInfo>>
-    std::unordered_map<std::string, std::map<int32_t, ServerInstanceInfo> > m_mapServerConnectList;
+    // map<ServerType, map<ServerId, ServerInstanceInfo>>
+    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo> > m_mapServerConnectList;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // SERVICE_GOVERNMENT_MODULE_H_

@@ -6,7 +6,7 @@
 #include "net/net_module.h"
 #include "net/net_pb_module.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 ServiceGovernmentModule::ServiceGovernmentModule(ModuleManager* pModuleManager)
     :ModuleBase(pModuleManager) {
@@ -29,12 +29,12 @@ void ServiceGovernmentModule::BeforeInit() {
 
 void ServiceGovernmentModule::InitConfig() {
     m_mapServerConnectList.clear();
-    std::vector<std::string> vecDestServers;
+    std::vector<int32_t> vecDestServers;
     auto pMap = m_pXmlConfigModule->MutableServerListConfigDataMap();
     if (nullptr != pMap) {
         for (const auto& elemMap :*pMap) {
             auto& stServerListConfigData = elemMap.second;
-            if (stServerListConfigData.strServerName == GetServerName() && stServerListConfigData.nServerIndex == GetServerId()) {
+            if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
                 AdressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
                 vecDestServers = stServerListConfigData.vecConnectList;
                 LOG_INFO("Server Public Address Ip{}, port:{}", m_strServerIp, m_nServerPort);
@@ -44,26 +44,26 @@ void ServiceGovernmentModule::InitConfig() {
 
         for (const auto& elemMap : *pMap) {
             auto& stServerListConfigData = elemMap.second;
-            if (std::find(vecDestServers.begin(), vecDestServers.end(), stServerListConfigData.strServerName)
+            if (std::find(vecDestServers.begin(), vecDestServers.end(), stServerListConfigData.nServerType)
                 == vecDestServers.end()) {
                 continue;
             }
 
-            if (stServerListConfigData.strServerName == GetServerName() && stServerListConfigData.nServerIndex == GetServerId()) {
+            if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
                 continue;
             }
 
-            if (m_mapServerConnectList[stServerListConfigData.strServerName].count(stServerListConfigData.nServerIndex) > 0)
+            if (m_mapServerConnectList[stServerListConfigData.nServerType].count(stServerListConfigData.nServerIndex) > 0)
             {
-                LOG_ERROR("on duplicate on :{}, index{}", stServerListConfigData.strServerName, stServerListConfigData.nServerIndex);
+                LOG_ERROR("on duplicate on :{}, index{}", stServerListConfigData.nServerType, stServerListConfigData.nServerIndex);
                 continue;
             }
 
             ServerInstanceInfo stServerInstanceInfo;
-            stServerInstanceInfo.strServerName = stServerListConfigData.strServerName;
+            stServerInstanceInfo.nServerType = stServerListConfigData.nServerType;
             stServerInstanceInfo.nId = stServerListConfigData.nServerIndex;
             AdressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
-            m_mapServerConnectList[stServerListConfigData.strServerName][stServerListConfigData.nServerIndex] = std::move(stServerInstanceInfo);
+            m_mapServerConnectList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = std::move(stServerInstanceInfo);
         }
     }
 }
@@ -82,8 +82,8 @@ void ServiceGovernmentModule::InitConnect() {
     }
 }
 
-Session::session_id_t ServiceGovernmentModule::GetServerSessionId(const std::string& strServerName, int32_t nServerId) {
-    auto itMapServerConnectList = m_mapServerConnectList.find(strServerName);
+Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId) {
+    auto itMapServerConnectList = m_mapServerConnectList.find(nServerType);
     if (itMapServerConnectList == m_mapServerConnectList.end()) {
         return 0;
     }
@@ -114,4 +114,4 @@ bool ServiceGovernmentModule::AdressToIpPort(const std::string& strAddress, std:
     return true;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

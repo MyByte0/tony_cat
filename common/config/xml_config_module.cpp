@@ -4,7 +4,7 @@
 #include "log/log_module.h"
 #include "net/net_pb_module.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 XmlConfigModule::XmlConfigModule(ModuleManager* pModuleManager)
     :ModuleBase(pModuleManager) {
@@ -17,4 +17,4 @@ void XmlConfigModule::BeforeInit() {
     LoadServerListConfigData();
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

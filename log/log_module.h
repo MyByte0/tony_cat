@@ -22,7 +22,7 @@
 #include <glog/logging.h>
 
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class LogModule:public ModuleBase {
 public:
@@ -58,7 +58,7 @@ protected:
 	LOG_LEVEL_TYPE					m_log_level = LOG_LEVEL_TYPE::LOG_LEVEL_INFO;
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #define LOG_DEBUG(_STR_FMT_TEXT, ...)  		do { DLOG_IF(INFO, LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG == LogModule::GetLogModuleInstance()->GetLogLevel()) \
 												<< STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); } while(false)

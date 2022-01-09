@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 LoopPool::LoopPool() {}
 LoopPool::~LoopPool() { 
@@ -68,4 +68,4 @@ Loop* LoopPool::GetLoop(std::size_t index) {
   return nullptr;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

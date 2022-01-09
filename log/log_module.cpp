@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 LogModule* LogModule::m_pLogModule = nullptr;
 
@@ -71,4 +71,4 @@ LogModule::LOG_LEVEL_TYPE LogModule::GetLogLevel() const{
 	return m_pLogModule->m_log_level;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

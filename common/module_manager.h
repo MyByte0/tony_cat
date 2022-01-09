@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class ModuleManager {
 public:
@@ -51,6 +51,6 @@ private:
 #define FIND_MODULE(MODULE_MANAGER, MODULE_NAME)								\
 		dynamic_cast<MODULE_NAME *>((MODULE_MANAGER)->FindModule(#MODULE_NAME));	
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // COMMON_MODULE_MANAGER_H_

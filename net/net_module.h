@@ -11,7 +11,7 @@
 #include <thread>
 #include <unordered_map>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class NetPbModule;
 
@@ -53,6 +53,6 @@ private:
 
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif  // NET_NET_MODULE_H_

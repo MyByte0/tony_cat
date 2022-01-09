@@ -4,7 +4,7 @@
 #include "log/log_module.h"
 #include "net/net_module.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 NetPbModule::NetPbModule(ModuleManager* pModuleManager)
     :ModuleBase(pModuleManager) {
@@ -179,4 +179,4 @@ uint32_t NetPbModule::SwapUint32(uint32_t value) {
     return swapValue;
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
