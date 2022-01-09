@@ -5,7 +5,6 @@ project(tony_cat CXX)
 
 add_definitions("-DASIO_STANDALONE")
 add_definitions("-DGLOG_NO_ABBREVIATED_SEVERITIES")
-include_directories(thirdparty/asio/asio/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 FIND_PACKAGE(Threads REQUIRED)
@@ -17,10 +16,9 @@ add_definitions("-DPROJ_CXX_STANDARD=${CMAKE_CXX_STANDARD}")
 if(MSVC)
        # example: CMAKE_TOOLCHAIN_FILE=D:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake)
 	   include(${CMAKE_TOOLCHAIN_FILE})
-	   #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} /MTd")
-	   #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} /MTd")
 	   add_definitions("-D_WIN32_WINNT=0x0601")
 	   add_compile_options(/wd4251)
+	   add_compile_options(/wd4996)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -55,8 +53,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if(MSVC)
+	find_package(fmt)
 	set(LIB_DEPEND
 		${LIB_DEPEND}
+		fmt::fmt
 		protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
 	)
 endif()
@@ -72,9 +72,6 @@ ADD_LIBRARY(TONY_CAT
 	${NET_FILES}
 	${LOG_FILES}
 	${COMMON_FILES}
-)
-
-ADD_LIBRARY(NET_PB
 	${PROTOBUF_FILES}
 )
 

@@ -9,11 +9,13 @@ message ServerHead
    int64     from_server = 3;
    int64     dest_server = 4;
    int64     user_id = 5;
+   int64     query_id = 6;
 }
 
 enum SSMessageId
 {
     ss_msgid_invalid = 0;
-    ss_msgid_heartbeat_req = 1073741824;
-    ss_msgid_heartbeat_rsp = 1073741825;
+    ss_msgid_begin = 0x40000000;
+    ss_msgid_heartbeat_req = 0x40000002;
+    ss_msgid_heartbeat_rsp = 0x40000003;
 }

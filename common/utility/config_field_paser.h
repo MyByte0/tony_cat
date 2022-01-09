@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 void SplitString(const char* pData, std::vector<std::string>& vecResult, const char cSplit);
 void SplitStringString(const char* pData, std::vector<std::vector<std::string>>& vecResult, const char cSplitFirst, const char cSplitSecond);
@@ -36,6 +36,6 @@ bool ConfigValueToStringMapInt32(const char* pData, std::unordered_map<std::stri
 bool ConfigValueToStringMapInt64(const char* pData, std::unordered_map<std::string, int64_t>& mapResult);
 bool ConfigValueToStringMapString(const char* pData, std::unordered_map<std::string, std::string>& mapResult);
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
 #endif // COMMON_UTILITY_CONFIG_FIELD_PASER_H_

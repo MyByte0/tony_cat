@@ -3,16 +3,16 @@
 
 #include "core_define.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
-#define THREAD_LOCAL_VAR			thread_local
+#define THREAD_LOCAL_VAR thread_local
 
 #ifdef __GNUC__
-	#define THREAD_LOCAL_POD_VAR	__thread
+#define THREAD_LOCAL_POD_VAR __thread
 #else
-	#define THREAD_LOCAL_POD_VAR	thread_local
+#define THREAD_LOCAL_POD_VAR thread_local
 #endif
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
-#endif  // COMMON_THREAD_LOCAL_H_
+#endif // COMMON_THREAD_LOCAL_H_

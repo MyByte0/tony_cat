@@ -7,10 +7,3 @@ message ClientHead
    int32     sync_id = 1;
    int64     req_time = 2;
 }
-
-enum CSMessageId
-{
-    ss_msgid_invalid = 0;
-    ss_msgid_heartbeat = 1;
-    ss_msgid_user_login = 2;
-}

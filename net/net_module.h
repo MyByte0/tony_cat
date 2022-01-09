@@ -2,57 +2,58 @@
 #define NET_NET_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/module_base.h"
 #include "common/loop.h"
 #include "common/loop_pool.h"
-
+#include "common/module_base.h"
+#include "common/var_define.h"
 #include "net_session.h"
 
 #include <thread>
 #include <unordered_map>
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 class NetPbModule;
 
-class NetModule :public ModuleBase {
+class NetModule : public ModuleBase {
 public:
-	NetModule(ModuleManager* pModuleManager);
-	virtual ~NetModule();
+    NetModule(ModuleManager* pModuleManager);
+    virtual ~NetModule();
 
-	virtual void BeforeInit() override;
-	virtual void AfterStop() override;
+    virtual void BeforeInit() override;
+    virtual void OnInit() override;
+    virtual void AfterStop() override;
 
 public:
-	void Listen(const std::string strAddress, uint16_t addressPort);
-	Session::session_id_t Connect(const std::string strAddress, uint16_t addressPort);
-	void Close(Session::session_id_t session_id);
+    typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
 
-	typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
-	SessionPtr GetSessionById(Session::session_id_t sessionId);
-	void SetFunSessionRead(const FunNetRead& funNetRead) {
-		m_funNetRead = funNetRead;
-	}
+    void Listen(const std::string& strAddress, uint16_t addressPort, const FunNetRead& funNetRead);
+    Session::session_id_t Connect(const std::string& strAddress, uint16_t addressPort,
+        const Session::FunSessionRead& funOnSessionRead,
+        const Session::FunSessionConnect& funOnSessionConnect = nullptr,
+        const Session::FunSessionClose& funOnSessionClose = nullptr);
+    void Close(Session::session_id_t session_id);
+
+    SessionPtr GetSessionById(Session::session_id_t sessionId);
+
+    DEFINE_MEMBER_UINT32(NetThreadNum);
 
 private:
-	void Accept(Acceptor* pAcceptor);
-	Session::session_id_t CreateSessionId();
-	void OnCloseSession(Session::session_id_t sessionId);
+    void Accept(Acceptor* pAcceptor);
+    Session::session_id_t CreateSessionId();
+    void OnCloseSession(Session::session_id_t sessionId);
+    bool OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff);
 
 private:
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
 
     Loop m_loopAccpet;
-	std::vector<Acceptor*> m_vecAcceptors;
+    std::vector<Acceptor*> m_vecAcceptors;
 
-	Session::session_id_t m_nextSessionId;
+    Session::session_id_t m_nextSessionId;
     LoopPool m_poolSessionContext;
-
-private:
-	FunNetRead m_funNetRead = nullptr;
-
 };
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END
 
-#endif  // NET_NET_MODULE_H_
+#endif // NET_NET_MODULE_H_

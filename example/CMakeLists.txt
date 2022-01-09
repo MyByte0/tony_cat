@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.7)
 
-SET(EXAMPLE_FILES
-	main.cpp
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+ADD_SUBDIRECTORY(
+  gate_server
 )
 
-ADD_EXECUTABLE(demo1 
-	${EXAMPLE_FILES}
+ADD_SUBDIRECTORY(
+  logic_server
 )
-
-target_link_libraries (demo1 NET_PB TONY_CAT ${LIB_DEPEND})

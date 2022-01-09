@@ -4,17 +4,21 @@
 #include "log/log_module.h"
 #include "net/net_pb_module.h"
 
-SER_NAME_SPACE_BEGIN
+TONY_CAT_SPACE_BEGIN
 
 XmlConfigModule::XmlConfigModule(ModuleManager* pModuleManager)
-    :ModuleBase(pModuleManager) {
-
+    : ModuleBase(pModuleManager)
+{
 }
 
-XmlConfigModule::~XmlConfigModule() {}
+XmlConfigModule::~XmlConfigModule() { }
 
-void XmlConfigModule::BeforeInit() {
-    LoadServerListConfigData();
+void XmlConfigModule::BeforeInit()
+{
+    if (false == LoadServerListConfigData()) {
+        LOG_ERROR("LoadServerListConfigData false.");
+        return;
+    }
 }
 
-SER_NAME_SPACE_END
+TONY_CAT_SPACE_END

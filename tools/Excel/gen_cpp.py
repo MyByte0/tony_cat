@@ -128,30 +128,35 @@ def gen_code(argv):
             list_type[i] = dict_types_mod[var_name]
 
     cpp_struct_name = "{}ConfigData".format(config_name)
-    file_write = open("{}{}.h".format(cpp_gen_path, cpp_struct_name), "w")
+    header_file_name = "{}.h".format(cpp_struct_name)
+    header_file_write = open("{}{}".format(cpp_gen_path, header_file_name), "w")
 
     # common header
-    file_write.write('#ifndef {}_'.format(cpp_struct_name))
-    file_write.write('\n#define {}_'.format(cpp_struct_name))
-    file_write.write('\n')
-    file_write.write('\n#include "common/core_define.h"')
-    file_write.write('\n#include "common/utility/config_field_paser.h"')
-    file_write.write('\n#include "log/log_module.h"')
-    file_write.write('\n')
-    file_write.write('\n#include <tinyxml2.h>')
-    file_write.write('\n')
-    file_write.write('\n#include <cstdint>')
-    file_write.write('\n#include <ctime>')
-    file_write.write('\n#include <map>')
-    file_write.write('\n#include <string>')
-    file_write.write('\n#include <unordered_map>')
-    file_write.write('\n#include <vector>')
-    file_write.write('\n')
-    file_write.write('\nSER_NAME_SPACE_BEGIN')
-    file_write.write('\n')
+    header_file_write.write('#ifndef CONFIG_{}_H_'.format(cpp_struct_name))
+    header_file_write.write('\n#define CONFIG_{}_H_'.format(cpp_struct_name))
+    header_file_write.write('\n')
+    header_file_write.write('\n#include "common/core_define.h"')
+    #header_file_write.write('\n#include "common/utility/config_field_paser.h"')
+    #header_file_write.write('\n#include "log/log_module.h"')
+    #header_file_write.write('\n')
+    #header_file_write.write('\n#include <tinyxml2.h>')
+    header_file_write.write('\n')
+    header_file_write.write('\n#include <cstdint>')
+    header_file_write.write('\n#include <ctime>')
+    header_file_write.write('\n#include <map>')
+    header_file_write.write('\n#include <string>')
+    header_file_write.write('\n#include <unordered_map>')
+    header_file_write.write('\n#include <vector>')
+    header_file_write.write('\n')
+    header_file_write.write('\nnamespace tinyxml2 {')
+    header_file_write.write('\n    class XMLAttribute;')
+    header_file_write.write('\n}')
+    header_file_write.write('\n')
+    header_file_write.write('\nTONY_CAT_SPACE_BEGIN')
+    header_file_write.write('\n')
 
     # struct dec begin
-    file_write.write( "\nstruct {} {{".format(cpp_struct_name))
+    header_file_write.write( "\nstruct {} {{".format(cpp_struct_name))
 
 
     # struct members begin
@@ -163,15 +168,63 @@ def gen_code(argv):
             print('infomation: not support type:{} on:{}\n'.format(var_type, var_name))
             continue
         var_code_type = dict_type_base[var_type]
-        file_write.write( '\n    {} {}'.format(var_code_type, member_name))
+        header_file_write.write( '\n    {} {}'.format(var_code_type, member_name))
         if dict_type_var_prefix[var_type] == 'n' :
-            file_write.write( ' = 0;')
+            header_file_write.write( ' = 0;')
         else :
-            file_write.write( ';')
+            header_file_write.write( ';')
 
     # function define begin
-    file_write.write('\n')
-    file_write.write('\n    bool LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute) {')
+    header_file_write.write('\n')
+    header_file_write.write('\n    bool LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute);')
+    #first_var_name = ''
+    #first_member_name = ''
+    #for i in range(len(list_type)):
+    #    var_name = list_name[i]
+    #    var_type = list_type[i]
+    #    call_fun = dict_type_paser_fun[var_type]
+    #    member_name = dict_type_var_prefix[var_type] + var_name
+    #    if i == 0:
+    #        header_file_write.write('\n        if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+    #        first_var_name = var_name
+    #        first_member_name = member_name
+    #    else :
+    #        header_file_write.write('\n        else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+#
+    #    header_file_write.write('\n            if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
+    #    header_file_write.write('\n                LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
+    #    header_file_write.write('\n                return false;')
+    #    header_file_write.write('\n            }')
+    #    header_file_write.write('\n        }')
+    #
+    #header_file_write.write('\n        return true;')
+    #
+    ## function define end
+    #header_file_write.write('\n    }')
+
+
+    header_file_write.write( "\n}};".format())
+    # struct dec end
+    header_file_write.write('\n')
+    header_file_write.write('\nTONY_CAT_SPACE_END')
+    header_file_write.write('\n')
+    header_file_write.write('\n#endif // CONFIG_{}_H'.format(cpp_struct_name))
+    header_file_write.write('\n')
+    header_file_write.close()
+    
+    
+    cpp_file_write = open("{}{}.cpp".format(cpp_gen_path, cpp_struct_name), "w")
+    cpp_file_write.write('\n#include "{}"'.format(header_file_name))
+    cpp_file_write.write('\n#include "common/core_define.h"')
+    cpp_file_write.write('\n#include "common/utility/config_field_paser.h"')
+    cpp_file_write.write('\n#include "log/log_module.h"')
+    cpp_file_write.write('\n')
+    cpp_file_write.write('\n#include <tinyxml2.h>')
+    cpp_file_write.write('\n')
+    cpp_file_write.write('\nTONY_CAT_SPACE_BEGIN')
+    cpp_file_write.write('\n')
+    
+    cpp_file_write.write('\n    bool {}::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute) {{'.format(cpp_struct_name))
     first_var_name = ''
     first_member_name = ''
     for i in range(len(list_type)):
@@ -180,33 +233,30 @@ def gen_code(argv):
         call_fun = dict_type_paser_fun[var_type]
         member_name = dict_type_var_prefix[var_type] + var_name
         if i == 0:
-            file_write.write('\n        if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+            cpp_file_write.write('\n        if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
             first_var_name = var_name
             first_member_name = member_name
         else :
-            file_write.write('\n        else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+            cpp_file_write.write('\n        else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
 
-        file_write.write('\n            if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
-        file_write.write('\n                LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
-        file_write.write('\n                return false;')
-        file_write.write('\n            }')
-        file_write.write('\n        }')
+        cpp_file_write.write('\n            if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
+        cpp_file_write.write('\n                LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
+        cpp_file_write.write('\n                return false;')
+        cpp_file_write.write('\n            }')
+        cpp_file_write.write('\n        }')
     
-    file_write.write('\n        return true;')
+    cpp_file_write.write('\n        return true;')
     
     # function define end
-    file_write.write('\n    }')
+    cpp_file_write.write('\n    }')
 
 
-    file_write.write( "\n}};".format())
-    # struct dec end
-    file_write.write('\n')
-    file_write.write('\nSER_NAME_SPACE_END')
-    file_write.write('\n')
-    file_write.write('\n#endif // _{}_H'.format(cpp_struct_name))
-    file_write.write('\n')
+    cpp_file_write.write('\n')
+    cpp_file_write.write('\nTONY_CAT_SPACE_END')
+    cpp_file_write.write('\n')
+    cpp_file_write.close()
 
-    file_write.close()
+
 
 def main(argv):
     gen_code(argv)

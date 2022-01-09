@@ -14,7 +14,8 @@ docker run -it --cap-add sys_ptrace -v /mnt/hgfs/proj/:/data/proj image_id /bin/
 For Windows use vcpkg  
   
 vcpkg install asio:x64-windows   
-vcpkg install glog:x64-windows  
+vcpkg install fmt:x64-windows
+vcpkg install glog:x64-windows
 vcpkg install tinyxml2:x64-windows  
 vcpkg install protobuf:x64-windows  
   

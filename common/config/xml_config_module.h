@@ -4,10 +4,10 @@
 #include "ServerListConfigData.h"
 
 #include "common/core_define.h"
-#include "common/module_base.h"
 #include "common/loop.h"
 #include "common/loop_coroutine.h"
 #include "common/loop_pool.h"
+#include "common/module_base.h"
 #include "log/log_module.h"
 #include "net/net_session.h"
 #include "protocol/server_base.pb.h"
@@ -22,26 +22,34 @@
 #include <unordered_map>
 #include <vector>
 
-SER_NAME_SPACE_BEGIN
+#ifdef _WIN32
+#include <algorithm>
+#endif
 
-#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                           \
-public:                                                                                             \
-    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const {                      \
-        auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                               \
-        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                 \
-            return &it->second;                                                                     \
-        }                                                                                           \
-        return nullptr;                                                                             \
-    }                                                                                               \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map() {             \
-        return &m_map##_CONFIG_DATA_TYPE;                                                           \
-    }                                                                                               \
-    void Load##_CONFIG_DATA_TYPE() {                                                                \
-        m_map##_CONFIG_DATA_TYPE##.clear();                                                         \
-        XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);      \
-    }                                                                                               \
-private:                                                                                            \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;                        \
+TONY_CAT_SPACE_BEGIN
+
+#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                             \
+public:                                                                                               \
+    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const                          \
+    {                                                                                                 \
+        auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                                 \
+        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                   \
+            return &it->second;                                                                       \
+        }                                                                                             \
+        return nullptr;                                                                               \
+    }                                                                                                 \
+    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map()                 \
+    {                                                                                                 \
+        return &m_map##_CONFIG_DATA_TYPE;                                                             \
+    }                                                                                                 \
+    bool Load##_CONFIG_DATA_TYPE()                                                                    \
+    {                                                                                                 \
+        m_map##_CONFIG_DATA_TYPE.clear();                                                             \
+        return XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE); \
+    }                                                                                                 \
+                                                                                                      \
+private:                                                                                              \
+    std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;
 
 class NetPbModule;
 
@@ -53,21 +61,31 @@ public:
 public:
     virtual void BeforeInit() override;
 
-    template<typename _TConfgData>
-    static bool LoadXmlFile(const char* xmlPath, std::unordered_map<int64_t, _TConfgData>& mapData) {
+    template <typename _TConfgData>
+    static bool LoadXmlFile(const char* xmlPath, std::unordered_map<int64_t, _TConfgData>& mapData)
+    {
         tinyxml2::XMLDocument doc;
-        if (doc.LoadFile(xmlPath) != tinyxml2::XML_SUCCESS)
-        {
+        tinyxml2::XMLError errorXml;
+
+#ifdef __linux__
+        if ((errorXml = doc.LoadFile(xmlPath)) != tinyxml2::XML_SUCCESS) {
+            LOG_ERROR("load file {} error:{}", xmlPath, static_cast<int32_t>(errorXml));
             return false;
         }
-
+#elif _WIN32
+        std::string strPath = xmlPath;
+        std::replace(strPath.begin(), strPath.end(), '/', '\\');
+        if ((errorXml = doc.LoadFile(strPath.c_str())) != tinyxml2::XML_SUCCESS) {
+            LOG_ERROR("load file {} error:{}", strPath, static_cast<int32_t>(errorXml));
+            return false;
+        }
+#endif
         tinyxml2::XMLElement* root = doc.RootElement();
-        for (tinyxml2::XMLElement* elementNode = root->FirstChildElement("element"); elementNode != nullptr; 
-            elementNode = elementNode->NextSiblingElement()) {
+        for (tinyxml2::XMLElement* elementNode = root->FirstChildElement("element"); elementNode != nullptr;
+             elementNode = elementNode->NextSiblingElement()) {
             _TConfgData stConfgData;
             for (const tinyxml2::XMLAttribute* pXMLAttribute = elementNode->FirstAttribute();
-                pXMLAttribute != nullptr; pXMLAttribute = pXMLAttribute->Next())
-            {
+                 pXMLAttribute != nullptr; pXMLAttribute = pXMLAttribute->Next()) {
                 if (false == stConfgData.LoadXmlElement(pXMLAttribute)) {
                     LOG_ERROR("Paser error on:{}", xmlPath);
                     return false;
@@ -78,11 +96,9 @@ public:
         return true;
     }
 
-    DEFINE_CONFIG_DATA(ServerListConfigData, "../../ServerList.xml");
-
+    DEFINE_CONFIG_DATA(ServerListConfigData, "../../config/xml/ServerList.xml");
 };
 
+TONY_CAT_SPACE_END
 
-SER_NAME_SPACE_END
-
-#endif  // XML_CONFIG_MODULE_H_
+#endif // XML_CONFIG_MODULE_H_

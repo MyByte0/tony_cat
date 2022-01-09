@@ -34,6 +34,13 @@
 *.pb.cc
 
 *.cmake
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+*.tlog
+*.log
+log_*.log*
 
 CMakeCache.txt
 Makefile
@@ -43,4 +50,5 @@ build/
 thirdparty/
 CMakeFiles/
 example/CMakeFiles/
+example/*/*.dir/
 

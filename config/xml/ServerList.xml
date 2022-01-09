@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
-	<element Id="1" ServerName="logicServer" ServerIndex="0" ServerIp="127.0.0.1:9999" ConnectList="" />
-	<element Id="2" ServerName="gateServer" ServerIndex="0" ServerIp="127.0.0.1:1000" ConnectList="logicServer" />
+	<element Id="10001" ServerType="1" ServerName="gateServer" ServerIndex="1" PublicIp="127.0.0.1 9997" ServerIp="127.0.0.1 9998" ConnectList="2" NetThreadsNum="8" />
+	<element Id="20001" ServerType="2" ServerName="logicServer" ServerIndex="1" PublicIp="" ServerIp="127.0.0.1 9999" ConnectList="1" NetThreadsNum="4" />
 </root>

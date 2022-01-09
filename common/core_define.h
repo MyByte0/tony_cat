@@ -1,10 +1,10 @@
 #ifndef COMMON_CORE_DEFINE_H_
 #define COMMON_CORE_DEFINE_H_
 
-#define SER_NAME_SPACE_BEGIN \
-  namespace demo{
+#define TONY_CAT_SPACE_BEGIN \
+    namespace tony_cat {
 
-#define SER_NAME_SPACE_END	\
-	}
+#define TONY_CAT_SPACE_END \
+    }
 
-#endif  // COMMON_CORE_DEFINE_H_
+#endif // COMMON_CORE_DEFINE_H_
