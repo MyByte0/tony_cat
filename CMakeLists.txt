@@ -5,7 +5,6 @@ project(tony_cat CXX)
 
 add_definitions("-DASIO_STANDALONE")
 add_definitions("-DGLOG_NO_ABBREVIATED_SEVERITIES")
-include_directories(thirdparty/asio/asio/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 FIND_PACKAGE(Threads REQUIRED)
@@ -53,8 +52,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if(MSVC)
+	find_package(fmt)
 	set(LIB_DEPEND
 		${LIB_DEPEND}
+		fmt::fmt
 		protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
 	)
 endif()
