@@ -22,6 +22,7 @@ TONY_CAT_SPACE_BEGIN
 class NetModule;
 class NetPbModule;
 class XmlConfigModule;
+class RpcModule;
 
 class ServiceGovernmentModule : public ModuleBase {
 public:
@@ -73,6 +74,7 @@ private:
 private:
     NetModule*          m_pNetModule = nullptr;
     NetPbModule*        m_pNetPbModule = nullptr;
+    RpcModule*          m_pRpcModule = nullptr;
     XmlConfigModule*    m_pXmlConfigModule = nullptr;
 
     // map<ServerType, map<ServerId, ServerInstanceInfo>>

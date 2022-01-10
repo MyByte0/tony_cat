@@ -1,6 +1,7 @@
 #include "service_government_module.h"
 #include "common/config/xml_config_module.h"
 #include "common/module_manager.h"
+#include "common/service/rpc_module.h"
 #include "common/utility/crc.h"
 #include "log/log_module.h"
 #include "net/net_module.h"
@@ -18,6 +19,7 @@ ServiceGovernmentModule::~ServiceGovernmentModule() {}
 void ServiceGovernmentModule::BeforeInit() {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
+    m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
     m_pNetPbModule->RegisterHandle(this, &ServiceGovernmentModule::OnHandleSSHeartbeatReq);
@@ -99,6 +101,12 @@ void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, 
     else {
         LOG_WARN("server connect fail, SessionId:{}, ", nSessionId);
     }
+
+    Pb::ServerHead head;
+    Pb::SSHeartbeatReq heartbeat;
+    m_pRpcModule->RpcRequest(nSessionId, head, heartbeat, [](Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatRsp& heartbeat) {
+        LOG_INFO("server heartbeat request");
+    });
 }
 
 void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo) {
