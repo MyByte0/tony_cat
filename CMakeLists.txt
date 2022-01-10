@@ -18,6 +18,7 @@ if(MSVC)
 	   include(${CMAKE_TOOLCHAIN_FILE})
 	   add_definitions("-D_WIN32_WINNT=0x0601")
 	   add_compile_options(/wd4251)
+	   add_compile_options(/wd4996)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
