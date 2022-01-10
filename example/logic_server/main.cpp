@@ -1,6 +1,5 @@
-#include "common/loop.h"
-
 #include "common/config/xml_config_module.h"
+#include "common/loop.h"
 #include "common/module_manager.h"
 #include "common/service/service_government_module.h"
 #include "log/log_module.h"
@@ -88,6 +87,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         nServerIndex = std::atoi(argv[1]);
     }
+
     tony_cat::LogicServer serverApp;
     serverApp.Start(nServerIndex);
 }

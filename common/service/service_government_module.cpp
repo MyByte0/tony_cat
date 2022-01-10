@@ -35,7 +35,9 @@ void ServiceGovernmentModule::InitConfig() {
         for (const auto& elemMap :*pMap) {
             auto& stServerListConfigData = elemMap.second;
             if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
-                AdressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
+                AddressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
+                MutableServerInfo()->strServerIp = m_strServerIp;
+                MutableServerInfo()->nPort = m_nServerPort;
                 vecDestServers = stServerListConfigData.vecConnectList;
                 LOG_INFO("Server Public Address Ip{}, port:{}", m_strServerIp, m_nServerPort);
                 break;
@@ -61,8 +63,8 @@ void ServiceGovernmentModule::InitConfig() {
 
             ServerInstanceInfo stServerInstanceInfo;
             stServerInstanceInfo.nServerType = stServerListConfigData.nServerType;
-            stServerInstanceInfo.nId = stServerListConfigData.nServerIndex;
-            AdressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
+            stServerInstanceInfo.nServerIndex = stServerListConfigData.nServerIndex;
+            AddressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
             m_mapServerConnectList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = std::move(stServerInstanceInfo);
         }
     }
@@ -77,24 +79,67 @@ void ServiceGovernmentModule::InitConnect() {
         auto& mapServerInstanceInfo = elemMapServerConnectList.second;
         for (auto& elemMapServerInstanceInfo : mapServerInstanceInfo) {
             auto& stServerInstanceInfo = elemMapServerInstanceInfo.second;
-            stServerInstanceInfo.nSessionId = m_pNetModule->Connect(stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort);
+            stServerInstanceInfo.nSessionId = ConnectServerInstance(stServerInstanceInfo);
         }
     }
 }
 
-Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId) {
+Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo) {
+    LOG_INFO("server connect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
+        stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
+    return m_pNetModule->Connect(stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort,
+        std::bind(&ServiceGovernmentModule::OnConnectSucess, this, std::placeholders::_1, std::placeholders::_2),
+        std::bind(&ServiceGovernmentModule::OnDisconnect, this, std::placeholders::_1, stServerInstanceInfo));
+}
+
+void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, bool bSuccess) {
+    if (bSuccess) {
+        LOG_INFO("server connect success, SessionId:{}, ", nSessionId);
+    }
+    else {
+        LOG_WARN("server connect fail, SessionId:{}, ", nSessionId);
+    }
+}
+
+void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo) {
+    LOG_WARN("server disconnect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
+        stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
+    auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+    if (nullptr == pServerInstanceInfo) {
+        LOG_ERROR("not find server info, server type:{}, server index:{}", stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+        return;
+    }
+
+    if (pServerInstanceInfo->timerReconnect) {
+        pServerInstanceInfo->timerReconnect->cancel();
+    }
+    pServerInstanceInfo->timerReconnect = m_pModuleManager->GetMainLoop().ExecAfter(kReconnectServerTimeMillSeconds, [this, stServerInstanceInfo]() {
+        auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+        pServerInstanceInfo->nSessionId = ConnectServerInstance(*pServerInstanceInfo);
+        });
+}
+
+ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerInstanceInfo(int32_t nServerType, int32_t nServerId) {
     auto itMapServerConnectList = m_mapServerConnectList.find(nServerType);
     if (itMapServerConnectList == m_mapServerConnectList.end()) {
         return 0;
     }
-    
+
     auto& mapServerInfo = itMapServerConnectList->second;
     auto itMapServerInfo = mapServerInfo.find(nServerId);
     if (itMapServerInfo == mapServerInfo.end()) {
         return 0;
     }
 
-    return itMapServerInfo->second.nSessionId;
+    return &itMapServerInfo->second;
+}
+
+Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId) {
+    auto pServerInstanceInfo = GetServerInstanceInfo(nServerType, nServerId);
+    if (nullptr == pServerInstanceInfo) {
+        return 0;
+    }
+    return pServerInstanceInfo->nSessionId;
 }
 
 void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat) {
@@ -103,7 +148,7 @@ void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessi
     m_pNetPbModule->SendPacket(sessionId, head, msgHeartbeatRsp);
 }
 
-bool ServiceGovernmentModule::AdressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort) {
+bool ServiceGovernmentModule::AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort) {
     auto posSpace = strAddress.find(' ');
     if (posSpace == strAddress.npos) {
         return false;

@@ -14,7 +14,10 @@ XmlConfigModule::XmlConfigModule(ModuleManager* pModuleManager)
 XmlConfigModule::~XmlConfigModule() {}
 
 void XmlConfigModule::BeforeInit() {
-    LoadServerListConfigData();
+    if (false == LoadServerListConfigData()) {
+        LOG_ERROR("LoadServerListConfigData false.");
+        return;
+    }
 }
 
 TONY_CAT_SPACE_END

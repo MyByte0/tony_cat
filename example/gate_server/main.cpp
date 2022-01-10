@@ -1,6 +1,5 @@
-#include "common/loop.h"
-
 #include "common/config/xml_config_module.h"
+#include "common/loop.h"
 #include "common/module_manager.h"
 #include "common/service/service_government_module.h"
 #include "log/log_module.h"
@@ -10,7 +9,6 @@
 
 #include <csignal>
 #include <memory>
-
 
 TONY_CAT_SPACE_BEGIN
 

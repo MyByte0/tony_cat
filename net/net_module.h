@@ -25,7 +25,9 @@ public:
 
 public:
 	void Listen(const std::string strAddress, uint16_t addressPort);
-	Session::session_id_t Connect(const std::string strAddress, uint16_t addressPort);
+	Session::session_id_t Connect(const std::string strAddress, uint16_t addressPort,
+		const Session::FunSessionConnect& funOnSessionConnect = nullptr,
+		const Session::FunSessionClose& funOnSessionClose = nullptr);
 	void Close(Session::session_id_t session_id);
 
 	typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;

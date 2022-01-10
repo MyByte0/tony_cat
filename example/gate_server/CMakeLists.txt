@@ -8,4 +8,4 @@ ADD_EXECUTABLE(GateServer
 	${GATE_SERVER_FILES}
 )
 
-target_link_libraries (GateServer NET_PB TONY_CAT ${LIB_DEPEND})
+target_link_libraries (GateServer TONY_CAT ${LIB_DEPEND})

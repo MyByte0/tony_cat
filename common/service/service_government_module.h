@@ -33,14 +33,20 @@ public:
     void InitConfig();
     void InitListen();
     void InitConnect();
-
+    
 public:
+    enum {
+        kReconnectServerTimeMillSeconds = 15000,
+    };
+
     struct ServerInstanceInfo {
         int32_t nServerType = 0;
-        int32_t nId = 0;
+        int32_t nServerIndex = 0;
         Session::session_id_t nSessionId = 0;
         std::string strServerIp;
         int32_t nPort = 0;
+        Loop::TimerHandle timerReconnect;
+        Loop::TimerHandle timerHeartbeat;
     };
 
     DEFINE_MEMBER_STR(ServerName);
@@ -56,7 +62,13 @@ public:
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
 
 private:
-    static bool AdressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
+    ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType, int32_t nServerId);
+    Session::session_id_t ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);
+    void OnConnectSucess(Session::session_id_t nSessionId, bool bSuccess);
+    void OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo);
+
+private:
+    static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
 
 private:
     NetModule*          m_pNetModule = nullptr;

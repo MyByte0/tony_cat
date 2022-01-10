@@ -22,26 +22,30 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef _WIN32
+#include <algorithm>
+#endif
+
 TONY_CAT_SPACE_BEGIN
 
-#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                           \
-public:                                                                                             \
-    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const {                      \
-        auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                               \
-        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                 \
-            return &it->second;                                                                     \
-        }                                                                                           \
-        return nullptr;                                                                             \
-    }                                                                                               \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map() {             \
-        return &m_map##_CONFIG_DATA_TYPE;                                                           \
-    }                                                                                               \
-    void Load##_CONFIG_DATA_TYPE() {                                                                \
-        m_map##_CONFIG_DATA_TYPE##.clear();                                                         \
-        XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);      \
-    }                                                                                               \
-private:                                                                                            \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;                        \
+#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                               \
+public:                                                                                                 \
+    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const {                          \
+        auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                                   \
+        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                     \
+            return &it->second;                                                                         \
+        }                                                                                               \
+        return nullptr;                                                                                 \
+    }                                                                                                   \
+    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map() {                 \
+        return &m_map##_CONFIG_DATA_TYPE;                                                               \
+    }                                                                                                   \
+    bool Load##_CONFIG_DATA_TYPE() {                                                                    \
+        m_map##_CONFIG_DATA_TYPE.clear();                                                               \
+        return XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);   \
+    }                                                                                                   \
+private:                                                                                                \
+    std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;                            \
 
 class NetPbModule;
 
@@ -56,11 +60,21 @@ public:
     template<typename _TConfgData>
     static bool LoadXmlFile(const char* xmlPath, std::unordered_map<int64_t, _TConfgData>& mapData) {
         tinyxml2::XMLDocument doc;
-        if (doc.LoadFile(xmlPath) != tinyxml2::XML_SUCCESS)
-        {
+        tinyxml2::XMLError errorXml;
+
+#ifdef __linux__
+        if ((errorXml = doc.LoadFile(xmlPath)) != tinyxml2::XML_SUCCESS) {
+            LOG_ERROR("load file {} error:{}", xmlPath, static_cast<int32_t>(errorXml));
             return false;
         }
-
+#elif _WIN32
+        std::string strPath = xmlPath;
+        std::replace(strPath.begin(), strPath.end(), '/', '\\');
+        if ((errorXml = doc.LoadFile(strPath.c_str())) != tinyxml2::XML_SUCCESS) {
+            LOG_ERROR("load file {} error:{}", strPath, static_cast<int32_t>(errorXml));
+            return false;
+        }
+#endif
         tinyxml2::XMLElement* root = doc.RootElement();
         for (tinyxml2::XMLElement* elementNode = root->FirstChildElement("element"); elementNode != nullptr; 
             elementNode = elementNode->NextSiblingElement()) {
@@ -78,7 +92,7 @@ public:
         return true;
     }
 
-    DEFINE_CONFIG_DATA(ServerListConfigData, "../../ServerList.xml");
+    DEFINE_CONFIG_DATA(ServerListConfigData, "../../../config/xml/ServerList.xml");
 
 };
 

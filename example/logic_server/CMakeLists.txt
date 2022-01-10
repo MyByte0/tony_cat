@@ -8,4 +8,4 @@ ADD_EXECUTABLE(LogicServer
 	${LOGIC_SERVER_FILES}
 )
 
-target_link_libraries (LogicServer NET_PB TONY_CAT ${LIB_DEPEND})
+target_link_libraries (LogicServer TONY_CAT ${LIB_DEPEND})

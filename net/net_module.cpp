@@ -102,28 +102,34 @@ void NetModule::Accept(Acceptor* pAcceptor) {
         });
 }
 
-Session::session_id_t NetModule::Connect(const std::string strAddressIP, uint16_t addressPort) {
-  auto endpoints = asio::ip::tcp::endpoint(asio::ip::make_address(strAddressIP),
-                                           addressPort);
-  auto session_id = CreateSessionId();
-  auto& context = m_poolSessionContext.GetIoContext(session_id);
+Session::session_id_t NetModule::Connect(const std::string strAddressIP, uint16_t addressPort,
+    const Session::FunSessionConnect& funOnSessionConnect/* = nullptr*/,
+    const Session::FunSessionClose& funOnSessionClose/* = nullptr*/) {
+    auto endpoints = asio::ip::tcp::endpoint(asio::ip::make_address(strAddressIP),
+                                             addressPort);
+    auto session_id = CreateSessionId();
+    auto& context = m_poolSessionContext.GetIoContext(session_id);
 
-  auto pSession = std::make_shared<Session>(context, session_id);
-  pSession->SetSessionCloseCb(
-      std::bind(&NetModule::OnCloseSession, this, std::placeholders::_1));
-  m_mapSession[pSession->GetSessionId()] = pSession;
-  pSession->DoConnect(endpoints);
-  return session_id;
+    auto pSession = std::make_shared<Session>(context, session_id);
+    pSession->SetSessionCloseCb([this, funOnSessionClose](auto nSessionId) {
+        if (nullptr != funOnSessionClose) {
+            funOnSessionClose(nSessionId);
+        }
+        this->OnCloseSession(nSessionId);
+        });
+    m_mapSession[pSession->GetSessionId()] = pSession;
+    pSession->DoConnect(endpoints, funOnSessionConnect);
+    return session_id;
 }
 
 void NetModule::Close(Session::session_id_t session_id) {
-  auto itMapSession = m_mapSession.find(session_id);
-  if (itMapSession == m_mapSession.end())
-  {
-    return;
-  }
+    auto itMapSession = m_mapSession.find(session_id);
+    if (itMapSession == m_mapSession.end())
+    {
+      return;
+    }
 
-  itMapSession->second->AsyncClose();
+    itMapSession->second->AsyncClose();
 }
 
 TONY_CAT_SPACE_END
