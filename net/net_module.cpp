@@ -58,11 +58,25 @@ void NetModule::OnCloseSession(Session::session_id_t sessionId) {
       });
 }
 
-void NetModule::Listen(const std::string strAddress, uint16_t addressPort) {
+bool NetModule::OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff) {
+    auto pSession = GetSessionById(sessionId);
+    if (nullptr == pSession) {
+        LOG_ERROR("can not find session info, sessionId:{}", sessionId);
+        return true;
+    }
+    if (nullptr == pAcceptor->GetFunSessionRead()
+        || ((pAcceptor->GetFunSessionRead())(sessionId, buff)) == false) {
+        LOG_INFO("read data disconnect, sessionId:{}", sessionId);
+        pSession->AsyncClose();
+    }
+    return true;
+}
+
+void NetModule::Listen(const std::string& strAddress, uint16_t addressPort, const FunNetRead& funNetRead) {
     Acceptor* pAcceptor = new Acceptor();
     pAcceptor->Reset(
         m_loopAccpet.GetIoContext(),
-        strAddress, addressPort);
+        strAddress, addressPort, funNetRead);
     m_vecAcceptors.emplace_back(pAcceptor);
 
     m_loopAccpet.Exec([this, pAcceptor]() { this->Accept(pAcceptor); });
@@ -75,11 +89,7 @@ void NetModule::Accept(Acceptor* pAcceptor) {
     auto pSession = std::make_shared<Session>(context, session_id);
     pSession->SetSessionCloseCb(
         std::bind(&NetModule::OnCloseSession, this, std::placeholders::_1));
-    pSession->SetSessionReadCb([this, pSession](auto& buf) {
-            if (nullptr == m_funNetRead || m_funNetRead(pSession->GetSessionId(), buf) == false) {
-                pSession->AsyncClose();
-            }
-        });
+    pSession->SetSessionReadCb(std::bind(&NetModule::OnReadSession, this, pAcceptor, std::placeholders::_1, std::placeholders::_2));
     pAcceptor->OnAccept(*pSession,
         [this, pAcceptor, pSession](std::error_code ec)
         {
@@ -102,7 +112,8 @@ void NetModule::Accept(Acceptor* pAcceptor) {
         });
 }
 
-Session::session_id_t NetModule::Connect(const std::string strAddressIP, uint16_t addressPort,
+Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16_t addressPort,
+    const Session::FunSessionRead& funOnSessionRead,
     const Session::FunSessionConnect& funOnSessionConnect/* = nullptr*/,
     const Session::FunSessionClose& funOnSessionClose/* = nullptr*/) {
     auto endpoints = asio::ip::tcp::endpoint(asio::ip::make_address(strAddressIP),
@@ -117,6 +128,7 @@ Session::session_id_t NetModule::Connect(const std::string strAddressIP, uint16_
         }
         this->OnCloseSession(nSessionId);
         });
+    pSession->SetSessionReadCb(funOnSessionRead);
     m_mapSession[pSession->GetSessionId()] = pSession;
     pSession->DoConnect(endpoints, funOnSessionConnect);
     return session_id;

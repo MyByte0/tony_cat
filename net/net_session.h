@@ -19,16 +19,17 @@ private:
         size_t nReadPos;
         size_t nWritePos;
     };
+    size_t nMaxBuffSize;
     BufferContext bufContext;
 
 public:
     enum
     {
-        k_default_buffer_size = 32 * 4096,
-        k_max_buffer_size = 1024 * 4096,
+        k_init_buffer_size_div_number = 16,
+        k_default_max_buffer_size = 8 * 1024 * 4096,        // 8MB
     };
 
-    SessionBuffer();
+    SessionBuffer(size_t maxBuffSize = k_default_max_buffer_size);
     ~SessionBuffer();
 
     bool Empty();
@@ -42,6 +43,7 @@ public:
     bool Write(const char* data, size_t len);
     size_t CurrentWritableSize();
     size_t MaxWritableSize();
+    bool Shrink();
 
 private:
     void ReorganizeData();
@@ -56,7 +58,7 @@ public:
 
     typedef std::function<void(session_id_t)> FunSessionClose;
     typedef std::function<void(session_id_t, bool)> FunSessionConnect;
-    typedef std::function<void(SessionBuffer&)> FunSessionRead;
+    typedef std::function<bool(session_id_t, SessionBuffer&)> FunSessionRead;
 
 public:
     Session(asio::io_context& io_context, session_id_t session_id);
@@ -90,14 +92,7 @@ private:
 
     asio::io_context& m_io_context;
     asio::ip::tcp::socket m_socket;
-    enum {
-        standard_read_buff_length = 512 * 1024,
-        max_read_buff_length = 4096*1024 
-    };
-    enum {
-        standard_write_buff_length = 512 * 1024,
-        max_write_buff_length = 4096 * 1024
-    };
+
     SessionBuffer m_ReadBuff;
     SessionBuffer m_WriteBuff;
 
@@ -116,12 +111,14 @@ public:
     ~Acceptor();
 
 public:
-    void Reset(asio::io_context& ioContext, const std::string& Ip, uint32_t port);
+    void Reset(asio::io_context& ioContext, const std::string& Ip, uint32_t port, const Session::FunSessionRead& funSessionRead);
     void OnAccept(Session& session, const std::function<void(std::error_code ec)>& func);
     void OnAccept(Session& session, std::function<void(std::error_code ec)>&& func);
+    const Session::FunSessionRead& GetFunSessionRead();
 
 private:
     asio::ip::tcp::acceptor* m_acceptor = nullptr;
+    Session::FunSessionRead m_funSessionRead = nullptr;
 };
 
 TONY_CAT_SPACE_END

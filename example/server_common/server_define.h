@@ -15,10 +15,10 @@ struct GetServerTypeStructHelper
 {
 };
 
-#define DEFINE_SERVER_TYPE_STRING(_SERVER_TYPE, _TYPE_STRING)                   \
-const char* GetServerTypeHelper(GetServerTypeStructHelper<_SERVER_TYPE>) {      \
-    static const char * pServerName = _TYPE_STRING;                             \
-    return pServerName;                                                         \
+#define DEFINE_SERVER_TYPE_STRING(_SERVER_TYPE, _TYPE_STRING)                           \
+inline const char* GetServerTypeHelper(GetServerTypeStructHelper<_SERVER_TYPE>) {       \
+    const char * pServerName = _TYPE_STRING;                                            \
+    return pServerName;                                                                 \
 }
 
 DEFINE_SERVER_TYPE_STRING(eTypeGateServer, "GateServer")

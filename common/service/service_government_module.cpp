@@ -7,6 +7,8 @@
 #include "net/net_module.h"
 #include "net/net_pb_module.h"
 
+#include <ctime>
+
 TONY_CAT_SPACE_BEGIN
 
 ServiceGovernmentModule::ServiceGovernmentModule(ModuleManager* pModuleManager)
@@ -37,11 +39,12 @@ void ServiceGovernmentModule::InitConfig() {
         for (const auto& elemMap :*pMap) {
             auto& stServerListConfigData = elemMap.second;
             if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
+                AddressToIpPort(stServerListConfigData.strPublicIp, m_strPublicIp, m_nPublicPort);
                 AddressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
                 MutableServerInfo()->strServerIp = m_strServerIp;
                 MutableServerInfo()->nPort = m_nServerPort;
                 vecDestServers = stServerListConfigData.vecConnectList;
-                LOG_INFO("Server Public Address Ip{}, port:{}", m_strServerIp, m_nServerPort);
+                LOG_INFO("Server Public Ip{}, port:{}, Address Ip{}, port:{}.", m_strPublicIp, m_nPublicPort, m_strServerIp, m_nServerPort);
                 break;
             }
         }
@@ -73,7 +76,7 @@ void ServiceGovernmentModule::InitConfig() {
 }
 
 void ServiceGovernmentModule::InitListen() {
-    m_pNetModule->Listen(GetServerInfo().strServerIp, GetServerInfo().nPort);
+    m_pNetPbModule->Listen(GetServerInfo().strServerIp, GetServerInfo().nPort);
 }
 
 void ServiceGovernmentModule::InitConnect() {
@@ -89,7 +92,7 @@ void ServiceGovernmentModule::InitConnect() {
 Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo) {
     LOG_INFO("server connect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
         stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
-    return m_pNetModule->Connect(stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort,
+    return m_pNetPbModule->Connect(stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort,
         std::bind(&ServiceGovernmentModule::OnConnectSucess, this, std::placeholders::_1, std::placeholders::_2),
         std::bind(&ServiceGovernmentModule::OnDisconnect, this, std::placeholders::_1, stServerInstanceInfo));
 }
@@ -104,6 +107,7 @@ void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, 
 
     Pb::ServerHead head;
     Pb::SSHeartbeatReq heartbeat;
+    heartbeat.set_req_time(time(nullptr));
     m_pRpcModule->RpcRequest(nSessionId, head, heartbeat, [](Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatRsp& heartbeat) {
         LOG_INFO("server heartbeat request");
     });

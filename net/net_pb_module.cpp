@@ -15,8 +15,17 @@ NetPbModule::~NetPbModule() {}
 
 void NetPbModule::BeforeInit() {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
+}
 
-    m_pNetModule->SetFunSessionRead(std::bind(&NetPbModule::ReadData, this, std::placeholders::_1, std::placeholders::_2));
+void NetPbModule::Listen(const std::string& strAddress, uint16_t addressPort) {
+    m_pNetModule->Listen(strAddress, addressPort, std::bind(&NetPbModule::ReadData, this, std::placeholders::_1, std::placeholders::_2));
+}
+
+Session::session_id_t NetPbModule::Connect(const std::string& strAddress, uint16_t addressPort,
+    const Session::FunSessionConnect& funOnSessionConnect/* = nullptr*/,
+    const Session::FunSessionClose& funOnSessionClose/* = nullptr*/) {
+    return m_pNetModule->Connect(strAddress, addressPort, std::bind(&NetPbModule::ReadData, this, std::placeholders::_1, std::placeholders::_2),
+        funOnSessionConnect, funOnSessionClose);
 }
 
 bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf) {
@@ -59,6 +68,7 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf) 
 bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType, const char* data, size_t length) {
     auto pSession = m_pNetModule->GetSessionById(sessionId);
     if (nullptr == pSession) {
+        LOG_ERROR("send data error on sessionId:{}, msgId:{}", sessionId, msgType);
         return false;
     }
     if (length > 0xffffff) {
@@ -86,6 +96,7 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
 {
     auto pSession = m_pNetModule->GetSessionById(sessionId);
     if (nullptr == pSession) {
+        LOG_ERROR("send data error on sessionId:{}, msgId:{}", sessionId, msgType);
         return false;
     }
     if (lengthBody > 0xffffff) {
@@ -120,7 +131,7 @@ void NetPbModule::RegisterPacketHandle(uint32_t msgType, FuncPacketHandleType fu
     m_mapPackethandle[msgType] = func;
 }
 
-void NetPbModule::SetDefaultPacketHandle(uint32_t msgType, FuncPacketHandleType func)
+void NetPbModule::SetDefaultPacketHandle(FuncPacketHandleType func)
 {
     m_funDefaultPacketHandle = func;
 }

@@ -21,7 +21,7 @@ public:
     virtual ~RpcModule();
 
     virtual void BeforeInit() override;
-    
+    virtual void AfterStop()  override;
 
 private:
     template<class _TypeMsgPacketHead, class _TypeMsgPacketBody>
@@ -44,10 +44,15 @@ public:
         using PbRspBodyType = typename GetFunctionMessage_t::TypeBody;
         using RspRpcContext = RpcContext<PbRspHeadType, PbRspBodyType>;
         using PbRspFunction = typename RspRpcContext::PbFunction;
+        uint32_t msgId = PbRspBodyType::msgid;
 
-        if (m_mapRpcContext.count(PbRspBodyType::msgid) == 0) {
+        if (m_mapRpcContext.count(msgId) == 0) {
             auto pRpcContext = new RspRpcContext();
-            m_mapRpcContext[PbRspBodyType::msgid] = pRpcContext;
+            m_mapRpcContext[msgId] = pRpcContext;
+            m_mapRpcContextDeleter[msgId] = [](void* pData) { 
+                auto pContext = (RspRpcContext*)pData;
+                delete pContext;
+            };
 
             m_pNetPbModule->RegisterHandle([this, pRpcContext, funcResult](Session::session_id_t sessionId, PbRspHeadType& packetHead, PbRspBodyType& packetBody) {
                 auto nRspQueryId = packetHead.query_id();
@@ -76,11 +81,11 @@ public:
                 }
             });
 
-            Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this, pRpcContext]() {
+            Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this, pRpcContext, msgId]() {
                 for (auto& elemCallbacks : pRpcContext->mapLastCallback)
                 {
                     auto nQueryId = elemCallbacks.first;
-                    LOG_ERROR("rpc timeout, query_id{}", nQueryId);
+                    LOG_ERROR("rpc timeout, msgid:{}, query_id{}", msgId, nQueryId);
                 }
                 pRpcContext->mapLastCallback.clear();
                 pRpcContext->mapCurrentCallback.swap(pRpcContext->mapLastCallback);
@@ -88,7 +93,7 @@ public:
         }
 
         auto nCurrentQueryId = ++nQueryId;
-        auto pRpcContext = (RspRpcContext*)(m_mapRpcContext[PbRspBodyType::msgid]);
+        auto pRpcContext = (RspRpcContext*)(m_mapRpcContext[msgId]);
         pRpcContext->mapCurrentCallback[nCurrentQueryId] = PbRspFunction(funcResult);
         pbPacketHead.set_query_id(nCurrentQueryId);
 
@@ -101,6 +106,7 @@ private:
     
     int64_t nQueryId = 0;
     std::unordered_map<uint32_t, void*> m_mapRpcContext;
+    std::unordered_map<uint32_t, std::function<void(void*)>> m_mapRpcContextDeleter;
 };
 
 TONY_CAT_SPACE_END

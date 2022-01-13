@@ -11,7 +11,7 @@ message SSHeartbeatReq
    enum SSMessageId
    {
         msgid_invalid = 0;
-        msgid = 1073741824;
+        msgid = 0x40000002;
    }
 }
 
@@ -23,7 +23,7 @@ message SSHeartbeatRsp
    enum SSMessageId
    {
         msgid_invalid = 0;
-        msgid = 1073741825;
+        msgid = 0x40000003;
    }
 }
 

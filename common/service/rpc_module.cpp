@@ -19,4 +19,14 @@ void RpcModule::BeforeInit() {
 
 }
 
+void RpcModule::AfterStop() {
+    for (auto& elemMapRpcContext : m_mapRpcContextDeleter) {
+        auto msgId = elemMapRpcContext.first;
+        elemMapRpcContext.second(m_mapRpcContext[msgId]);
+    }
+
+    m_mapRpcContextDeleter.clear();
+    m_mapRpcContext.clear();
+}
+
 TONY_CAT_SPACE_END

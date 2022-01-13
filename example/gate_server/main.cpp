@@ -1,6 +1,9 @@
+#include "client_pb_module.h"
+
 #include "common/config/xml_config_module.h"
 #include "common/loop.h"
 #include "common/module_manager.h"
+#include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
 #include "log/log_module.h"
 #include "net/net_module.h"
@@ -48,6 +51,8 @@ private:
         REGISTER_MODULE(&m_moduleManager, NetModule);
         REGISTER_MODULE(&m_moduleManager, NetPbModule);
         REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
+        REGISTER_MODULE(&m_moduleManager, RpcModule);
+        REGISTER_MODULE(&m_moduleManager, ClientPbModule);
     }
 
     void InitModule(int32_t nServerIndex)

@@ -49,8 +49,8 @@ private:
         REGISTER_MODULE(&m_moduleManager, XmlConfigModule);
         REGISTER_MODULE(&m_moduleManager, NetModule);
         REGISTER_MODULE(&m_moduleManager, NetPbModule);
-        REGISTER_MODULE(&m_moduleManager, RpcModule);
         REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
+        REGISTER_MODULE(&m_moduleManager, RpcModule);
     }
 
     void InitModule(int32_t nServerIndex)

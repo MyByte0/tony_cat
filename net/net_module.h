@@ -24,22 +24,22 @@ public:
 	virtual void AfterStop() override;
 
 public:
-	void Listen(const std::string strAddress, uint16_t addressPort);
-	Session::session_id_t Connect(const std::string strAddress, uint16_t addressPort,
+	typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
+
+	void Listen(const std::string& strAddress, uint16_t addressPort, const FunNetRead& funNetRead);
+	Session::session_id_t Connect(const std::string& strAddress, uint16_t addressPort,
+		const Session::FunSessionRead& funOnSessionRead,
 		const Session::FunSessionConnect& funOnSessionConnect = nullptr,
 		const Session::FunSessionClose& funOnSessionClose = nullptr);
 	void Close(Session::session_id_t session_id);
 
-	typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
 	SessionPtr GetSessionById(Session::session_id_t sessionId);
-	void SetFunSessionRead(const FunNetRead& funNetRead) {
-		m_funNetRead = funNetRead;
-	}
 
 private:
 	void Accept(Acceptor* pAcceptor);
 	Session::session_id_t CreateSessionId();
 	void OnCloseSession(Session::session_id_t sessionId);
+	bool OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff);
 
 private:
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
@@ -49,9 +49,6 @@ private:
 
 	Session::session_id_t m_nextSessionId;
     LoopPool m_poolSessionContext;
-
-private:
-	FunNetRead m_funNetRead = nullptr;
 
 };
 

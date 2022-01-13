@@ -55,11 +55,12 @@ public:
     DEFINE_MEMBER_UINT32(ServerId);
     DEFINE_MEMBER_STR(ServerIp);
     DEFINE_MEMBER_INT32(ServerPort);
+    DEFINE_MEMBER_STR(PublicIp);
+    DEFINE_MEMBER_INT32(PublicPort);
     DEFINE_MEMBER_VAR(ServerInstanceInfo, ServerInfo);
 
-    Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
-
 public:
+    Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
 
 private:

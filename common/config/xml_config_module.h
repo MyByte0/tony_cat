@@ -92,7 +92,7 @@ public:
         return true;
     }
 
-    DEFINE_CONFIG_DATA(ServerListConfigData, "../../../config/xml/ServerList.xml");
+    DEFINE_CONFIG_DATA(ServerListConfigData, "../../config/xml/ServerList.xml");
 
 };
 
