@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace tinyxml2 {
-    class XMLAttribute;
+class XMLAttribute;
 }
 
 TONY_CAT_SPACE_BEGIN
@@ -24,6 +24,7 @@ struct ServerListConfigData {
     std::string strPublicIp;
     std::string strServerIp;
     std::vector<int32_t> vecConnectList;
+    int32_t nNetThreadsNum = 0;
 
     bool LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute);
 };

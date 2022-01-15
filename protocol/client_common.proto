@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package Pb;
 
-message CSHeartbeat
+message CSHeartbeatReq
 {
    string    trans_id = 2;
    int64     req_time = 3;
@@ -10,6 +10,18 @@ message CSHeartbeat
    enum SSMessageId
    {
         msgid_invalid = 0;
-        cs_msgid_heartbeat = 1;
+        msgid = 0x40000002;
+   }
+}
+
+message CSHeartbeatRsp
+{
+   string    trans_id = 2;
+   int64     req_time = 3;
+
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x40000003;
    }
 }

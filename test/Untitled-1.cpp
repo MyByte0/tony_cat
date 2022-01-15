@@ -1,8 +1,8 @@
-#include <iostream>
 #include <chrono>
 #include <coroutine>
-#include <thread>
 #include <functional>
+#include <iostream>
+#include <thread>
 
 using namespace std::literals;
 
@@ -11,26 +11,23 @@ using Callback = std::function<void(int)>;
 // 异步执行（模拟耗时的计算）
 void asyncCompute(int v, Callback cb)
 {
-    std::thread t([v, cb]()
-        {
-            std::this_thread::sleep_for(10ms);
-            int result = v + 100;
-            cb(result);
-        });
+    std::thread t([v, cb]() {
+        std::this_thread::sleep_for(10ms);
+        int result = v + 100;
+        cb(result);
+    });
 
     t.detach();
 }
 
 // 协程的返回值类型
-struct Task
-{
+struct Task {
     struct promise_type;
     using handle_t = std::coroutine_handle<promise_type>;
 
     ~Task()
     {
-        if (m_handle)
-        {
+        if (m_handle) {
             m_handle.destroy();
         }
     }
@@ -51,12 +48,13 @@ struct Task
     }
 
 private:
-    Task(handle_t h): m_handle(h)
-    {}
+    Task(handle_t h)
+        : m_handle(h)
+    {
+    }
 
 public:
-    struct promise_type
-    {
+    struct promise_type {
         Task get_return_object()
         {
             return Task(handle_t::from_promise(*this));
@@ -64,16 +62,17 @@ public:
 
         std::suspend_never initial_suspend()
         {
-            return std::suspend_never{};
+            return std::suspend_never {};
         }
 
         std::suspend_never final_suspend() noexcept
         {
-            return std::suspend_never{};
+            return std::suspend_never {};
         }
 
         void return_void()
-        {}
+        {
+        }
 
         void unhandled_exception()
         {
@@ -86,12 +85,13 @@ private:
 };
 
 // co_await 操作数的类型
-class ComputeAwaitable
-{
+class ComputeAwaitable {
 public:
     ComputeAwaitable(int initValue)
-        : m_init(initValue), m_result(0)
-    {}
+        : m_init(initValue)
+        , m_result(0)
+    {
+    }
 
     bool await_ready()
     {
@@ -101,8 +101,7 @@ public:
     // 调用异步函数
     void await_suspend(std::coroutine_handle<> handle)
     {
-        auto cb = [handle, this](int value) mutable
-        {
+        auto cb = [handle, this](int value) mutable {
             m_result = value;
             handle.resume();
         };

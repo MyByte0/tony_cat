@@ -2,17 +2,17 @@
 #define SERVICE_GOVERNMENT_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/module_base.h"
 #include "common/loop.h"
 #include "common/loop_coroutine.h"
 #include "common/loop_pool.h"
+#include "common/module_base.h"
 #include "common/var_define.h"
 #include "net/net_session.h"
 #include "protocol/server_base.pb.h"
 #include "protocol/server_common.pb.h"
 
-#include <cstdint>
 #include <coroutine>
+#include <cstdint>
 #include <functional>
 #include <thread>
 #include <unordered_map>
@@ -30,11 +30,12 @@ public:
     virtual ~ServiceGovernmentModule();
 
     virtual void BeforeInit() override;
+    virtual void OnInit() override;
 
     void InitConfig();
     void InitListen();
     void InitConnect();
-    
+
 public:
     enum {
         kReconnectServerTimeMillSeconds = 15000,
@@ -73,15 +74,15 @@ private:
     static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
 
 private:
-    NetModule*          m_pNetModule = nullptr;
-    NetPbModule*        m_pNetPbModule = nullptr;
-    RpcModule*          m_pRpcModule = nullptr;
-    XmlConfigModule*    m_pXmlConfigModule = nullptr;
+    NetModule* m_pNetModule = nullptr;
+    NetPbModule* m_pNetPbModule = nullptr;
+    RpcModule* m_pRpcModule = nullptr;
+    XmlConfigModule* m_pXmlConfigModule = nullptr;
 
     // map<ServerType, map<ServerId, ServerInstanceInfo>>
-    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo> > m_mapServerConnectList;
+    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapServerConnectList;
 };
 
 TONY_CAT_SPACE_END
 
-#endif  // SERVICE_GOVERNMENT_MODULE_H_
+#endif // SERVICE_GOVERNMENT_MODULE_H_

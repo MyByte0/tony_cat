@@ -7,19 +7,20 @@
 TONY_CAT_SPACE_BEGIN
 
 RpcModule::RpcModule(ModuleManager* pModuleManager)
-    :ModuleBase(pModuleManager) {
-
+    : ModuleBase(pModuleManager)
+{
 }
 
-RpcModule::~RpcModule() {}
+RpcModule::~RpcModule() { }
 
-void RpcModule::BeforeInit() {
+void RpcModule::BeforeInit()
+{
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
-
 }
 
-void RpcModule::AfterStop() {
+void RpcModule::AfterStop()
+{
     for (auto& elemMapRpcContext : m_mapRpcContextDeleter) {
         auto msgId = elemMapRpcContext.first;
         elemMapRpcContext.second(m_mapRpcContext[msgId]);

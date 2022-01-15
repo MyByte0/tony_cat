@@ -11,21 +11,23 @@
 #include <csignal>
 #include <memory>
 
-
 TONY_CAT_SPACE_BEGIN
 
 class LogicServer {
 public:
-    LogicServer() {
+    LogicServer()
+    {
         m_name = typeid(*this).name();
     };
     ~LogicServer() = default;
 
-    static void SignalHandle(int sig) {
+    static void SignalHandle(int sig)
+    {
         m_moduleManager.Stop();
     }
 
-    void RegisterSignal() {
+    void RegisterSignal()
+    {
         std::signal(SIGABRT, &LogicServer::SignalHandle);
         std::signal(SIGFPE, &LogicServer::SignalHandle);
         std::signal(SIGILL, &LogicServer::SignalHandle);
@@ -34,7 +36,8 @@ public:
         std::signal(SIGTERM, &LogicServer::SignalHandle);
     }
 
-    void Start(int32_t nServerIndex) {
+    void Start(int32_t nServerIndex)
+    {
         RegisterSignal();
         RegisterModule();
         InitModule(nServerIndex);
@@ -65,11 +68,13 @@ private:
         LOG_INFO("init server {}", m_name);
     }
 
-    void Run() {
+    void Run()
+    {
         m_moduleManager.Run();
     }
 
-    void DestoryModule() {
+    void DestoryModule()
+    {
         m_moduleManager.Stop();
     }
 
@@ -82,9 +87,8 @@ ModuleManager LogicServer::m_moduleManager = ModuleManager();
 
 TONY_CAT_SPACE_END
 
-
-
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     int32_t nServerIndex = 1;
     if (argc > 1) {
         nServerIndex = std::atoi(argv[1]);

@@ -12,74 +12,84 @@
 TONY_CAT_SPACE_BEGIN
 
 ServiceGovernmentModule::ServiceGovernmentModule(ModuleManager* pModuleManager)
-    :ModuleBase(pModuleManager) {
-
+    : ModuleBase(pModuleManager)
+{
 }
 
-ServiceGovernmentModule::~ServiceGovernmentModule() {}
+ServiceGovernmentModule::~ServiceGovernmentModule() { }
 
-void ServiceGovernmentModule::BeforeInit() {
+void ServiceGovernmentModule::BeforeInit()
+{
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
     m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
     m_pNetPbModule->RegisterHandle(this, &ServiceGovernmentModule::OnHandleSSHeartbeatReq);
-
     InitConfig();
+}
+
+void ServiceGovernmentModule::OnInit()
+{
     InitListen();
     InitConnect();
 }
 
-void ServiceGovernmentModule::InitConfig() {
+void ServiceGovernmentModule::InitConfig()
+{
     m_mapServerConnectList.clear();
     std::vector<int32_t> vecDestServers;
     auto pMap = m_pXmlConfigModule->MutableServerListConfigDataMap();
-    if (nullptr != pMap) {
-        for (const auto& elemMap :*pMap) {
-            auto& stServerListConfigData = elemMap.second;
-            if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
-                AddressToIpPort(stServerListConfigData.strPublicIp, m_strPublicIp, m_nPublicPort);
-                AddressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
-                MutableServerInfo()->strServerIp = m_strServerIp;
-                MutableServerInfo()->nPort = m_nServerPort;
-                vecDestServers = stServerListConfigData.vecConnectList;
-                LOG_INFO("Server Public Ip{}, port:{}, Address Ip{}, port:{}.", m_strPublicIp, m_nPublicPort, m_strServerIp, m_nServerPort);
-                break;
-            }
+    if (nullptr == pMap) {
+        return;
+    }
+
+    for (const auto& elemMap : *pMap) {
+        auto& stServerListConfigData = elemMap.second;
+        if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
+            AddressToIpPort(stServerListConfigData.strPublicIp, m_strPublicIp, m_nPublicPort);
+            AddressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
+            MutableServerInfo()->strServerIp = m_strServerIp;
+            MutableServerInfo()->nPort = m_nServerPort;
+            vecDestServers = stServerListConfigData.vecConnectList;
+            m_pNetModule->SetNetThreadNum(stServerListConfigData.nNetThreadsNum);
+            LOG_INFO("Server Public Ip{}, port:{}, Address Ip{}, port:{}, netThreadNum:{}.",
+                m_strPublicIp, m_nPublicPort, m_strServerIp, m_nServerPort, stServerListConfigData.nNetThreadsNum);
+            break;
+        }
+    }
+
+    for (const auto& elemMap : *pMap) {
+        auto& stServerListConfigData = elemMap.second;
+        if (std::find(vecDestServers.begin(), vecDestServers.end(), stServerListConfigData.nServerType)
+            == vecDestServers.end()) {
+            continue;
         }
 
-        for (const auto& elemMap : *pMap) {
-            auto& stServerListConfigData = elemMap.second;
-            if (std::find(vecDestServers.begin(), vecDestServers.end(), stServerListConfigData.nServerType)
-                == vecDestServers.end()) {
-                continue;
-            }
-
-            if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
-                continue;
-            }
-
-            if (m_mapServerConnectList[stServerListConfigData.nServerType].count(stServerListConfigData.nServerIndex) > 0)
-            {
-                LOG_ERROR("on duplicate on :{}, index{}", stServerListConfigData.nServerType, stServerListConfigData.nServerIndex);
-                continue;
-            }
-
-            ServerInstanceInfo stServerInstanceInfo;
-            stServerInstanceInfo.nServerType = stServerListConfigData.nServerType;
-            stServerInstanceInfo.nServerIndex = stServerListConfigData.nServerIndex;
-            AddressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
-            m_mapServerConnectList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = std::move(stServerInstanceInfo);
+        if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
+            continue;
         }
+
+        if (m_mapServerConnectList[stServerListConfigData.nServerType].count(stServerListConfigData.nServerIndex) > 0) {
+            LOG_ERROR("on duplicate on :{}, index{}", stServerListConfigData.nServerType, stServerListConfigData.nServerIndex);
+            continue;
+        }
+
+        ServerInstanceInfo stServerInstanceInfo;
+        stServerInstanceInfo.nServerType = stServerListConfigData.nServerType;
+        stServerInstanceInfo.nServerIndex = stServerListConfigData.nServerIndex;
+        AddressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
+        m_mapServerConnectList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = std::move(stServerInstanceInfo);
     }
 }
 
-void ServiceGovernmentModule::InitListen() {
+void ServiceGovernmentModule::InitListen()
+{
     m_pNetPbModule->Listen(GetServerInfo().strServerIp, GetServerInfo().nPort);
 }
 
-void ServiceGovernmentModule::InitConnect() {
+void ServiceGovernmentModule::InitConnect()
+{
     for (auto& elemMapServerConnectList : m_mapServerConnectList) {
         auto& mapServerInstanceInfo = elemMapServerConnectList.second;
         for (auto& elemMapServerInstanceInfo : mapServerInstanceInfo) {
@@ -89,7 +99,8 @@ void ServiceGovernmentModule::InitConnect() {
     }
 }
 
-Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo) {
+Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo)
+{
     LOG_INFO("server connect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
         stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
     return m_pNetPbModule->Connect(stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort,
@@ -97,11 +108,11 @@ Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(const Serve
         std::bind(&ServiceGovernmentModule::OnDisconnect, this, std::placeholders::_1, stServerInstanceInfo));
 }
 
-void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, bool bSuccess) {
+void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, bool bSuccess)
+{
     if (bSuccess) {
         LOG_INFO("server connect success, SessionId:{}, ", nSessionId);
-    }
-    else {
+    } else {
         LOG_WARN("server connect fail, SessionId:{}, ", nSessionId);
     }
 
@@ -113,7 +124,8 @@ void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, 
     });
 }
 
-void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo) {
+void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo)
+{
     LOG_WARN("server disconnect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
         stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
     auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
@@ -128,10 +140,11 @@ void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, Ser
     pServerInstanceInfo->timerReconnect = m_pModuleManager->GetMainLoop().ExecAfter(kReconnectServerTimeMillSeconds, [this, stServerInstanceInfo]() {
         auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         pServerInstanceInfo->nSessionId = ConnectServerInstance(*pServerInstanceInfo);
-        });
+    });
 }
 
-ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerInstanceInfo(int32_t nServerType, int32_t nServerId) {
+ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerInstanceInfo(int32_t nServerType, int32_t nServerId)
+{
     auto itMapServerConnectList = m_mapServerConnectList.find(nServerType);
     if (itMapServerConnectList == m_mapServerConnectList.end()) {
         return 0;
@@ -146,7 +159,8 @@ ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerI
     return &itMapServerInfo->second;
 }
 
-Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId) {
+Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId)
+{
     auto pServerInstanceInfo = GetServerInstanceInfo(nServerType, nServerId);
     if (nullptr == pServerInstanceInfo) {
         return 0;
@@ -154,13 +168,15 @@ Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServe
     return pServerInstanceInfo->nSessionId;
 }
 
-void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat) {
+void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat)
+{
     Pb::SSHeartbeatRsp msgHeartbeatRsp;
     msgHeartbeatRsp.set_req_time(heartbeat.req_time());
     m_pNetPbModule->SendPacket(sessionId, head, msgHeartbeatRsp);
 }
 
-bool ServiceGovernmentModule::AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort) {
+bool ServiceGovernmentModule::AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort)
+{
     auto posSpace = strAddress.find(' ');
     if (posSpace == strAddress.npos) {
         return false;

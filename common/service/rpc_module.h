@@ -2,10 +2,10 @@
 #define COMMON_SERVICE_RPC_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/module_base.h"
 #include "common/loop.h"
-#include "net/net_session.h"
+#include "common/module_base.h"
 #include "net/net_pb_module.h"
+#include "net/net_session.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -21,12 +21,11 @@ public:
     virtual ~RpcModule();
 
     virtual void BeforeInit() override;
-    virtual void AfterStop()  override;
+    virtual void AfterStop() override;
 
 private:
-    template<class _TypeMsgPacketHead, class _TypeMsgPacketBody>
-    struct RpcContext
-    {
+    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    struct RpcContext {
         using PbFunction = std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>;
         std::unordered_map<int64_t, PbFunction> mapLastCallback;
         std::unordered_map<int64_t, PbFunction> mapCurrentCallback;
@@ -37,8 +36,9 @@ public:
         kRpcTimeoutMillSeconds = 30000,
     };
 
-    template<class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeHandler>
-    void RpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, const _TypeMsgPacketBody& msgBody, const _TypeHandler& funcResult) {
+    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeHandler>
+    void RpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, const _TypeMsgPacketBody& msgBody, const _TypeHandler& funcResult)
+    {
         using GetFunctionMessage_t = typename NetPbModule::GetFunctionMessage_t<_TypeHandler>;
         using PbRspHeadType = typename GetFunctionMessage_t::TypeHead;
         using PbRspBodyType = typename GetFunctionMessage_t::TypeBody;
@@ -49,7 +49,7 @@ public:
         if (m_mapRpcContext.count(msgId) == 0) {
             auto pRpcContext = new RspRpcContext();
             m_mapRpcContext[msgId] = pRpcContext;
-            m_mapRpcContextDeleter[msgId] = [](void* pData) { 
+            m_mapRpcContextDeleter[msgId] = [](void* pData) {
                 auto pContext = (RspRpcContext*)pData;
                 delete pContext;
             };
@@ -64,8 +64,7 @@ public:
                     }
 
                     pRpcContext->mapCurrentCallback.erase(itContext);
-                }
-                else {
+                } else {
                     itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
                     if (itContext != pRpcContext->mapLastCallback.end()) {
                         auto& func = itContext->second;
@@ -74,16 +73,14 @@ public:
                         }
 
                         pRpcContext->mapLastCallback.erase(itContext);
-                    }
-                    else {
+                    } else {
                         LOG_ERROR("can not find rpc callback, query_id{}", nRspQueryId);
                     }
                 }
             });
 
             Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this, pRpcContext, msgId]() {
-                for (auto& elemCallbacks : pRpcContext->mapLastCallback)
-                {
+                for (auto& elemCallbacks : pRpcContext->mapLastCallback) {
                     auto nQueryId = elemCallbacks.first;
                     LOG_ERROR("rpc timeout, msgid:{}, query_id{}", msgId, nQueryId);
                 }
@@ -101,9 +98,9 @@ public:
     }
 
 private:
-    NetModule*          m_pNetModule = nullptr;
-    NetPbModule*        m_pNetPbModule = nullptr;
-    
+    NetModule* m_pNetModule = nullptr;
+    NetPbModule* m_pNetPbModule = nullptr;
+
     int64_t nQueryId = 0;
     std::unordered_map<uint32_t, void*> m_mapRpcContext;
     std::unordered_map<uint32_t, std::function<void(void*)>> m_mapRpcContextDeleter;
@@ -111,4 +108,4 @@ private:
 
 TONY_CAT_SPACE_END
 
-#endif  // COMMON_SERVICE_RPC_MODULE_H_
+#endif // COMMON_SERVICE_RPC_MODULE_H_

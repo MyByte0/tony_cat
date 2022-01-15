@@ -7,13 +7,14 @@
 TONY_CAT_SPACE_BEGIN
 
 XmlConfigModule::XmlConfigModule(ModuleManager* pModuleManager)
-    :ModuleBase(pModuleManager) {
-
+    : ModuleBase(pModuleManager)
+{
 }
 
-XmlConfigModule::~XmlConfigModule() {}
+XmlConfigModule::~XmlConfigModule() { }
 
-void XmlConfigModule::BeforeInit() {
+void XmlConfigModule::BeforeInit()
+{
     if (false == LoadServerListConfigData()) {
         LOG_ERROR("LoadServerListConfigData false.");
         return;

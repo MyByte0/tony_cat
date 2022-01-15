@@ -12,7 +12,7 @@
 
 TONY_CAT_SPACE_BEGIN
 
-struct SessionBuffer{
+struct SessionBuffer {
 private:
     struct BufferContext {
         std::vector<char> vecData;
@@ -23,10 +23,9 @@ private:
     BufferContext bufContext;
 
 public:
-    enum
-    {
+    enum {
         k_init_buffer_size_div_number = 16,
-        k_default_max_buffer_size = 8 * 1024 * 4096,        // 8MB
+        k_default_max_buffer_size = 8 * 1024 * 4096, // 8MB
     };
 
     SessionBuffer(size_t maxBuffSize = k_default_max_buffer_size);
@@ -50,8 +49,7 @@ private:
 };
 
 class Session
-    : public std::enable_shared_from_this<Session>
-{
+    : public std::enable_shared_from_this<Session> {
 public:
     typedef int64_t session_id_t;
     friend class NetModule;
@@ -98,14 +96,12 @@ private:
 
     session_id_t m_sessionId;
     FunSessionClose m_funSessionClose;
-    FunSessionRead  m_funSessionRead;
+    FunSessionRead m_funSessionRead;
 };
 
 typedef std::shared_ptr<Session> SessionPtr;
 
-
-class Acceptor
-{
+class Acceptor {
 public:
     Acceptor();
     ~Acceptor();

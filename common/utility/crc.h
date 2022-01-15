@@ -1,7 +1,7 @@
 #ifndef COMMON_UTILITY_CRC_H_
 #define COMMON_UTILITY_CRC_H_
 
-#include "../core_define.h"
+#include "common/core_define.h"
 
 #include <cstddef>
 #include <cstdint>

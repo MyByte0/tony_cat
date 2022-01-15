@@ -1,35 +1,40 @@
 #include "net_session.h"
 
-
 TONY_CAT_SPACE_BEGIN
 
-SessionBuffer::SessionBuffer(size_t maxBuffSize) {
-        nMaxBuffSize = maxBuffSize;
-        size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
-        bufContext.vecData.resize(nDefaultBuffSize, 0);
-        bufContext.nReadPos = 0;
-        bufContext.nWritePos = 0;
+SessionBuffer::SessionBuffer(size_t maxBuffSize)
+{
+    nMaxBuffSize = maxBuffSize;
+    size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
+    bufContext.vecData.resize(nDefaultBuffSize, 0);
+    bufContext.nReadPos = 0;
+    bufContext.nWritePos = 0;
 }
 
 SessionBuffer::~SessionBuffer() {};
 
-bool SessionBuffer::Empty() {
+bool SessionBuffer::Empty()
+{
     return bufContext.nReadPos == bufContext.nWritePos;
 }
 
-bool SessionBuffer::Full() {
+bool SessionBuffer::Full()
+{
     return bufContext.nWritePos - bufContext.nReadPos == bufContext.vecData.size();
 }
 
-const char* SessionBuffer::GetReadData() {
+const char* SessionBuffer::GetReadData()
+{
     return &bufContext.vecData[bufContext.nReadPos];
 }
 
-size_t SessionBuffer::GetReadableSize() {
+size_t SessionBuffer::GetReadableSize()
+{
     return bufContext.nWritePos - bufContext.nReadPos;
 }
 
-void SessionBuffer::RemoveData(size_t len) {
+void SessionBuffer::RemoveData(size_t len)
+{
     if (len > GetReadableSize()) [[unlikely]] {
         len = GetReadableSize();
     }
@@ -40,33 +45,35 @@ void SessionBuffer::RemoveData(size_t len) {
     }
 }
 
-bool SessionBuffer::FillData(size_t len) {
+bool SessionBuffer::FillData(size_t len)
+{
     if (len > MaxWritableSize()) [[unlikely]] {
         return false;
     }
 
-        if (len > CurrentWritableSize()) {
-            size_t beforeSize = bufContext.vecData.size();
-            size_t curSize = beforeSize;
+    if (len > CurrentWritableSize()) {
+        size_t beforeSize = bufContext.vecData.size();
+        size_t curSize = beforeSize;
 
-            ReorganizeData();
-            while (len > curSize - bufContext.nWritePos) {
-                curSize = std::min(curSize << 2
-                    , nMaxBuffSize);
-            }
-
-            bufContext.vecData.resize(curSize);
+        ReorganizeData();
+        while (len > curSize - bufContext.nWritePos) {
+            curSize = std::min(curSize << 2, nMaxBuffSize);
         }
+
+        bufContext.vecData.resize(curSize);
+    }
 
     bufContext.nWritePos += len;
     return true;
 }
 
-char* SessionBuffer::GetWriteData() {
+char* SessionBuffer::GetWriteData()
+{
     return &bufContext.vecData[bufContext.nWritePos];
 }
 
-bool SessionBuffer::Write(const char* data, size_t len) {
+bool SessionBuffer::Write(const char* data, size_t len)
+{
     if (false == FillData(len)) {
         return false;
     }
@@ -76,15 +83,18 @@ bool SessionBuffer::Write(const char* data, size_t len) {
     return true;
 }
 
-size_t SessionBuffer::CurrentWritableSize() {
+size_t SessionBuffer::CurrentWritableSize()
+{
     return bufContext.vecData.size() - bufContext.nWritePos;
 }
 
-size_t SessionBuffer::MaxWritableSize() {
+size_t SessionBuffer::MaxWritableSize()
+{
     return nMaxBuffSize - GetReadableSize();
 }
 
-void SessionBuffer::ReorganizeData() {
+void SessionBuffer::ReorganizeData()
+{
     if (bufContext.nReadPos > 0) {
         std::memmove(bufContext.vecData.data(), GetReadData(), GetReadableSize());
         bufContext.nWritePos -= bufContext.nReadPos;
@@ -92,12 +102,13 @@ void SessionBuffer::ReorganizeData() {
     }
 }
 
-bool SessionBuffer::Shrink() {
+bool SessionBuffer::Shrink()
+{
     size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
     if (GetReadableSize() >= nDefaultBuffSize) {
         return false;
     }
-        
+
     std::vector<char> vecBuff(nDefaultBuffSize);
     std::memmove(vecBuff.data(), GetReadData(), GetReadableSize());
     bufContext.nWritePos -= bufContext.nReadPos;
@@ -107,55 +118,65 @@ bool SessionBuffer::Shrink() {
 }
 
 Session::Session(asio::io_context& io_context, session_id_t session_id)
-        : m_io_context(io_context),
-        m_socket(io_context),
-        m_sessionId(session_id)
+    : m_io_context(io_context)
+    , m_socket(io_context)
+    , m_sessionId(session_id)
 {
 }
 
-Session::~Session() {}
+Session::~Session() { }
 
-void Session::AcceptInitialize() {
+void Session::AcceptInitialize()
+{
     asio::socket_base::linger lingerOpt(false, 0);
     m_socket.set_option(lingerOpt);
 }
 
-void Session::SetSessionCloseCb(const FunSessionClose& funOnSessionClose) {
+void Session::SetSessionCloseCb(const FunSessionClose& funOnSessionClose)
+{
     m_funSessionClose = funOnSessionClose;
 }
-void Session::SetSessionCloseCb(FunSessionClose&& funOnSessionClose) {
+void Session::SetSessionCloseCb(FunSessionClose&& funOnSessionClose)
+{
     m_funSessionClose = std::move(funOnSessionClose);
 }
 
-void Session::SetSessionReadCb(const FunSessionRead& funOnSessionRead) {
+void Session::SetSessionReadCb(const FunSessionRead& funOnSessionRead)
+{
     m_funSessionRead = funOnSessionRead;
 }
-void Session::SetSessionReadCb(FunSessionRead&& funOnSessionRead) {
+void Session::SetSessionReadCb(FunSessionRead&& funOnSessionRead)
+{
     m_funSessionRead = std::move(funOnSessionRead);
 }
 
-Session::session_id_t Session::GetSessionId() {
+Session::session_id_t Session::GetSessionId()
+{
     return m_sessionId;
 }
 
-asio::ip::tcp::socket& Session::GetSocket() {
+asio::ip::tcp::socket& Session::GetSocket()
+{
     return m_socket;
 }
 
-void Session::HandleRead() {
+void Session::HandleRead()
+{
     if (m_funSessionRead) [[likely]] {
         m_funSessionRead(m_sessionId, m_ReadBuff);
     }
 }
 
-bool Session::WriteData(const char* data, size_t length) {
+bool Session::WriteData(const char* data, size_t length)
+{
     m_WriteBuff.Write((char*)data, length);
 
     DoWrite();
     return true;
 }
 
-bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, size_t length) {
+bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, size_t length)
+{
     if (lenHead + length > m_WriteBuff.MaxWritableSize()) [[unlikely]] {
         return false;
     }
@@ -167,11 +188,13 @@ bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, 
     return true;
 }
 
-asio::io_context& Session::GetSocketIocontext() {
+asio::io_context& Session::GetSocketIocontext()
+{
     return m_io_context;
 }
 
-void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnect& funFunSessionConnect/* = nullptr*/) {
+void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnect& funFunSessionConnect /* = nullptr*/)
+{
     auto self(shared_from_this());
     GetSocket().async_connect(address,
         [self, funFunSessionConnect](std::error_code ec) {
@@ -180,8 +203,7 @@ void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnec
                     funFunSessionConnect(self->m_sessionId, true);
                 }
                 self->DoRead();
-            }
-            else {
+            } else {
                 if (nullptr != funFunSessionConnect) {
                     funFunSessionConnect(self->m_sessionId, false);
                 }
@@ -190,45 +212,43 @@ void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnec
         });
 }
 
-void Session::DoRead() {
+void Session::DoRead()
+{
     auto self(shared_from_this());
     GetSocket().async_read_some(
         asio::buffer(m_ReadBuff.GetWriteData(),
             m_ReadBuff.CurrentWritableSize()),
-        [this, self](std::error_code ec, std::size_t length)
-        {
+        [this, self](std::error_code ec, std::size_t length) {
             if (!ec) {
                 m_ReadBuff.FillData(length);
                 HandleRead();
 
                 self->DoRead();
-            }
-            else {
+            } else {
                 self->DoClose();
             }
         });
 }
 
-void Session::DoWrite() {
+void Session::DoWrite()
+{
     auto self(shared_from_this());
     GetSocket().async_write_some(
         asio::buffer(m_WriteBuff.GetReadData(), m_WriteBuff.GetReadableSize()),
-        [this, self](std::error_code ec, std::size_t length)
-        {
-            if (!ec)
-            {
+        [this, self](std::error_code ec, std::size_t length) {
+            if (!ec) {
                 m_WriteBuff.RemoveData(length);
                 if (m_WriteBuff.GetReadableSize() > 0) {
                     self->DoWrite();
                 }
-            }
-            else {
+            } else {
                 self->DoClose();
             }
         });
 }
 
-void Session::AsyncClose() {
+void Session::AsyncClose()
+{
     auto self(shared_from_this());
     GetSocketIocontext().post(
         [this, self]() {
@@ -236,7 +256,8 @@ void Session::AsyncClose() {
         });
 }
 
-void Session::DoClose() {
+void Session::DoClose()
+{
     if (GetSocket().is_open()) {
         GetSocket().shutdown(asio::socket_base::shutdown_both);
         GetSocket().close();
@@ -247,13 +268,14 @@ void Session::DoClose() {
     }
 }
 
-
-Acceptor::Acceptor() {}
-Acceptor::~Acceptor() {
-        delete m_acceptor;
+Acceptor::Acceptor() { }
+Acceptor::~Acceptor()
+{
+    delete m_acceptor;
 };
 
-void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_t port, const Session::FunSessionRead& funSessionRead) {
+void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_t port, const Session::FunSessionRead& funSessionRead)
+{
     if (m_acceptor != nullptr) {
         delete m_acceptor;
         m_acceptor = nullptr;
@@ -269,14 +291,17 @@ void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_
     //m_acceptor->set_option(opt_recv_buffer_size);
 }
 
-void Acceptor::OnAccept(Session& session, const std::function<void(std::error_code ec)>& func) {
+void Acceptor::OnAccept(Session& session, const std::function<void(std::error_code ec)>& func)
+{
     m_acceptor->async_accept(session.GetSocket(), func);
 }
-void Acceptor::OnAccept(Session& session, std::function<void(std::error_code ec)>&& func) {
+void Acceptor::OnAccept(Session& session, std::function<void(std::error_code ec)>&& func)
+{
     m_acceptor->async_accept(session.GetSocket(), std::move(func));
 }
 
-const Session::FunSessionRead& Acceptor::GetFunSessionRead() {
+const Session::FunSessionRead& Acceptor::GetFunSessionRead()
+{
     return m_funSessionRead;
 }
 
