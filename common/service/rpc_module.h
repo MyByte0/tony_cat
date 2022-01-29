@@ -54,7 +54,7 @@ public:
                 delete pContext;
             };
 
-            m_pNetPbModule->RegisterHandle([this, pRpcContext, funcResult](Session::session_id_t sessionId, PbRspHeadType& packetHead, PbRspBodyType& packetBody) {
+            m_pNetPbModule->RegisterHandle([this, pRpcContext](Session::session_id_t sessionId, PbRspHeadType& packetHead, PbRspBodyType& packetBody) {
                 auto nRspQueryId = packetHead.query_id();
                 auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId);
                 if (itContext != pRpcContext->mapCurrentCallback.end()) {

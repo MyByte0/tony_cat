@@ -35,7 +35,6 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	   )
 endif()
 
-FIND_PACKAGE(Protobuf REQUIRED)
 FIND_PACKAGE(glog REQUIRED)
 FIND_PACKAGE(tinyxml2 REQUIRED)
 
@@ -46,6 +45,7 @@ set(LIB_DEPEND
 )
 
 if(CMAKE_COMPILER_IS_GNUCXX)
+	FIND_PACKAGE(Protobuf REQUIRED)
 	set(LIB_DEPEND
 	${LIB_DEPEND}
 	${Protobuf_LIBRARIES}
@@ -53,7 +53,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if(MSVC)
-	find_package(fmt)
+    FIND_PACKAGE(Protobuf CONFIG REQUIRED)
+	FIND_PACKAGE(fmt)
 	set(LIB_DEPEND
 		${LIB_DEPEND}
 		fmt::fmt
