@@ -4,14 +4,8 @@
 #include "ServerListConfigData.h"
 
 #include "common/core_define.h"
-#include "common/loop.h"
-#include "common/loop_coroutine.h"
-#include "common/loop_pool.h"
+#include "common/log/log_module.h"
 #include "common/module_base.h"
-#include "log/log_module.h"
-#include "net/net_session.h"
-#include "protocol/server_base.pb.h"
-#include "protocol/server_common.pb.h"
 
 #include <tinyxml2.h>
 
@@ -50,6 +44,8 @@ public:                                                                         
                                                                                                       \
 private:                                                                                              \
     std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;
+
+#define CONFIG_PATH_COMMON_PREFIX "../../../"
 
 class NetPbModule;
 
@@ -96,7 +92,7 @@ public:
         return true;
     }
 
-    DEFINE_CONFIG_DATA(ServerListConfigData, "../../config/xml/ServerList.xml");
+    DEFINE_CONFIG_DATA(ServerListConfigData, CONFIG_PATH_COMMON_PREFIX "config/xml/ServerList.xml");
 };
 
 TONY_CAT_SPACE_END

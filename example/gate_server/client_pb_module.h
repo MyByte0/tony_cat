@@ -4,8 +4,11 @@
 #include "common/core_define.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
-#include "net/net_pb_module.h"
-#include "net/net_session.h"
+#include "common/net/net_pb_module.h"
+#include "common/net/net_session.h"
+#include "game/data_define.h"
+#include "protocol/client_base.pb.h"
+#include "protocol/client_common.pb.h"
 
 #include <cassert>
 #include <cstdint>
@@ -16,12 +19,8 @@
 TONY_CAT_SPACE_BEGIN
 
 class NetModule;
+class RpcModule;
 class ServiceGovernmentModule;
-
-// NetPacket:
-// || 4 bytes packetLen(PbPacket Len) || 4 bytes checkCode(for PbPacket) || 4 bytes msgType || PbPacket ||
-// the PbPacket in NetPacket:
-// || 4 bytes ，，，，，，，，，，，，，，，，，，，，，，，，，，，，，，，，，， Len || PbPacketHead || PbPacketBody ||
 
 class ClientPbModule : public NetPbModule {
 public:
@@ -31,8 +30,6 @@ public:
     virtual void OnInit() override;
 
 public:
-    typedef std::string USER_ID;
-
     struct GateUserInfo {
         USER_ID userId;
         Session::session_id_t userSessionId;
@@ -44,13 +41,17 @@ private:
     void OnClientMessage(Session::session_id_t clientSessionId, uint32_t msgType, const char* data, std::size_t length);
     void OnServerMessage(Session::session_id_t serverSessionId, uint32_t msgType, const char* data, std::size_t length);
 
-    void OnUserLogin(Session::session_id_t clientSessionId);
+    void OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ClientHead& head, Pb::CSPlayerLoginReq& playerLoginReq);
+
+    bool OnUserLogin(Session::session_id_t clientSessionId, USER_ID userId);
+    bool OnUserLogout(USER_ID userId, bool bKick);
     GateUserInfoPtr GetGateUserInfoByUserId(USER_ID userId);
     GateUserInfoPtr GetGateUserInfoBySessionId(Session::session_id_t clientSessionId);
 
 private:
-    ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
     NetPbModule* m_pNetPbModule = nullptr;
+    ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
+    RpcModule* m_pRpcModule = nullptr;
 
 private:
     std::unordered_map<Session::session_id_t, GateUserInfoPtr> m_mapSessionUserInfo;

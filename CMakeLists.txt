@@ -3,33 +3,33 @@ cmake_minimum_required(VERSION 3.7)
 project(tony_cat CXX)
 
 
-add_definitions("-DASIO_STANDALONE")
-add_definitions("-DGLOG_NO_ABBREVIATED_SEVERITIES")
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+ADD_DEFINITIONS("-DASIO_STANDALONE")
+ADD_DEFINITIONS("-DGLOG_NO_ABBREVIATED_SEVERITIES")
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 FIND_PACKAGE(Threads REQUIRED)
 
 SET(CMAKE_CXX_STANDARD 20)
 
-add_definitions("-DPROJ_CXX_STANDARD=${CMAKE_CXX_STANDARD}")
+ADD_DEFINITIONS("-DPROJ_CXX_STANDARD=${CMAKE_CXX_STANDARD}")
 
 if(MSVC)
        # example: CMAKE_TOOLCHAIN_FILE=D:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake)
-	   include(${CMAKE_TOOLCHAIN_FILE})
-	   add_definitions("-D_WIN32_WINNT=0x0601")
+	   INCLUDE(${CMAKE_TOOLCHAIN_FILE})
+	   ADD_DEFINITIONS("-D_WIN32_WINNT=0x0601")
 	   add_compile_options(/wd4251)
 	   add_compile_options(/wd4996)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-	set(CMAKE_CXX_FLAGS "-fcoroutines ${CMAKE_CXX_FLAGS}")
+	SET(CMAKE_CXX_FLAGS "-fcoroutines ${CMAKE_CXX_FLAGS}")
 	SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g")
 	SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Os")
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-	find_package(fmt)
-	set(LIB_DEPEND
+	FIND_PACKAGE(fmt)
+	SET(LIB_DEPEND
 		${LIB_DEPEND}
 		fmt::fmt
 	   )
@@ -38,7 +38,7 @@ endif()
 FIND_PACKAGE(glog REQUIRED)
 FIND_PACKAGE(tinyxml2 REQUIRED)
 
-set(LIB_DEPEND
+SET(LIB_DEPEND
 	${LIB_DEPEND}
 	glog::glog
 	tinyxml2::tinyxml2
@@ -46,7 +46,7 @@ set(LIB_DEPEND
 
 if(CMAKE_COMPILER_IS_GNUCXX)
 	FIND_PACKAGE(Protobuf REQUIRED)
-	set(LIB_DEPEND
+	SET(LIB_DEPEND
 	${LIB_DEPEND}
 	${Protobuf_LIBRARIES}
 	)
@@ -55,24 +55,34 @@ endif()
 if(MSVC)
     FIND_PACKAGE(Protobuf CONFIG REQUIRED)
 	FIND_PACKAGE(fmt)
-	set(LIB_DEPEND
+	SET(LIB_DEPEND
 		${LIB_DEPEND}
 		fmt::fmt
 		protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
 	)
 endif()
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+					COMMAND sh pb_gen_code.sh
+					)
+endif()
+if(MSVC)
+	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+					COMMAND pb_gen_code.bat
+					)
+endif()
+
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build)
 
-file(GLOB_RECURSE COMMON_FILES ./common/*.h ./common/*.cc ./common/*.hpp ./common/*.cpp)
-file(GLOB_RECURSE LOG_FILES ./log/*.h ./log/*.cc ./log/*.hpp ./log/*.cpp)
-file(GLOB_RECURSE NET_FILES ./net/*.h ./net/*.cc ./net/*.hpp ./net/*.cpp)
-file(GLOB_RECURSE PROTOBUF_FILES ./protocol/*.h ./protocol/*.cc )
+FILE(GLOB_RECURSE COMMON_FILES ./common/*.h ./common/*.cc ./common/*.hpp ./common/*.cpp)
+FILE(GLOB_RECURSE PROTOBUF_FILES ./protocol/*.h ./protocol/*.cc )
 
 ADD_LIBRARY(TONY_CAT
-	${NET_FILES}
-	${LOG_FILES}
 	${COMMON_FILES}
+)
+
+ADD_LIBRARY(PROTO
 	${PROTOBUF_FILES}
 )
 

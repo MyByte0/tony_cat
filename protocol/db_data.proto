@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package Db;
+
+enum EDBConfigCommonPrimekeyDef
+{
+     db_common_primekey_invalid = 0;
+     db_common_primekey_max = 10;
+}
+
+message UserBase
+{
+   string user_name = 100;
+   int64 update_time = 101;
+}
+
+
+message ZoneInfoDataElem
+{
+   string zone_name = 1;
+   int64 modify_time = 2;
+}
+
+
+message UserZoneInfoData
+{
+   map<int32, ZoneInfoDataElem> map_zonearea_name = 1;
+}
+
+message UserZoneInfo
+{
+   map<int32, UserZoneInfoData> map_zoneid_zone_info = 1;
+}
+
+enum EPrimeKeyUserDataDef
+{
+     primekey_invalid_UserZoneInfo = 0;
+     primekey_map_count_UserZoneInfo = 2;
+}
+
+message UserData
+{
+   string user_id = 1;
+   int64 has_flag = 11;
+   UserBase user_base = 100;
+   UserZoneInfo user_zoneinfo = 101;
+}
+
+message KVData
+{
+   UserData user_data = 100;
+}

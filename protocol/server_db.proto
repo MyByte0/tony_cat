@@ -1,0 +1,52 @@
+syntax = "proto3";
+import "db_data.proto";
+
+package Pb;
+
+message SSSaveDataReq
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x40010001;
+   }
+
+   int64     save_tick = 1;
+   int64     flag_field1 = 2;
+
+   Db.KVData kv_data = 100;
+}
+
+message SSSaveDataRsp
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x40010002;
+   }
+}
+
+
+message SSQueryDataReq
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x40010003;
+   }
+
+   string     user_id = 1;
+}
+
+message SSQueryDataRsp
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x40010004;
+   }
+
+   Db.UserBase user_base = 1;
+}
+
+

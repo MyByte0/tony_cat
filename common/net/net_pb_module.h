@@ -2,24 +2,19 @@
 #define NET_NET_PB_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/loop.h"
-#include "common/loop_coroutine.h"
-#include "common/loop_pool.h"
+#include "common/log/log_module.h"
 #include "common/module_base.h"
-#include "common/module_manager.h"
+#include "common/net/net_session.h"
 #include "common/utility/spin_lock.h"
-#include "log/log_module.h"
-
-#include "net_session.h"
 
 #include <cassert>
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <unordered_map>
 
 TONY_CAT_SPACE_BEGIN
 
+class ModuleManager;
 class NetModule;
 
 // NetPacket:
@@ -39,7 +34,7 @@ public:
 public:
     enum {
         enm_head_len = 12,
-        enm_packet_head_max_len = 64 * 1024,
+        enm_packet_head_max_len = 16 * 1024,
         enm_packet_body_max_cache = 64 * 1024,
     };
 
@@ -61,28 +56,32 @@ public:
     template <typename _Fn>
     struct GetFunctionMessage;
 
-    template <typename _Ret, typename _TypeHead, typename _TypeMessage>
-    struct GetFunctionMessage<_Ret(Session::session_id_t, _TypeHead&, _TypeMessage&)> {
+    template <typename _TypeRet, typename _TypeHead, typename _TypeMessage>
+    struct GetFunctionMessage<_TypeRet(Session::session_id_t, _TypeHead&, _TypeMessage&)> {
         using TypeHead = _TypeHead;
         using TypeBody = _TypeMessage;
+        using TypeRet = _TypeRet;
     };
 
-    template <typename _Fn, typename _Ret, typename _TypeHead, typename _TypeMessage>
-    struct GetFunctionMessage<_Ret (_Fn::*)(Session::session_id_t, _TypeHead&, _TypeMessage&)> {
+    template <typename _Fn, typename _TypeRet, typename _TypeHead, typename _TypeMessage>
+    struct GetFunctionMessage<_TypeRet (_Fn::*)(Session::session_id_t, _TypeHead&, _TypeMessage&)> {
         using TypeHead = _TypeHead;
         using TypeBody = _TypeMessage;
+        using TypeRet = _TypeRet;
     };
 
-    template <typename _Fn, typename _Ret, typename _TypeHead, typename _TypeMessage>
-    struct GetFunctionMessage<_Ret (_Fn::*)(Session::session_id_t, _TypeHead&, _TypeMessage&) const> {
+    template <typename _Fn, typename _TypeRet, typename _TypeHead, typename _TypeMessage>
+    struct GetFunctionMessage<_TypeRet (_Fn::*)(Session::session_id_t, _TypeHead&, _TypeMessage&) const> {
         using TypeHead = _TypeHead;
         using TypeBody = _TypeMessage;
+        using TypeRet = _TypeRet;
     };
 
     template <typename _Fn>
     struct GetFunctionMessage_t {
         using TypeHead = typename GetFunctionMessage<decltype(&_Fn::operator())>::TypeHead;
         using TypeBody = typename GetFunctionMessage<decltype(&_Fn::operator())>::TypeBody;
+        using TypeRet = typename GetFunctionMessage<decltype(&_Fn::operator())>::TypeRet;
     };
 
     template <class _TypeMsgPacketHead>
@@ -110,11 +109,11 @@ public:
         return true;
     }
 
-    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeRet>
     FuncPacketHandleType GenReadPacketFunc(
-        std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>&& funCb)
+        const std::function<_TypeRet(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>& funCb)
     {
-        return FuncPacketHandleType([this, funCb(std::move(funCb))](Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length) {
+        return FuncPacketHandleType([this, funCb](Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length) {
             const char* pData = nullptr;
             std::size_t pbPacketBodyLen = 0;
             _TypeMsgPacketHead msgPacketHead;
@@ -129,7 +128,11 @@ public:
                 return false;
             }
 
-            std::function<void()> funCall = [sessionId, msgPacketHead(std::move(msgPacketHead)), msgPacketBody(std::move(msgPacketBody)), funCb(std::move(funCb))]() mutable { funCb(sessionId, msgPacketHead, msgPacketBody); };
+            assert(funCb != nullptr);
+            std::function<void()> funCall =
+                [sessionId, msgPacketHead(std::move(msgPacketHead)), msgPacketBody(std::move(msgPacketBody)), funCb]() mutable {
+                    funCb(sessionId, msgPacketHead, msgPacketBody);
+                };
             {
                 std::lock_guard<SpinLock> lockGuard(m_lockMsgFunction);
                 m_vecMsgFunction.emplace_back(std::move(funCall));
@@ -139,18 +142,11 @@ public:
         });
     }
 
-    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
-    FuncPacketHandleType GenReadPacketFunc(
-        const std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>& funCb)
-    {
-        return GenReadPacketFunc(std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead & packetHead, _TypeMsgPacketBody & packetBody)>(funCb));
-    }
-
-    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeRet>
     void RegisterHandleHelper(uint32_t msgType,
-        const std::function<void(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>& func)
+        const std::function<_TypeRet(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)>& func)
     {
-        RegisterPacketHandle(msgType, GenReadPacketFunc<_TypeMsgPacketHead, _TypeMsgPacketBody>(func));
+        RegisterPacketHandle(msgType, GenReadPacketFunc<_TypeMsgPacketHead, _TypeMsgPacketBody, _TypeRet>(func));
     }
 
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
@@ -195,13 +191,14 @@ public:
     {
         using PbHeadType = typename GetFunctionMessage_t<_TypeHandler>::TypeHead;
         using PbBodyType = typename GetFunctionMessage_t<_TypeHandler>::TypeBody;
+        using PbFunRet = typename GetFunctionMessage_t<_TypeHandler>::TypeRet;
         uint32_t msgType = PbBodyType::msgid;
-        RegisterHandleHelper<PbHeadType, PbBodyType>(msgType, func);
+        RegisterHandleHelper<PbHeadType, PbBodyType, PbFunRet>(msgType, func);
     }
 
-    template <class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody>
+    template <class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeRet>
     void RegisterHandle(_TypeClass* pClass,
-        void (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&))
+        _TypeRet (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&))
     {
         std::function<void(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
             = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);

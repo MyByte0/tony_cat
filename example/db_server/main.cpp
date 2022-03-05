@@ -1,4 +1,4 @@
-#include "logic_server_app.h"
+#include "db_server_app.h"
 
 #include <cstdint>
 
@@ -9,6 +9,6 @@ int main(int argc, char* argv[])
         nServerIndex = std::atoi(argv[1]);
     }
 
-    tony_cat::LogicServerApp serverApp;
+    tony_cat::DBServerApp serverApp;
     serverApp.Start(nServerIndex);
 }

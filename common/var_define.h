@@ -1,6 +1,13 @@
 #ifndef COMMON_VAR_DEFINE_H_
 #define COMMON_VAR_DEFINE_H_
 
+#include <cstdint>
+#include <map>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 #define DEFINE_MEMBER_BOOL(_NAME) \
 public:                           \
     bool Get##_NAME() const       \

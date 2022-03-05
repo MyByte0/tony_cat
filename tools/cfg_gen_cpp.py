@@ -149,7 +149,7 @@ def gen_code(argv):
     header_file_write.write('\n#include <vector>')
     header_file_write.write('\n')
     header_file_write.write('\nnamespace tinyxml2 {')
-    header_file_write.write('\n    class XMLAttribute;')
+    header_file_write.write('\nclass XMLAttribute;')
     header_file_write.write('\n}')
     header_file_write.write('\n')
     header_file_write.write('\nTONY_CAT_SPACE_BEGIN')
@@ -215,16 +215,17 @@ def gen_code(argv):
     
     cpp_file_write = open("{}{}.cpp".format(cpp_gen_path, cpp_struct_name), "w")
     cpp_file_write.write('\n#include "{}"'.format(header_file_name))
+    cpp_file_write.write('\n')
     cpp_file_write.write('\n#include "common/core_define.h"')
+    cpp_file_write.write('\n#include "common/log/log_module.h"')
     cpp_file_write.write('\n#include "common/utility/config_field_paser.h"')
-    cpp_file_write.write('\n#include "log/log_module.h"')
     cpp_file_write.write('\n')
     cpp_file_write.write('\n#include <tinyxml2.h>')
     cpp_file_write.write('\n')
     cpp_file_write.write('\nTONY_CAT_SPACE_BEGIN')
     cpp_file_write.write('\n')
     
-    cpp_file_write.write('\n    bool {}::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute) {{'.format(cpp_struct_name))
+    cpp_file_write.write('\nbool {}::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute) {{'.format(cpp_struct_name))
     first_var_name = ''
     first_member_name = ''
     for i in range(len(list_type)):
@@ -233,22 +234,22 @@ def gen_code(argv):
         call_fun = dict_type_paser_fun[var_type]
         member_name = dict_type_var_prefix[var_type] + var_name
         if i == 0:
-            cpp_file_write.write('\n        if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+            cpp_file_write.write('\n    if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
             first_var_name = var_name
             first_member_name = member_name
         else :
-            cpp_file_write.write('\n        else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
+            cpp_file_write.write('\n    else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
 
-        cpp_file_write.write('\n            if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
-        cpp_file_write.write('\n                LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
-        cpp_file_write.write('\n                return false;')
-        cpp_file_write.write('\n            }')
+        cpp_file_write.write('\n        if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
+        cpp_file_write.write('\n            LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
+        cpp_file_write.write('\n            return false;')
         cpp_file_write.write('\n        }')
+        cpp_file_write.write('\n    }')
     
     cpp_file_write.write('\n        return true;')
     
     # function define end
-    cpp_file_write.write('\n    }')
+    cpp_file_write.write('\n}')
 
 
     cpp_file_write.write('\n')

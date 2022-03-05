@@ -1,8 +1,8 @@
 #include "log_module.h"
 
-#include <glog/logging.h>
-
 #include <filesystem>
+
+#include <glog/logging.h>
 
 TONY_CAT_SPACE_BEGIN
 
@@ -26,7 +26,7 @@ LogModule* LogModule::GetLogModuleInstance()
 
 void LogModule::BeforeInit()
 {
-    std::string logPath = "./log";
+    std::string logPath = "../log";
     std::filesystem::create_directory(logPath.c_str());
 
     google::InitGoogleLogging("ServerTest");
@@ -54,7 +54,9 @@ void LogModule::OnLoadConfig() { }
 void LogModule::SetLogLevel(LOG_LEVEL_TYPE log_level)
 {
     m_log_level = log_level;
-    if (LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG == m_log_level) {
+    if (LOG_LEVEL_TYPE::LOG_LEVEL_TRACE == m_log_level) {
+        fLI::FLAGS_minloglevel = google::GLOG_INFO;
+    } else if (LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG == m_log_level) {
         fLI::FLAGS_minloglevel = google::GLOG_INFO;
     } else if (LOG_LEVEL_TYPE::LOG_LEVEL_INFO == m_log_level) {
         fLI::FLAGS_minloglevel = google::GLOG_INFO;

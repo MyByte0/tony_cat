@@ -1,8 +1,9 @@
 
 #include "ServerListConfigData.h"
+
 #include "common/core_define.h"
+#include "common/log/log_module.h"
 #include "common/utility/config_field_paser.h"
-#include "log/log_module.h"
 
 #include <tinyxml2.h>
 
