@@ -7,3 +7,26 @@ message ClientHead
    int32     sync_id = 1;
    int64     req_time = 2;
 }
+
+
+enum CSMessageId
+{
+    cs_msgid_invalid = 0;
+    cs_msgid_begin = 0x00000002;
+    cs_msgid_heartbeat_req = 0x00000003;
+    cs_msgid_heartbeat_rsp = 0x00000004;
+
+    cs_msgid_playerlogin_req = 0x00000005;
+    cs_msgid_playerlogin_rsp = 0x00000006;
+}
+
+message PlayerBaseData
+{
+   int32    level = 1;
+   int64    register_data = 2;
+}
+
+message PlayerData
+{
+   string   user_id = 1;
+}

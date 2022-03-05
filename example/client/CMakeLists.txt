@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.7)
+
+FILE(GLOB_RECURSE CLIENT_FILES ./*.h ./*.cc ./*.hpp ./*.cpp)
+
+ADD_EXECUTABLE(Client 
+	${CLIENT_FILES}
+)
+
+TARGET_LINK_LIBRARIES(Client TONY_CAT PROTO ${LIB_DEPEND})

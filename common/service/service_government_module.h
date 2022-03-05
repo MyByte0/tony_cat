@@ -2,19 +2,14 @@
 #define SERVICE_GOVERNMENT_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/loop.h"
 #include "common/loop_coroutine.h"
-#include "common/loop_pool.h"
 #include "common/module_base.h"
+#include "common/net/net_session.h"
 #include "common/var_define.h"
-#include "net/net_session.h"
 #include "protocol/server_base.pb.h"
 #include "protocol/server_common.pb.h"
 
-#include <coroutine>
 #include <cstdint>
-#include <functional>
-#include <thread>
 #include <unordered_map>
 
 TONY_CAT_SPACE_BEGIN
@@ -38,7 +33,8 @@ public:
 
 public:
     enum {
-        kReconnectServerTimeMillSeconds = 15000,
+        kReconnectServerTimeMillSeconds = 10000,
+        kHeartbeatServerTimeMillSeconds = 15000,
     };
 
     struct ServerInstanceInfo {
@@ -47,8 +43,8 @@ public:
         Session::session_id_t nSessionId = 0;
         std::string strServerIp;
         int32_t nPort = 0;
-        Loop::TimerHandle timerReconnect;
-        Loop::TimerHandle timerHeartbeat;
+        Loop::TimerHandle timerReconnect = nullptr;
+        Loop::TimerHandle timerHeartbeat = nullptr;
     };
 
     DEFINE_MEMBER_STR(ServerName);
@@ -62,13 +58,16 @@ public:
 
 public:
     Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
+    Session::session_id_t GetServerSessionIdByKey(int32_t nServerType, const std::string& strKey);
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
 
 private:
     ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType, int32_t nServerId);
     Session::session_id_t ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);
-    void OnConnectSucess(Session::session_id_t nSessionId, bool bSuccess);
-    void OnDisconnect(Session::session_id_t nSessionId, ServerInstanceInfo stServerInstanceInfo);
+    void OnConnectSucess(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo, bool bSuccess);
+    void OnDisconnect(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo);
+
+    Task<void> OnHeartbeat(const ServerInstanceInfo& stServerInstanceInfo);
 
 private:
     static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
@@ -79,7 +78,6 @@ private:
     RpcModule* m_pRpcModule = nullptr;
     XmlConfigModule* m_pXmlConfigModule = nullptr;
 
-    // map<ServerType, map<ServerId, ServerInstanceInfo>>
     std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapServerConnectList;
 };
 

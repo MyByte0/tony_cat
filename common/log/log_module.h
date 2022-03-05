@@ -3,6 +3,7 @@
 
 #include "common/core_define.h"
 #include "common/module_base.h"
+
 #include <string>
 #include <version>
 
@@ -38,7 +39,8 @@ public:
 
 public:
     enum class LOG_LEVEL_TYPE {
-        LOG_LEVEL_DEBUG = 0,
+        LOG_LEVEL_TRACE = 0,
+        LOG_LEVEL_DEBUG,
         LOG_LEVEL_INFO,
         LOG_LEVEL_WARN,
         LOG_LEVEL_ERROR,
@@ -54,28 +56,42 @@ public:
 protected:
     static LogModule* m_pLogModule;
 
-    LOG_LEVEL_TYPE m_log_level = LOG_LEVEL_TYPE::LOG_LEVEL_INFO;
+    LOG_LEVEL_TYPE m_log_level = LOG_LEVEL_TYPE::LOG_LEVEL_TRACE;
 };
 
 TONY_CAT_SPACE_END
 
-#define LOG_DEBUG(_STR_FMT_TEXT, ...)                                                                                 \
-    do {                                                                                                              \
-        DLOG_IF(INFO, LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG == LogModule::GetLogModuleInstance()->GetLogLevel()) \
-            << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                                                              \
+#define LOG_TRACE(_STR_FMT_TEXT, ...)                                                                         \
+    do {                                                                                                      \
+        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_TRACE >= LogModule::GetLogModuleInstance()->GetLogLevel()) { \
+            LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                                            \
+            std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " TRACE:"                      \
+                      << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__) << std::endl;                               \
+        }                                                                                                     \
     } while (false)
+
+#define LOG_DEBUG(_STR_FMT_TEXT, ...)                                                                         \
+    do {                                                                                                      \
+        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG >= LogModule::GetLogModuleInstance()->GetLogLevel()) { \
+            LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                                            \
+        }                                                                                                     \
+    } while (false)
+
 #define LOG_INFO(_STR_FMT_TEXT, ...)                           \
     do {                                                       \
         LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
+
 #define LOG_WARN(_STR_FMT_TEXT, ...)                              \
     do {                                                          \
         LOG(WARNING) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
+
 #define LOG_ERROR(_STR_FMT_TEXT, ...)                           \
     do {                                                        \
         LOG(ERROR) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
+
 #define LOG_FATAL(_STR_FMT_TEXT, ...)                           \
     do {                                                        \
         LOG(FATAL) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \

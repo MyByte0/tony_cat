@@ -1,13 +1,9 @@
 cmake_minimum_required(VERSION 3.7)
 
-SET(GATE_SERVER_FILES
-	client_pb_module.h
-	client_pb_module.cpp
-	main.cpp
-)
+FILE(GLOB_RECURSE GATE_SERVER_FILES ./*.h ./*.cc ./*.hpp ./*.cpp)
 
 ADD_EXECUTABLE(GateServer 
 	${GATE_SERVER_FILES}
 )
 
-target_link_libraries (GateServer TONY_CAT ${LIB_DEPEND})
+TARGET_LINK_LIBRARIES(GateServer TONY_CAT PROTO ${LIB_DEPEND})

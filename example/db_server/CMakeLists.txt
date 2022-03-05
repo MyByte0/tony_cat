@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.7)
+
+FILE(GLOB_RECURSE DB_SERVER_FILES ./*.h ./*.cc ./*.hpp ./*.cpp)
+
+ADD_EXECUTABLE(DBServer 
+	${DB_SERVER_FILES}
+)
+
+TARGET_LINK_LIBRARIES(DBServer TONY_CAT PROTO ${LIB_DEPEND})

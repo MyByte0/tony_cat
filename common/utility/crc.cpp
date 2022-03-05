@@ -93,6 +93,11 @@ uint16_t CRC16(const void* data, size_t len)
     return crc16;
 }
 
+uint32_t CRC32(const std::string& data)
+{
+    return CRC32(data.c_str(), data.length());
+}
+
 uint32_t CRC32(const void* data, size_t len)
 {
     const uint8_t* buf = (const uint8_t*)data;

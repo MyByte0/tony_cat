@@ -12,22 +12,49 @@
 
 TONY_CAT_SPACE_BEGIN
 
+// use co_await Waitable
+// need call function return Task with define promise_type
+// run:
+// Task::promise_type()         -->
+// get_return_object()          -->
+// Task::Task()                 -->
+// initial_suspend()            -->
+// if exception, go unhandled_exception(),
+// go final_suspend()
+// otherwise                    -->
+// yield_value() if use         -->
+// return_void()/return_value() -->
+// final_suspend()              -->
+// Task::~promise_type()        -->
+// Task::~Task()                -->
+
+template <class _TypeRet>
 struct Task {
-    // use co_await Waitable
-    // need call function return Task with define promise_type
-    // run:
-    // Task::promise_type()         -->
-    // get_return_object()          -->
-    // Task::Task()                 -->
-    // initial_suspend()            -->
-    // if exception, go unhandled_exception(),
-    // go final_suspend()
-    // otherwise                    -->
-    // yield_value() if use         -->
-    // return_void()/return_value() -->
-    // final_suspend()              -->
-    // Task::~promise_type()        -->
-    // Task::~Task()                -->
+    struct promise_type {
+        Task get_return_object()
+        {
+            return std::coroutine_handle<promise_type>::from_promise(*this);
+        }
+        std::suspend_never initial_suspend() noexcept
+        {
+            return {};
+        }
+        void return_value(_TypeRet&) noexcept
+        {
+        }
+        std::suspend_never final_suspend() noexcept
+        {
+            return {};
+        }
+        void unhandled_exception() { }
+    };
+
+    Task(std::coroutine_handle<promise_type> h) { }
+    ~Task() { }
+};
+
+template <>
+struct Task<void> {
     struct promise_type {
         Task get_return_object()
         {
@@ -77,6 +104,7 @@ struct AsyncWaitable {
     // --> Waitable::~Waitable()
     AsyncWaitable(int init)
         : init_(init)
+        , result_()
     {
     }
 
@@ -85,14 +113,10 @@ struct AsyncWaitable {
 
     void await_suspend(std::coroutine_handle<> handle)
     {
-        // could call:
-        // io_context.post([](){
-        //      doFunctions
         handle.resume();
-        // });
     }
 
-    int await_resume() { return result_; }
+    RetType await_resume() { return result_; }
 };
 
 struct GetCoroutineHandleWaitable {
@@ -181,6 +205,17 @@ struct SyncFunctionWaitable {
             rValue.handle_ = nullptr;
         }
 
+        SyncFunctionCoroutineHandle& operator=(const SyncFunctionCoroutineHandle& rValue)
+        {
+            if (handle_) {
+                handle_.resume();
+            }
+
+            handle_ = rValue.handle_;
+            rValue.handle_ = nullptr;
+            return *this;
+        }
+
         SyncFunctionCoroutineHandle& operator=(SyncFunctionCoroutineHandle&& rValue)
         {
             if (handle_) {
@@ -230,31 +265,6 @@ struct SyncFunctionWaitable {
         return result_;
     }
 };
-
-struct ConnectCoroutine {
-    ConnectCoroutine(ConnectCoroutine&&) = default;
-
-    struct promise_type {
-        ConnectCoroutine get_return_object()
-        {
-            return std::coroutine_handle<promise_type>::from_promise(*this);
-        }
-        std::suspend_never initial_suspend() { return {}; }
-        std::suspend_never final_suspend() noexcept { return {}; }
-        void return_void() { }
-        void unhandled_exception() { }
-        std::suspend_always yield_value(int& i);
-    };
-
-    ConnectCoroutine(std::coroutine_handle<promise_type> h)
-        : handle_(h)
-    {
-    }
-    std::coroutine_handle<promise_type>& getHandle() { return handle_; };
-    std::coroutine_handle<promise_type> handle_;
-};
-
-typedef std::shared_ptr<ConnectCoroutine> ConnectCoroutinePtr;
 
 TONY_CAT_SPACE_END
 

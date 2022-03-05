@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.7)
 
-SET(LOGIC_SERVER_FILES
-	main.cpp
-)
+FILE(GLOB_RECURSE LOGIC_SERVER_FILES ./*.h ./*.cc ./*.hpp ./*.cpp)
 
 ADD_EXECUTABLE(LogicServer 
 	${LOGIC_SERVER_FILES}
 )
 
-target_link_libraries (LogicServer TONY_CAT ${LIB_DEPEND})
+TARGET_LINK_LIBRARIES(LogicServer TONY_CAT PROTO ${LIB_DEPEND})

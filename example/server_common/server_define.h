@@ -8,6 +8,7 @@ TONY_CAT_SPACE_BEGIN
 enum ServerType {
     eTypeGateServer = 1,
     eTypeLogicServer = 2,
+    eTypeDBServer = 3,
 };
 
 template <ServerType eType>
@@ -23,6 +24,7 @@ struct GetServerTypeStructHelper {
 
 DEFINE_SERVER_TYPE_STRING(eTypeGateServer, "GateServer")
 DEFINE_SERVER_TYPE_STRING(eTypeLogicServer, "LogicServer")
+DEFINE_SERVER_TYPE_STRING(eTypeDBServer, "DBServer")
 
 template <ServerType eType>
 const char* GetServerType()

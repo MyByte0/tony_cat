@@ -1,27 +1,51 @@
 syntax = "proto3";
+import "client_base.proto";
 
 package Pb;
 
 message CSHeartbeatReq
 {
-   string    trans_id = 2;
-   int64     req_time = 3;
-
    enum SSMessageId
    {
         msgid_invalid = 0;
-        msgid = 0x40000002;
+        msgid = 0x00000003;
    }
+
+   string    trans_id = 2;
+   int64     req_time = 3;
 }
 
 message CSHeartbeatRsp
 {
-   string    trans_id = 2;
-   int64     req_time = 3;
-
    enum SSMessageId
    {
         msgid_invalid = 0;
-        msgid = 0x40000003;
+        msgid = 0x00000004;
    }
+
+   string    trans_id = 2;
+   int64     req_time = 3;
+}
+
+message CSPlayerLoginReq
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x00000005;
+   }
+
+   string    token = 1;
+   string    user_name = 2;
+}
+
+message CSPlayerLoginRsp
+{
+   enum SSMessageId
+   {
+        msgid_invalid = 0;
+        msgid = 0x00000006;
+   }
+
+   PlayerData    player_data = 1;
 }
