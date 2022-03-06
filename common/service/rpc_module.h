@@ -34,8 +34,8 @@ private:
     };
 
 public:
-    enum {
-        kRpcTimeoutMillSeconds = 10000,
+    enum : int {
+        kRpcTimeoutMillSeconds = 12000,
     };
 
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeHandler>
@@ -60,6 +60,7 @@ public:
             };
 
             m_pNetPbModule->RegisterHandle([this, pRpcContext](Session::session_id_t sessionId, PbRspHeadType& packetHead, PbRspBodyType& packetBody) {
+                // find callBack of the query_id, and call
                 auto nRspQueryId = packetHead.query_id();
                 auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId);
                 if (itContext != pRpcContext->mapCurrentCallback.end()) {
@@ -67,7 +68,6 @@ public:
                     if (nullptr != func) {
                         func(sessionId, packetHead, packetBody);
                     }
-
                     pRpcContext->mapCurrentCallback.erase(itContext);
                 } else {
                     itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
@@ -76,7 +76,6 @@ public:
                         if (nullptr != func) {
                             func(sessionId, packetHead, packetBody);
                         }
-
                         pRpcContext->mapLastCallback.erase(itContext);
                     } else {
                         LOG_ERROR("can not find rpc callback, query_id:{}", nRspQueryId);
@@ -84,7 +83,7 @@ public:
                 }
             });
 
-            // on request timeout
+            // on timeout on mapLastCallback, and swap with mapCurrentCallback
             Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this, pRpcContext, msgId]() {
                 for (auto& elemCallbacks : pRpcContext->mapLastCallback) {
                     auto nQueryId = elemCallbacks.first;
@@ -114,9 +113,7 @@ public:
         template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeMsgPacketBodyRsp>
         AwaitableRpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, _TypeMsgPacketBody& msgBody,
             Session::session_id_t& rspSessionId, _TypeMsgPacketHead& rspHead, _TypeMsgPacketBodyRsp& rspMsg)
-            : m_funSuspend()
-        {
-            m_funSuspend = [this, destSessionId, &pbPacketHead, &msgBody, &rspSessionId, &rspHead, &rspMsg](std::coroutine_handle<> handle) {
+            : m_funSuspend([this, destSessionId, &pbPacketHead, &msgBody, &rspSessionId, &rspHead, &rspMsg](std::coroutine_handle<> handle) {
                 RpcModule::GetInstance()->RpcRequest(destSessionId, pbPacketHead, msgBody,
                     [this, handle, &rspSessionId, &rspHead, &rspMsg](Session::session_id_t sessionId, _TypeMsgPacketHead& pbHead, _TypeMsgPacketBodyRsp& pbRsp) {
                         rspSessionId = sessionId;
@@ -124,8 +121,7 @@ public:
                         rspMsg = pbRsp;
                         handle.resume();
                     });
-            };
-        };
+            }) {};
 
         bool await_ready() const { return false; }
         auto await_resume() { return; }
