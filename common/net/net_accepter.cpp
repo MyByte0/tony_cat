@@ -5,7 +5,10 @@ TONY_CAT_SPACE_BEGIN
 Acceptor::Acceptor() { }
 Acceptor::~Acceptor()
 {
-    delete m_acceptor;
+    if (nullptr != m_acceptor) {
+        m_acceptor->cancel();
+        delete m_acceptor;
+    }
 };
 
 void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_t port, const Session::FunSessionRead& funSessionRead)

@@ -39,6 +39,8 @@ ModuleBase* ModuleManager::FindModule(const std::string& strModuleName)
 
 void ModuleManager::Init()
 {
+    m_loop.InitThreadlocalLoop();
+
     for (auto it = m_vecModules.begin(); it != m_vecModules.end(); ++it) {
         auto& moduleInfo = *it;
         moduleInfo.pModule->BeforeInit();

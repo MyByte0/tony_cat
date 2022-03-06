@@ -1,5 +1,5 @@
-#ifndef NET_NET_BUFFER_H_
-#define NET_NET_BUFFER_H_
+#ifndef COMMON_NET_NET_BUFFER_H_
+#define COMMON_NET_NET_BUFFER_H_
 
 #include "common/core_define.h"
 
@@ -46,4 +46,4 @@ private:
 
 TONY_CAT_SPACE_END
 
-#endif // NET_NET_BUFFER_H_
+#endif // COMMON_NET_NET_BUFFER_H_

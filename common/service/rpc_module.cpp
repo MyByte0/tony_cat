@@ -7,6 +7,13 @@
 
 TONY_CAT_SPACE_BEGIN
 
+RpcModule* RpcModule::m_pRpcModule = nullptr;
+
+RpcModule* RpcModule::GetInstance()
+{
+    return RpcModule::m_pRpcModule;
+}
+
 RpcModule::RpcModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
@@ -17,6 +24,8 @@ RpcModule::~RpcModule() { }
 void RpcModule::BeforeInit()
 {
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
+
+    RpcModule::m_pRpcModule = this;
 }
 
 void RpcModule::AfterStop()

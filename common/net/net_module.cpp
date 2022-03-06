@@ -9,6 +9,9 @@ NetModule::NetModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
     m_nextSessionId = 0;
+    // default net thread num = 1
+    // could SetNetThreadNum on BeforeInit()
+    SetNetThreadNum(1);
 }
 
 NetModule::~NetModule()
@@ -37,6 +40,7 @@ void NetModule::AfterStop()
         delete pAcceptor;
     }
     m_vecAcceptors.clear();
+    m_loopAccpet.Stop();
 }
 
 Session::session_id_t NetModule::CreateSessionId()
@@ -109,7 +113,7 @@ void NetModule::Accept(Acceptor* pAcceptor)
                         pSession->GetSessionId(),
                         pSession->GetSocket().remote_endpoint().address().to_string(),
                         port);
-                    m_mapSession[pSession->GetSessionId()] = pSession;
+                    m_mapSession.emplace(pSession->GetSessionId(), pSession);
                     pSession->DoRead();
                 });
             }
@@ -128,16 +132,32 @@ Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16
     auto session_id = CreateSessionId();
     auto& context = m_poolSessionContext.GetIoContext(session_id);
 
+    auto& loop = Loop::GetCurrentThreadLoop();
     auto pSession = std::make_shared<Session>(context, session_id);
-    pSession->SetSessionCloseCb([this, funOnSessionClose](auto nSessionId) {
-        if (nullptr != funOnSessionClose) {
-            funOnSessionClose(nSessionId);
-        }
-        this->OnCloseSession(nSessionId);
-    });
+    m_mapSession.emplace(pSession->GetSessionId(), pSession);
     pSession->SetSessionReadCb(funOnSessionRead);
-    m_mapSession[pSession->GetSessionId()] = pSession;
-    pSession->DoConnect(endpoints, funOnSessionConnect);
+
+    // ensure call CloseCb in current loop
+    pSession->SetSessionCloseCb([this, funOnSessionClose, &loop](auto nSessionId) {
+        loop.Exec([this, funOnSessionClose, nSessionId]() {
+            if (nullptr != funOnSessionClose) {
+                funOnSessionClose(nSessionId);
+            }
+            this->OnCloseSession(nSessionId);
+        });
+    });
+
+    // ensure call ConnectCb in current loop
+    if (nullptr != funOnSessionConnect) {
+        pSession->DoConnect(endpoints, [this, funOnSessionConnect, &loop](auto nSessionId, auto bSuccess) mutable {
+            loop.Exec([this, funOnSessionConnect, nSessionId, bSuccess]() {
+                funOnSessionConnect(nSessionId, bSuccess);
+            });
+        });
+    } else {
+        pSession->DoConnect(endpoints, nullptr);
+    }
+
     return session_id;
 }
 

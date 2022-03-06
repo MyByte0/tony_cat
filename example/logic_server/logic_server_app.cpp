@@ -2,7 +2,7 @@
 
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
-#include "common/loop.h"
+#include "common/loop/loop.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"

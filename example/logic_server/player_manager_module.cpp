@@ -4,6 +4,7 @@
 #include "common/log/log_module.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
+#include "common/service/service_government_module.h"
 #include "protocol/client_base.pb.h"
 #include "protocol/server_base.pb.h"
 #include "protocol/server_db.pb.h"
@@ -25,50 +26,59 @@ void PlayerManagerModule::BeforeInit()
 {
     m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
+    m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
 
     m_pNetPbModule->RegisterHandle(this, &PlayerManagerModule::OnHandleCSPlayerLoginReq);
 }
 
-void PlayerManagerModule::OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::CSPlayerLoginReq& playerLoginReq)
+
+CoroutineTask<void> PlayerManagerModule::OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ServerHead head, Pb::CSPlayerLoginReq playerLoginReq)
 {
     auto pPlayerData = GetPlayerData(head.user_id());
     if (nullptr != pPlayerData) {
 
         // \TODO: kick player and return login success
-        return;
+        co_return;
     }
 
-    auto itMapLoadingPlayer = m_mapLoadingPlayer.find(head.user_id());
-    if (itMapLoadingPlayer != m_mapLoadingPlayer.end()) {
+    if (m_mapLoadingPlayer.count(head.user_id()) > 0) {
         // \TODO: on loiading, return fail
-        return;
+        co_return;
     }
 
     assert(m_mapOnlinePlayer.find(head.user_id()) == m_mapOnlinePlayer.end());
-
     m_mapLoadingPlayer.emplace(head.user_id(), std::make_shared<PlayerData>());
+
     Pb::SSQueryDataReq queryDataReq;
     queryDataReq.set_user_id(head.user_id());
-    m_pRpcModule->RpcRequest(sessionId, head, queryDataReq, [this](Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSQueryDataRsp& queryDataRsp) {
-            if (head.error_code() != Pb::SSMessageCode::ss_msg_success) {
-                LOG_ERROR("user loading failed, user_id:{}, error:{}", head.user_id(), head.error_code());
-                m_mapLoadingPlayer.erase(head.user_id());
-                return;
-            }
-            
-            auto itMapLoadingPlayer = m_mapLoadingPlayer.find(head.user_id());
-            if (itMapLoadingPlayer == m_mapLoadingPlayer.end()) {
-                LOG_ERROR("not find data in loading map, user:{}", head.user_id());
-                return;
-            }
+    auto querySessionId = m_pServiceGovernmentModule->GetServerSessionIdByKey(ServerType::eTypeDBServer, head.user_id());
 
-            auto pPlayData = itMapLoadingPlayer->second;
-            // pPlayData = queryDataRsp.user_base();
+    Session::session_id_t nSessionIdRsp;
+    Pb::ServerHead headRsp;
+    Pb::SSQueryDataRsp msgRsp;
+    co_await RpcModule::AwaitableRpcRequest(querySessionId, head, queryDataReq, nSessionIdRsp, headRsp, msgRsp);
+    if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
+        LOG_ERROR("user loading failed, user_id:{}, error:{}", head.user_id(), head.error_code());
+        m_mapLoadingPlayer.erase(head.user_id());
+        co_return;
+    }
+    
+    auto itMapLoadingPlayer = m_mapLoadingPlayer.find(head.user_id());
+    if (itMapLoadingPlayer == m_mapLoadingPlayer.end()) {
+        LOG_ERROR("not find data in loading map, user:{}", head.user_id());
+        co_return;
+    }
 
-            m_mapOnlinePlayer.emplace(head.user_id(), itMapLoadingPlayer->second);
-            m_mapLoadingPlayer.erase(itMapLoadingPlayer);
-            LOG_INFO("loading player data success, user_id:{}", head.user_id());
-        });
+    auto pPlayData = itMapLoadingPlayer->second;
+    // pPlayData = queryDataRsp.user_base();
+
+    m_mapOnlinePlayer.emplace(head.user_id(), itMapLoadingPlayer->second);
+    m_mapLoadingPlayer.erase(itMapLoadingPlayer);
+    LOG_INFO("loading player data success, user_id:{}", head.user_id());
+
+    Pb::CSPlayerLoginRsp clientMsgRsp;
+    m_pNetPbModule->SendPacket(sessionId, head, clientMsgRsp);
+    co_return;
 }
 
 

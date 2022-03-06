@@ -1,5 +1,5 @@
-#ifndef COMMON_LOG_MODULE_H_
-#define COMMON_LOG_MODULE_H_
+#ifndef COMMON_LOG_LOG_MODULE_H_
+#define COMMON_LOG_LOG_MODULE_H_
 
 #include "common/core_define.h"
 #include "common/module_base.h"
@@ -51,7 +51,7 @@ public:
 public:
     void SetLogLevel(LOG_LEVEL_TYPE log_level);
     LOG_LEVEL_TYPE GetLogLevel() const;
-    static LogModule* GetLogModuleInstance();
+    static LogModule* GetInstance();
 
 protected:
     static LogModule* m_pLogModule;
@@ -61,20 +61,20 @@ protected:
 
 TONY_CAT_SPACE_END
 
-#define LOG_TRACE(_STR_FMT_TEXT, ...)                                                                         \
-    do {                                                                                                      \
-        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_TRACE >= LogModule::GetLogModuleInstance()->GetLogLevel()) { \
-            LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                                            \
-            std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " TRACE:"                      \
-                      << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__) << std::endl;                               \
-        }                                                                                                     \
+#define LOG_TRACE(_STR_FMT_TEXT, ...)                                                                \
+    do {                                                                                             \
+        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_TRACE >= LogModule::GetInstance()->GetLogLevel()) { \
+            LOG(INFO) << "TRACE: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                      \
+            std::cout << "TRACE: " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__             \
+                      << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__) << std::endl;                      \
+        }                                                                                            \
     } while (false)
 
-#define LOG_DEBUG(_STR_FMT_TEXT, ...)                                                                         \
-    do {                                                                                                      \
-        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG >= LogModule::GetLogModuleInstance()->GetLogLevel()) { \
-            LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                                            \
-        }                                                                                                     \
+#define LOG_DEBUG(_STR_FMT_TEXT, ...)                                                                \
+    do {                                                                                             \
+        if (LogModule::LOG_LEVEL_TYPE::LOG_LEVEL_DEBUG >= LogModule::GetInstance()->GetLogLevel()) { \
+            LOG(INFO) << "DEBUG: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);                      \
+        }                                                                                            \
     } while (false)
 
 #define LOG_INFO(_STR_FMT_TEXT, ...)                           \
@@ -97,4 +97,4 @@ TONY_CAT_SPACE_END
         LOG(FATAL) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
 
-#endif // COMMON_LOG_MODULE_H_
+#endif // COMMON_LOG_LOG_MODULE_H_

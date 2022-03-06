@@ -3,9 +3,12 @@
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
+#include "common/service/service_government_module.h"
 #include "common/utility/crc.h"
 
 TONY_CAT_SPACE_BEGIN
+
+NetPbModule* NetPbModule::m_pNetPbModule = nullptr;
 
 NetPbModule::NetPbModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
@@ -14,9 +17,17 @@ NetPbModule::NetPbModule(ModuleManager* pModuleManager)
 
 NetPbModule::~NetPbModule() { }
 
+NetPbModule* NetPbModule::GetInstance()
+{
+    return NetPbModule::m_pNetPbModule;
+}
+
 void NetPbModule::BeforeInit()
 {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
+    m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
+
+    NetPbModule::m_pNetPbModule = this;
 }
 
 void NetPbModule::OnUpdate()
@@ -205,6 +216,16 @@ uint32_t NetPbModule::SwapUint32(uint32_t value)
         | (value << 24);
 
     return swapValue;
+}
+
+void NetPbModule::FillHeadCommon(Pb::ClientHead& packetHead)
+{
+}
+
+void NetPbModule::FillHeadCommon(Pb::ServerHead& packetHead)
+{
+    packetHead.set_src_server_type(m_pServiceGovernmentModule->GetServerType());
+    packetHead.set_src_server_index(m_pServiceGovernmentModule->GetServerId());
 }
 
 TONY_CAT_SPACE_END

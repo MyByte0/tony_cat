@@ -1,5 +1,5 @@
-#ifndef NET_NET_SESSION_H_
-#define NET_NET_SESSION_H_
+#ifndef COMMON_NET_NET_SESSION_H_
+#define COMMON_NET_NET_SESSION_H_
 
 #include "common/core_define.h"
 #include "common/net/net_buffer.h"
@@ -54,10 +54,10 @@ private:
     asio::io_context& m_io_context;
     asio::ip::tcp::socket m_socket;
 
-    SessionBuffer m_ReadBuff;
-    SessionBuffer m_WriteBuff;
+    SessionBuffer m_buffRead;
+    SessionBuffer m_buffWrite;
 
-    session_id_t m_sessionId;
+    session_id_t m_nSessionId;
     FunSessionClose m_funSessionClose;
     FunSessionRead m_funSessionRead;
 };
@@ -66,4 +66,4 @@ typedef std::shared_ptr<Session> SessionPtr;
 
 TONY_CAT_SPACE_END
 
-#endif // NET_NET_SESSION_H_
+#endif // COMMON_NET_NET_SESSION_H_

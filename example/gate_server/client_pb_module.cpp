@@ -21,7 +21,7 @@ ClientPbModule::~ClientPbModule() { }
 
 void ClientPbModule::BeforeInit()
 {
-    this->NetPbModule::BeforeInit();
+    m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
     m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
     m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
@@ -90,7 +90,7 @@ void ClientPbModule::OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, P
     auto sessionServer = m_pServiceGovernmentModule->GetServerSessionIdByKey(ServerType::eTypeLogicServer, userId);
     Pb::ServerHead headServer;
     headServer.set_user_id(userId);
-    m_pRpcModule->RpcRequest(sessionServer, headServer, playerLoginReq, [this, sessionId, head](Session::session_id_t serverSessionId, Pb::ServerHead& headRsp, Pb::CSPlayerLoginRsp& queryDataRsp) {
+    m_pRpcModule->RpcRequest(sessionServer, headServer, playerLoginReq, [this, sessionId, head](Session::session_id_t serverSessionId, Pb::ServerHead& headRsp, Pb::CSPlayerLoginRsp& queryDataRsp) mutable {
         if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
             LOG_ERROR("server PlayerLogin request error:{}, sessionId:{}", headRsp.error_code(), serverSessionId);
             return;

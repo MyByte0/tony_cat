@@ -19,13 +19,13 @@
 TONY_CAT_SPACE_BEGIN
 
 class NetModule;
+class ServiceGovernmentModule;
 
 class DBExecModule : public ModuleBase {
 public:
     DBExecModule(ModuleManager* pModuleManager);
     ~DBExecModule();
     virtual void BeforeInit() override;
-    virtual void OnInit() override;
 
 public:
     typedef std::string USER_ID;
@@ -38,7 +38,8 @@ public:
     typedef std::shared_ptr<GateUserInfo> GateUserInfoPtr;
 
 private:
-    void OnServerMessage(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq);
+    void OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq);
+    void OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSQueryDataReq& msgReq);
 
 private:
     struct DBKeyValue {

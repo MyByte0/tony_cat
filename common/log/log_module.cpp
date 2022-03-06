@@ -11,15 +11,13 @@ LogModule* LogModule::m_pLogModule = nullptr;
 LogModule::LogModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
-
-    m_pLogModule = this;
 }
 
 LogModule::~LogModule()
 {
 }
 
-LogModule* LogModule::GetLogModuleInstance()
+LogModule* LogModule::GetInstance()
 {
     return m_pLogModule;
 }
@@ -39,6 +37,8 @@ void LogModule::BeforeInit()
     google::SetLogFilenameExtension(".log");
 
     fLI::FLAGS_minloglevel = 0;
+
+    m_pLogModule = this;
 }
 
 void LogModule::AfterStop()

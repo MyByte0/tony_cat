@@ -1,5 +1,5 @@
-#ifndef NET_NET_ACCEPTER_H_
-#define NET_NET_ACCEPTER_H_
+#ifndef COMMON_NET_NET_ACCEPTER_H_
+#define COMMON_NET_NET_ACCEPTER_H_
 
 #include "common/core_define.h"
 #include "common/net/net_session.h"
@@ -28,4 +28,4 @@ private:
 
 TONY_CAT_SPACE_END
 
-#endif // NET_NET_ACCEPTER_H_
+#endif // COMMON_NET_NET_ACCEPTER_H_
