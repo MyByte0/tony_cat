@@ -179,7 +179,7 @@ struct AwaitableExecAfterOnLoop {
         , m_nWaitMillSecond(millSeconds)
     {
     }
-    bool await_ready() const { return m_nWaitMillSecond != 0; }
+    bool await_ready() const { return m_nWaitMillSecond == 0; }
     auto await_resume() { return; }
     void await_suspend(std::coroutine_handle<> handle)
     {
