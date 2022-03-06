@@ -1,9 +1,9 @@
-#ifndef NET_NET_MODULE_H_
-#define NET_NET_MODULE_H_
+#ifndef COMMON_NET_NET_MODULE_H_
+#define COMMON_NET_NET_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/loop.h"
-#include "common/loop_pool.h"
+#include "common/loop/loop.h"
+#include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 #include "common/net/net_accepter.h"
 #include "common/net/net_session.h"
@@ -56,4 +56,4 @@ private:
 
 TONY_CAT_SPACE_END
 
-#endif // NET_NET_MODULE_H_
+#endif // COMMON_NET_NET_MODULE_H_

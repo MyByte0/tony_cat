@@ -1,10 +1,11 @@
 #ifndef COMMON_MODULE_MANAGER_H_
 #define COMMON_MODULE_MANAGER_H_
 
-#include "core_define.h"
-#include "loop.h"
-#include "module_base.h"
+#include "common/core_define.h"
+#include "common/loop/loop.h"
+#include "common/module_base.h"
 
+#include <cassert>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -45,8 +46,9 @@ private:
 #define REGISTER_MODULE(MODULE_MANAGER, MODULE_NAME) \
     (MODULE_MANAGER)->RegisterModule(#MODULE_NAME, new MODULE_NAME((MODULE_MANAGER)));
 
-#define FIND_MODULE(MODULE_MANAGER, MODULE_NAME) \
-    dynamic_cast<MODULE_NAME*>((MODULE_MANAGER)->FindModule(#MODULE_NAME));
+#define FIND_MODULE(MODULE_MANAGER, MODULE_NAME)                            \
+    dynamic_cast<MODULE_NAME*>((MODULE_MANAGER)->FindModule(#MODULE_NAME)); \
+    assert(dynamic_cast<MODULE_NAME*>((MODULE_MANAGER)->FindModule(#MODULE_NAME)) != nullptr);
 
 TONY_CAT_SPACE_END
 

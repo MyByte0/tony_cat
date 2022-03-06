@@ -1,5 +1,7 @@
 #include "net_buffer.h"
 
+#include <cstring>
+
 TONY_CAT_SPACE_BEGIN
 
 SessionBuffer::SessionBuffer(size_t maxBuffSize)

@@ -2,8 +2,9 @@
 #define SERVICE_GOVERNMENT_MODULE_H_
 
 #include "common/core_define.h"
-#include "common/loop_coroutine.h"
+#include "common/loop/loop_coroutine.h"
 #include "common/module_base.h"
+#include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "common/var_define.h"
 #include "protocol/server_base.pb.h"
@@ -15,7 +16,6 @@
 TONY_CAT_SPACE_BEGIN
 
 class NetModule;
-class NetPbModule;
 class XmlConfigModule;
 class RpcModule;
 
@@ -43,6 +43,8 @@ public:
         Session::session_id_t nSessionId = 0;
         std::string strServerIp;
         int32_t nPort = 0;
+        std::string strPublicIp;
+        int32_t nPublicPort = 0;
         Loop::TimerHandle timerReconnect = nullptr;
         Loop::TimerHandle timerHeartbeat = nullptr;
     };
@@ -57,17 +59,19 @@ public:
     DEFINE_MEMBER_VAR(ServerInstanceInfo, ServerInfo);
 
 public:
+    int32_t GetServerKeyIndex(int32_t nServerType, const ::std::string& strKey);
+    ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType, int32_t nServerId);
     Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
     Session::session_id_t GetServerSessionIdByKey(int32_t nServerType, const std::string& strKey);
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
 
 private:
-    ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType, int32_t nServerId);
+    ServerInstanceInfo* GetConnectServerInstanceInfo(int32_t nServerType, int32_t nServerId);
     Session::session_id_t ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);
     void OnConnectSucess(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo, bool bSuccess);
     void OnDisconnect(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo);
 
-    Task<void> OnHeartbeat(const ServerInstanceInfo& stServerInstanceInfo);
+    CoroutineTask<void> OnHeartbeat(const ServerInstanceInfo stServerInstanceInfo);
 
 private:
     static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
@@ -78,7 +82,8 @@ private:
     RpcModule* m_pRpcModule = nullptr;
     XmlConfigModule* m_pXmlConfigModule = nullptr;
 
-    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapServerConnectList;
+    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapConnectServerList;
+    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapWholeServerList;
 };
 
 TONY_CAT_SPACE_END

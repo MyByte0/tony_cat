@@ -20,18 +20,16 @@ void DBExecModule::BeforeInit()
     //Pb::SSSaveDataReq req;
     //OnServerMessage(0, head, req);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
-}
 
-void DBExecModule::OnInit()
-{
-    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnServerMessage);
+    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSSaveDataReq);
+    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSQueryDataReq);
 }
 
 #ifdef GetMessage // for windows define GetMessage
 #undef GetMessage
 #endif
 
-void DBExecModule::OnServerMessage(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq)
+void DBExecModule::OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq)
 {
     auto& message = msgReq.kv_data();
     auto pReflection = message.GetReflection();
@@ -48,6 +46,13 @@ void DBExecModule::OnServerMessage(Session::session_id_t sessionId, Pb::ServerHe
 
         PaserProto(pReflection->GetMessage(message, pField));
     }
+}
+
+void DBExecModule::OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSQueryDataReq& msgReq)
+{
+    Pb::SSQueryDataRsp msgRsp;
+
+    m_pNetPbModule->SendPacket(sessionId, head, msgRsp);
 }
 
 void DBExecModule::PaserProto(const google::protobuf::Message& message)

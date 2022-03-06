@@ -1,7 +1,7 @@
 #ifndef COMMON_MODULE_BASE_H_
 #define COMMON_MODULE_BASE_H_
 
-#include "core_define.h"
+#include "common/core_define.h"
 
 TONY_CAT_SPACE_BEGIN
 

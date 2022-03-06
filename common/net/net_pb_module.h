@@ -1,11 +1,14 @@
-#ifndef NET_NET_PB_MODULE_H_
-#define NET_NET_PB_MODULE_H_
+#ifndef COMMON_NET_NET_PB_MODULE_H_
+#define COMMON_NET_NET_PB_MODULE_H_
 
 #include "common/core_define.h"
 #include "common/log/log_module.h"
+#include "common/loop/loop_coroutine.h"
 #include "common/module_base.h"
 #include "common/net/net_session.h"
 #include "common/utility/spin_lock.h"
+#include "protocol/client_base.pb.h"
+#include "protocol/server_base.pb.h"
 
 #include <cassert>
 #include <cstdint>
@@ -16,6 +19,7 @@ TONY_CAT_SPACE_BEGIN
 
 class ModuleManager;
 class NetModule;
+class ServiceGovernmentModule;
 
 // NetPacket:
 // || 4 bytes packetLen(PbPacket Len) || 4 bytes checkCode(for PbPacket) || 4 bytes msgType || PbPacket ||
@@ -121,7 +125,7 @@ public:
                 LOG_ERROR("recv pb packet head error, sessionId:{} type:{}", sessionId, msgType);
                 return false;
             }
-            // \TODO maybe MsgPacket need use shared_ptr
+
             _TypeMsgPacketBody msgPacketBody;
             if (false == msgPacketBody.ParseFromArray(pData, int(pbPacketBodyLen))) [[unlikely]] {
                 LOG_ERROR("recv pb packet body error, sessionId:{} type:{}", sessionId, msgType);
@@ -152,6 +156,7 @@ public:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
     bool SendPacket(Session::session_id_t sessionId, _TypeMsgPacketHead& packetHead, _TypeMsgPacketBody& packetBody)
     {
+        FillHeadCommon(packetHead);
         uint32_t msgType = _TypeMsgPacketBody::msgid;
         char head[sizeof(uint32_t) + enm_packet_head_max_len + enm_packet_body_max_cache];
         char* pData = head;
@@ -160,14 +165,16 @@ public:
         pData += sizeof pbPacketHeadLen;
         packetHead.SerializeToArray(pData, pbPacketHeadLen);
         pData += pbPacketHeadLen;
-
         uint32_t pbPacketBodyLen = static_cast<uint32_t>(packetBody.ByteSizeLong());
+
+        // all data store in buff head
         if (pbPacketBodyLen + pbPacketHeadLen + sizeof(uint32_t) < sizeof head) {
             packetBody.SerializeToArray(pData, pbPacketBodyLen);
             pData += pbPacketBodyLen;
             return WriteData(sessionId, msgType, head, pData - head);
         }
 
+        // msg body store in string
         std::string strPacketBody;
         packetBody.SerializeToString(&strPacketBody);
         return WriteData(sessionId, msgType, head, pbPacketHeadLen + sizeof(uint32_t), strPacketBody.data(), strPacketBody.size());
@@ -176,6 +183,7 @@ public:
     template <class _TypeMsgPacketHead>
     bool SendPacket(Session::session_id_t sessionId, uint32_t msgType, _TypeMsgPacketHead& packetHead, const char* data, std::size_t length)
     {
+        FillHeadCommon(packetHead);
         char head[sizeof(uint32_t) + enm_packet_head_max_len + enm_packet_body_max_cache];
         char* pData = head;
         uint32_t pbPacketHeadLen = static_cast<uint32_t>(packetHead.ByteSizeLong());
@@ -200,10 +208,46 @@ public:
     void RegisterHandle(_TypeClass* pClass,
         _TypeRet (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&))
     {
+        std::function<_TypeRet(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
+            = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        RegisterHandle(funHandle);
+    }
+
+    template <class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeRet>
+    void RegisterHandle(_TypeClass* pClass,
+        CoroutineTask<_TypeRet> (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead, _TypeMsgPacketBody))
+    {
         std::function<void(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
             = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         RegisterHandle(funHandle);
     }
+
+public:
+    struct AwaitableConnect {
+        AwaitableConnect(const std::string& strIP, uint16_t nPort)
+            : m_strIP(strIP)
+            , m_nPort(nPort)
+            , m_nSessionId(0) {};
+        bool await_ready() const { return false; }
+        auto await_resume() { return m_nSessionId; }
+        void await_suspend(std::coroutine_handle<> handle)
+        {
+            NetPbModule::GetInstance()->Connect(m_strIP, m_nPort, [this, handle](auto nSessionId, auto bSuccess) {
+                if (bSuccess) {
+                    m_nSessionId = nSessionId;
+                }
+                handle.resume();
+            });
+        }
+
+    private:
+        const std::string& m_strIP;
+        uint16_t m_nPort;
+        Session::session_id_t m_nSessionId;
+    };
+
+private:
+    static NetPbModule* GetInstance();
 
 protected:
     uint32_t GetPacketHeadLength(const uint32_t* pData);
@@ -211,6 +255,10 @@ protected:
     uint32_t CheckCode(const char* data, size_t length);
     uint32_t CheckCode(const void* dataHead, size_t lenHead, const void* data, size_t len);
     uint32_t SwapUint32(uint32_t value);
+
+private:
+    void FillHeadCommon(Pb::ClientHead& packetHead);
+    void FillHeadCommon(Pb::ServerHead& packetHead);
 
 protected:
     std::unordered_map<uint32_t, FuncPacketHandleType> m_mapPackethandle;
@@ -221,8 +269,12 @@ protected:
 
 protected:
     NetModule* m_pNetModule = nullptr;
+    ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
+
+private:
+    static NetPbModule* m_pNetPbModule;
 };
 
 TONY_CAT_SPACE_END
 
-#endif // NET_NET_PB_MODULE_H_
+#endif // COMMON_NET_NET_PB_MODULE_H_

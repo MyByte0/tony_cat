@@ -4,8 +4,9 @@ package Pb;
 
 message ClientHead
 {
-   int32     sync_id = 1;
+   int64     query_id = 1;
    int64     req_time = 2;
+   int32     error_code = 3;
 }
 
 

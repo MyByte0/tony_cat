@@ -1,11 +1,13 @@
 #include "net_session.h"
 
+#include "common/log/log_module.h"
+
 TONY_CAT_SPACE_BEGIN
 
 Session::Session(asio::io_context& io_context, session_id_t session_id)
     : m_io_context(io_context)
     , m_socket(io_context)
-    , m_sessionId(session_id)
+    , m_nSessionId(session_id)
 {
 }
 
@@ -37,7 +39,7 @@ void Session::SetSessionReadCb(FunSessionRead&& funOnSessionRead)
 
 Session::session_id_t Session::GetSessionId()
 {
-    return m_sessionId;
+    return m_nSessionId;
 }
 
 asio::ip::tcp::socket& Session::GetSocket()
@@ -48,13 +50,13 @@ asio::ip::tcp::socket& Session::GetSocket()
 void Session::HandleRead()
 {
     if (m_funSessionRead) [[likely]] {
-        m_funSessionRead(m_sessionId, m_ReadBuff);
+        m_funSessionRead(m_nSessionId, m_buffRead);
     }
 }
 
 bool Session::WriteData(const char* data, size_t length)
 {
-    m_WriteBuff.Write((char*)data, length);
+    m_buffWrite.Write((char*)data, length);
 
     DoWrite();
     return true;
@@ -62,12 +64,12 @@ bool Session::WriteData(const char* data, size_t length)
 
 bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, size_t length)
 {
-    if (lenHead + length > m_WriteBuff.MaxWritableSize()) [[unlikely]] {
+    if (lenHead + length > m_buffWrite.MaxWritableSize()) [[unlikely]] {
         return false;
     }
 
-    m_WriteBuff.Write((char*)dataHead, lenHead);
-    m_WriteBuff.Write((char*)data, length);
+    m_buffWrite.Write((char*)dataHead, lenHead);
+    m_buffWrite.Write((char*)data, length);
 
     DoWrite();
     return true;
@@ -85,12 +87,12 @@ void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnec
         [self, funFunSessionConnect](std::error_code ec) {
             if (!ec) {
                 if (nullptr != funFunSessionConnect) {
-                    funFunSessionConnect(self->m_sessionId, true);
+                    funFunSessionConnect(self->m_nSessionId, true);
                 }
                 self->DoRead();
             } else {
                 if (nullptr != funFunSessionConnect) {
-                    funFunSessionConnect(self->m_sessionId, false);
+                    funFunSessionConnect(self->m_nSessionId, false);
                 }
                 self->DoClose();
             }
@@ -101,11 +103,11 @@ void Session::DoRead()
 {
     auto self(shared_from_this());
     GetSocket().async_read_some(
-        asio::buffer(m_ReadBuff.GetWriteData(),
-            m_ReadBuff.CurrentWritableSize()),
+        asio::buffer(m_buffRead.GetWriteData(),
+            m_buffRead.CurrentWritableSize()),
         [this, self](std::error_code ec, std::size_t length) {
             if (!ec) {
-                m_ReadBuff.FillData(length);
+                m_buffRead.FillData(length);
                 HandleRead();
 
                 self->DoRead();
@@ -119,11 +121,11 @@ void Session::DoWrite()
 {
     auto self(shared_from_this());
     GetSocket().async_write_some(
-        asio::buffer(m_WriteBuff.GetReadData(), m_WriteBuff.GetReadableSize()),
+        asio::buffer(m_buffWrite.GetReadData(), m_buffWrite.GetReadableSize()),
         [this, self](std::error_code ec, std::size_t length) {
             if (!ec) {
-                m_WriteBuff.RemoveData(length);
-                if (m_WriteBuff.GetReadableSize() > 0) {
+                m_buffWrite.RemoveData(length);
+                if (m_buffWrite.GetReadableSize() > 0) {
                     self->DoWrite();
                 }
             } else {
@@ -144,12 +146,21 @@ void Session::AsyncClose()
 void Session::DoClose()
 {
     if (GetSocket().is_open()) {
-        GetSocket().shutdown(asio::socket_base::shutdown_both);
-        GetSocket().close();
+        try {
+            GetSocket().shutdown(asio::socket_base::shutdown_both);
+        } catch (...) {
+            LOG_ERROR("shutdown fail on sessionId:{}", m_nSessionId);
+        }
+
+        try {
+            GetSocket().close();
+        } catch (...) {
+            LOG_ERROR("close fail on sessionId:{}", m_nSessionId);
+        }
     }
 
     if (nullptr != m_funSessionClose) {
-        m_funSessionClose(m_sessionId);
+        m_funSessionClose(m_nSessionId);
     }
 }
 
