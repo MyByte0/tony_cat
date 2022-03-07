@@ -46,16 +46,17 @@ ClientManagerModule::ClientDataPtr ClientManagerModule::GetPlayerData(const ACCO
 
 CoroutineTask<void> ClientManagerModule::StartTestClient()
 {
+    // waiting for server start
     uint32_t nWaitMillSecond = 15000;
     co_await AwaitableExecAfter(nWaitMillSecond);
 
+    // connect to gate server
     auto pServerInstanceInfo = m_pServiceGovernmentModule->GetServerInstanceInfo(ServerType::eTypeGateServer, 1);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find gate info");
         co_return;
     }
-
-    LOG_TRACE("login start");
+    LOG_TRACE("client login start");
     auto nSessionId = co_await NetPbModule::AwaitableConnect(pServerInstanceInfo->strPublicIp, pServerInstanceInfo->nPublicPort);
     if (0 == nSessionId) {
         LOG_ERROR("connect gate error, addr:{}, port:{}", pServerInstanceInfo->strPublicIp, pServerInstanceInfo->nPublicPort);
@@ -68,10 +69,11 @@ CoroutineTask<void> ClientManagerModule::StartTestClient()
     pClientData->nSessionId = nSessionId;
     m_mapClient.emplace(strAccount, pClientData);
 
+    // msg request
     Pb::ClientHead head;
     Pb::CSPlayerLoginReq req;
     req.set_user_name(strAccount);
-
+    // msg respond
     Session::session_id_t nSessionIdRsp;
     Pb::ClientHead headRsp;
     Pb::CSPlayerLoginRsp msgRsp;
@@ -81,7 +83,7 @@ CoroutineTask<void> ClientManagerModule::StartTestClient()
         co_return;
     }
 
-    LOG_TRACE("login success");
+    LOG_TRACE("client login success");
     co_return;
 }
 
