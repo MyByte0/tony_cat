@@ -4,6 +4,7 @@
 #include "common/core_define.h"
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
+#include "common/module_manager.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "protocol/client_base.pb.h"
@@ -35,8 +36,78 @@ private:
 
 public:
     enum : int {
-        kRpcTimeoutMillSeconds = 12000,
+        kRpcTimeoutMillSeconds = 15000,
     };
+
+    template <class _TypeRpcContext>
+    auto InitRpcContextMap(uint32_t msgId)
+    {
+        auto pRpcContext = new _TypeRpcContext();
+        m_mapRpcContext[msgId] = pRpcContext;
+        m_mapRpcContextDeleter[msgId] = [](void* pData) {
+            auto pContext = reinterpret_cast<_TypeRpcContext*>(pData);
+            delete pContext;
+        };
+        return pRpcContext;
+    }
+
+    template <class _TypeRpcContext>
+    auto GetRpcContext(uint32_t msgId)
+    {
+        return reinterpret_cast<_TypeRpcContext*>(m_mapRpcContext[msgId]);
+    }
+
+    template <class _TypePbRspHead, class _TypePbRspBody, class _TypeRpcContext>
+    void RegisterNetHandle()
+    {
+        m_pNetPbModule->RegisterHandle([this](Session::session_id_t sessionId, _TypePbRspHead& headRsp, _TypePbRspBody& bodyRsp) {
+            assert(m_pModuleManager->OnMainLoop());
+            // find callBack of the query_id, and call
+            auto pRpcContext = GetRpcContext<_TypeRpcContext>(_TypePbRspBody::msgid);
+            auto nRspQueryId = headRsp.query_id();
+            auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId);
+            if (itContext != pRpcContext->mapCurrentCallback.end()) {
+                auto& func = itContext->second;
+                if (nullptr != func) {
+                    func(sessionId, headRsp, bodyRsp);
+                }
+                pRpcContext->mapCurrentCallback.erase(itContext);
+            } else {
+                itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
+                if (itContext != pRpcContext->mapLastCallback.end()) {
+                    auto& func = itContext->second;
+                    if (nullptr != func) {
+                        func(sessionId, headRsp, bodyRsp);
+                    }
+                    pRpcContext->mapLastCallback.erase(itContext);
+                } else {
+                    LOG_ERROR("can not find rpc callback, query_id:{}", nRspQueryId);
+                }
+            }
+        });
+    }
+
+    template <class _TypePbRspHead, class _TypePbRspBody, class _TypeRpcContext>
+    void RegisterTimeoutHandle()
+    {
+        // on timeout on mapLastCallback, and swap with mapCurrentCallback
+        Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this]() {
+            uint32_t msgId = _TypePbRspBody::msgid;
+            auto pRpcContext = GetRpcContext<_TypeRpcContext>(msgId);
+            for (auto& elemCallbacks : pRpcContext->mapLastCallback) {
+                auto nQueryId = elemCallbacks.first;
+                LOG_ERROR("rpc timeout, msgid:{}, query_id:{}", msgId, nQueryId);
+                auto& func = elemCallbacks.second;
+                Session::session_id_t sessionId = 0;
+                static _TypePbRspHead pbRspHead;
+                static _TypePbRspBody pbRspBody;
+                pbRspHead.set_error_code(Pb::SSMessageCode::ss_msg_timeout);
+                func(sessionId, pbRspHead, pbRspBody);
+            }
+            pRpcContext->mapLastCallback.clear();
+            pRpcContext->mapCurrentCallback.swap(pRpcContext->mapLastCallback);
+        });
+    }
 
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeHandler>
     void RpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, const _TypeMsgPacketBody& msgBody, const _TypeHandler& funcResult)
@@ -49,63 +120,20 @@ public:
         uint32_t msgId = PbRspBodyType::msgid;
         // packetRespond::msg_id == packetRequest::msg_id + 1
         static_assert(PbRspBodyType::msgid == _TypeMsgPacketBody::msgid + 1, "respond message type error");
+        assert(m_pModuleManager->OnMainLoop());
 
         // _TypeMsgPacketBody first call, register handle to NetPbModule
         if (m_mapRpcContext.count(msgId) == 0) {
-            auto pRpcContext = new RspRpcContext();
-            m_mapRpcContext[msgId] = pRpcContext;
-            m_mapRpcContextDeleter[msgId] = [](void* pData) {
-                auto pContext = reinterpret_cast<RspRpcContext*>(pData);
-                delete pContext;
-            };
-
-            m_pNetPbModule->RegisterHandle([this, pRpcContext](Session::session_id_t sessionId, PbRspHeadType& packetHead, PbRspBodyType& packetBody) {
-                // find callBack of the query_id, and call
-                auto nRspQueryId = packetHead.query_id();
-                auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId);
-                if (itContext != pRpcContext->mapCurrentCallback.end()) {
-                    auto& func = itContext->second;
-                    if (nullptr != func) {
-                        func(sessionId, packetHead, packetBody);
-                    }
-                    pRpcContext->mapCurrentCallback.erase(itContext);
-                } else {
-                    itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
-                    if (itContext != pRpcContext->mapLastCallback.end()) {
-                        auto& func = itContext->second;
-                        if (nullptr != func) {
-                            func(sessionId, packetHead, packetBody);
-                        }
-                        pRpcContext->mapLastCallback.erase(itContext);
-                    } else {
-                        LOG_ERROR("can not find rpc callback, query_id:{}", nRspQueryId);
-                    }
-                }
-            });
-
-            // on timeout on mapLastCallback, and swap with mapCurrentCallback
-            Loop::GetCurrentThreadLoop().ExecEvery(kRpcTimeoutMillSeconds, [this, pRpcContext, msgId]() {
-                for (auto& elemCallbacks : pRpcContext->mapLastCallback) {
-                    auto nQueryId = elemCallbacks.first;
-                    LOG_ERROR("rpc timeout, msgid:{}, query_id:{}", msgId, nQueryId);
-                    auto& func = elemCallbacks.second;
-                    Session::session_id_t sessionId = 0;
-                    static PbRspHeadType pbRspHead;
-                    static PbRspBodyType pbRspBody;
-                    pbRspHead.set_error_code(Pb::SSMessageCode::ss_msg_timeout);
-                    func(sessionId, pbRspHead, pbRspBody);
-                }
-                pRpcContext->mapLastCallback.clear();
-                pRpcContext->mapCurrentCallback.swap(pRpcContext->mapLastCallback);
-            });
+            auto pRpcContext = InitRpcContextMap<RspRpcContext>(msgId);
+            RegisterNetHandle<PbRspHeadType, PbRspBodyType, RspRpcContext>();
+            RegisterTimeoutHandle<PbRspHeadType, PbRspBodyType, RspRpcContext>();
         }
 
         // store cb by query_id
         auto nCurrentQueryId = GenQueryId();
-        auto pRpcContext = reinterpret_cast<RspRpcContext*>(m_mapRpcContext[msgId]);
-        pRpcContext->mapCurrentCallback[nCurrentQueryId] = PbRspFunction(funcResult);
+        auto pRpcContext = GetRpcContext<RspRpcContext>(msgId);
+        pRpcContext->mapCurrentCallback.emplace(nCurrentQueryId, PbRspFunction(funcResult));
         pbPacketHead.set_query_id(nCurrentQueryId);
-
         m_pNetPbModule->SendPacket(destSessionId, pbPacketHead, msgBody);
     }
 
