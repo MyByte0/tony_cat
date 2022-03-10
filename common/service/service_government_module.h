@@ -32,9 +32,9 @@ public:
     void InitConnect();
 
 public:
-    enum {
+    enum : int {
         kReconnectServerTimeMillSeconds = 10000,
-        kHeartbeatServerTimeMillSeconds = 15000,
+        kHeartbeatServerTimeMillSeconds = 12000,
     };
 
     struct ServerInstanceInfo {
@@ -66,7 +66,6 @@ public:
     void OnHandleSSHeartbeatReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSHeartbeatReq& heartbeat);
 
 private:
-    ServerInstanceInfo* GetConnectServerInstanceInfo(int32_t nServerType, int32_t nServerId);
     Session::session_id_t ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);
     void OnConnectSucess(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo, bool bSuccess);
     void OnDisconnect(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo);
@@ -83,7 +82,7 @@ private:
     XmlConfigModule* m_pXmlConfigModule = nullptr;
 
     std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapConnectServerList;
-    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapWholeServerList;
+    std::unordered_map<int32_t, std::map<int32_t, ServerInstanceInfo>> m_mapServerList;
 };
 
 TONY_CAT_SPACE_END
