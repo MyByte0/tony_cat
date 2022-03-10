@@ -39,7 +39,7 @@ void ServiceGovernmentModule::OnInit()
 void ServiceGovernmentModule::InitConfig()
 {
     m_mapConnectServerList.clear();
-    m_mapWholeServerList.clear();
+    m_mapServerList.clear();
     std::vector<int32_t> vecDestServers;
     auto pMap = m_pXmlConfigModule->MutableServerListConfigDataMap();
     if (nullptr == pMap) {
@@ -71,7 +71,7 @@ void ServiceGovernmentModule::InitConfig()
         AddressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
         AddressToIpPort(stServerListConfigData.strPublicIp, stServerInstanceInfo.strPublicIp, stServerInstanceInfo.nPublicPort);
 
-        m_mapWholeServerList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = stServerInstanceInfo;
+        m_mapServerList[stServerListConfigData.nServerType][stServerListConfigData.nServerIndex] = stServerInstanceInfo;
 
         if (std::find(vecDestServers.begin(), vecDestServers.end(), stServerListConfigData.nServerType)
             == vecDestServers.end()) {
@@ -131,7 +131,7 @@ void ServiceGovernmentModule::OnConnectSucess(Session::session_id_t nSessionId, 
         return;
     }
 
-    auto pServerInstanceInfo = GetConnectServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+    auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find server info, server type:{}, server index:{}", stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         return;
@@ -144,7 +144,7 @@ void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, con
 {
     LOG_WARN("server disconnect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}", stServerInstanceInfo.nSessionId,
         stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
-    auto pServerInstanceInfo = GetConnectServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+    auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find server info, server type:{}, server index:{}", stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         return;
@@ -156,6 +156,7 @@ void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, con
         LOG_ERROR("server disconnect on session:{}", pServerInstanceInfo->nSessionId);
     }
 
+    // when net session disconnect, restart connect work
     if (nullptr != pServerInstanceInfo->timerHeartbeat) {
         pServerInstanceInfo->timerHeartbeat->cancel();
         pServerInstanceInfo->timerHeartbeat = nullptr;
@@ -165,7 +166,7 @@ void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, con
         pServerInstanceInfo->timerReconnect = nullptr;
     }
     pServerInstanceInfo->timerReconnect = m_pModuleManager->GetMainLoop().ExecAfter(kReconnectServerTimeMillSeconds, [this, stServerInstanceInfo]() {
-        auto pServerInstanceInfo = GetConnectServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+        auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         pServerInstanceInfo->nSessionId = ConnectServerInstance(*pServerInstanceInfo);
     });
 }
@@ -188,7 +189,7 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(const ServerInstanceInf
     Pb::ServerHead headRsp;
     Pb::SSHeartbeatRsp msgRsp;
     co_await RpcModule::AwaitableRpcRequest(nSessionId, head, heartbeat, rspSessionId, headRsp, msgRsp);
-    auto pServerInstanceInfo = GetConnectServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+    auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find server info, server type:{}, server index:{}", stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         co_return;
@@ -199,7 +200,7 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(const ServerInstanceInf
         pServerInstanceInfo->timerHeartbeat = nullptr;
     }
     pServerInstanceInfo->timerHeartbeat = m_pModuleManager->GetMainLoop().ExecAfter(kHeartbeatServerTimeMillSeconds, [this, stServerInstanceInfo]() {
-        auto pServerInstanceInfo = GetConnectServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
+        auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
         if (nullptr != pServerInstanceInfo) {
             OnHeartbeat(*pServerInstanceInfo);
         }
@@ -212,14 +213,14 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(const ServerInstanceInf
         co_return;
     }
 
-    LOG_TRACE("server heartbeat request");
+    LOG_TRACE("server heartbeat send success ,serverType:{}, serverIndex:{}", stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
     co_return;
 }
 
 int32_t ServiceGovernmentModule::GetServerKeyIndex(int32_t nServerType, const ::std::string& strKey)
 {
-    auto itMapServerConnectList = m_mapConnectServerList.find(nServerType);
-    if (itMapServerConnectList == m_mapConnectServerList.end()) {
+    auto itMapServerConnectList = m_mapServerList.find(nServerType);
+    if (itMapServerConnectList == m_mapServerList.end()) {
         return 0;
     }
 
@@ -229,8 +230,8 @@ int32_t ServiceGovernmentModule::GetServerKeyIndex(int32_t nServerType, const ::
 
 ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerInstanceInfo(int32_t nServerType, int32_t nServerId)
 {
-    auto itMapServerList = m_mapWholeServerList.find(nServerType);
-    if (itMapServerList == m_mapWholeServerList.end()) {
+    auto itMapServerList = m_mapServerList.find(nServerType);
+    if (itMapServerList == m_mapServerList.end()) {
         return 0;
     }
 
@@ -243,25 +244,9 @@ ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerI
     return &itMapServerInfo->second;
 }
 
-ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetConnectServerInstanceInfo(int32_t nServerType, int32_t nServerId)
-{
-    auto itMapServerConnectList = m_mapConnectServerList.find(nServerType);
-    if (itMapServerConnectList == m_mapConnectServerList.end()) {
-        return 0;
-    }
-
-    auto& mapServerInfo = itMapServerConnectList->second;
-    auto itMapServerInfo = mapServerInfo.find(nServerId);
-    if (itMapServerInfo == mapServerInfo.end()) {
-        return 0;
-    }
-
-    return &itMapServerInfo->second;
-}
-
 Session::session_id_t ServiceGovernmentModule::GetServerSessionId(int32_t nServerType, int32_t nServerId)
 {
-    auto pServerInstanceInfo = GetConnectServerInstanceInfo(nServerType, nServerId);
+    auto pServerInstanceInfo = GetServerInstanceInfo(nServerType, nServerId);
     if (nullptr == pServerInstanceInfo) {
         return 0;
     }
@@ -280,11 +265,11 @@ void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessi
         head.set_error_code(1);
 
     } else {
-        auto pConnectServerInstanceInfo = GetConnectServerInstanceInfo(head.src_server_type(), head.src_server_index());
+        auto pConnectServerInstanceInfo = GetServerInstanceInfo(head.src_server_type(), head.src_server_index());
         if (nullptr == pConnectServerInstanceInfo) {
             LOG_INFO("on server connect, serverType:{}, serverIndex:{}", head.src_server_type(), head.src_server_index());
-            m_mapConnectServerList[head.src_server_type()].emplace(head.src_server_index(), *pSrcServerInstanceInfo);
-            pConnectServerInstanceInfo = &(m_mapConnectServerList[head.src_server_type()][head.src_server_index()]);
+            m_mapServerList[head.src_server_type()].emplace(head.src_server_index(), *pSrcServerInstanceInfo);
+            pConnectServerInstanceInfo = &(m_mapServerList[head.src_server_type()][head.src_server_index()]);
         }
 
         if (pConnectServerInstanceInfo->nSessionId != sessionId) {
@@ -294,6 +279,7 @@ void ServiceGovernmentModule::OnHandleSSHeartbeatReq(Session::session_id_t sessi
         }
     }
 
+    LOG_TRACE("receive heartbeat from server:{}, index:{}", head.src_server_type(), head.src_server_index());
     Pb::SSHeartbeatRsp msgHeartbeatRsp;
     msgHeartbeatRsp.set_req_time(heartbeat.req_time());
     m_pNetPbModule->SendPacket(sessionId, head, msgHeartbeatRsp);
