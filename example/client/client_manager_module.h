@@ -41,6 +41,7 @@ public:
 
 private:
     CoroutineTask<void> StartTestClient();
+    CoroutineAsyncTask<int32_t> CreateNewClient();
 
 private:
     std::unordered_map<ACCOUNT_ID, ClientDataPtr> m_mapClient;
