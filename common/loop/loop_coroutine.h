@@ -78,61 +78,88 @@ struct CoroutineTask<void> {
     ~CoroutineTask() { }
 };
 
+template <class T>
 struct CoroutineAsyncTask {
     struct promise_type {
-        CoroutineAsyncTask get_return_object()
+        auto get_return_object()
         {
-            return CoroutineAsyncTask();
+            return CoroutineAsyncTask(std::coroutine_handle<promise_type>::from_promise(*this));
         }
-        std::suspend_never initial_suspend() noexcept { return {}; }
-        void return_void() noexcept { }
-        std::suspend_never final_suspend() noexcept { return {}; }
-        void unhandled_exception() { }
+        std::suspend_always initial_suspend()
+        {
+            return {};
+        }
+        struct final_awaiter {
+            bool await_ready() noexcept
+            {
+                return false;
+            }
+            void await_resume() noexcept { }
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> h) noexcept
+            {
+                auto previous = h.promise().previous;
+                if (previous) {
+                    return previous;
+                } else {
+                    return std::noop_coroutine();
+                }
+            }
+        };
+        final_awaiter final_suspend() noexcept
+        {
+            return {};
+        }
+        void unhandled_exception()
+        {
+            throw;
+        }
+        void return_value(T value)
+        {
+            result = std::move(value);
+        }
+        T result;
+        std::coroutine_handle<> previous;
     };
-};
 
-struct AwaitableAsync {
-    typedef int RetType;
-    int m_nInit;
-    RetType m_result;
-
-    // call:
-    // --> Awaitable::Awaitable()
-    // --> await_ready()
-    // --> await_suspend() if await_ready()==false
-    // --> await_resume(),and co_await get result from await_resume()
-    // --> Awaitable::~Awaitable()
-    AwaitableAsync(int init)
-        : m_nInit(init)
-        , m_result()
+    CoroutineAsyncTask(std::coroutine_handle<promise_type> h)
+        : coro(h)
     {
     }
-
-    // if await_ready return true, await_suspend not be called.
-    bool await_ready() const { return false; }
-
-    void await_suspend(std::coroutine_handle<> handle)
+    CoroutineAsyncTask(CoroutineAsyncTask&& t) = delete;
+    ~CoroutineAsyncTask()
     {
-        handle.resume();
+        coro.destroy();
     }
 
-    RetType await_resume() { return m_result; }
-};
+    struct awaiter {
+        bool await_ready()
+        {
+            return false;
+        }
+        T await_resume()
+        {
+            return std::move(coro.promise().result);
+        }
+        auto await_suspend(std::coroutine_handle<> h)
+        {
+            coro.promise().previous = h;
+            return coro;
+        }
+        std::coroutine_handle<promise_type> coro;
+    };
 
-struct AwaitableGetCoroutineHandle {
-    typedef std::coroutine_handle<> RetType;
-    RetType m_result;
-    AwaitableGetCoroutineHandle() { }
-
-    bool await_ready() { return false; }
-
-    void await_suspend(std::coroutine_handle<> handle)
+    awaiter operator co_await()
     {
-        m_result = handle;
-        m_result.resume();
+        return awaiter { coro };
+    }
+    T operator()()
+    {
+        coro.resume();
+        return std::move(coro.promise().result);
     }
 
-    RetType await_resume() { return m_result; }
+private:
+    std::coroutine_handle<promise_type> coro;
 };
 
 struct AwaitableLoopSwitch {
@@ -191,116 +218,6 @@ struct AwaitableExecAfterOnLoop {
 private:
     uint32_t m_nWaitMillSecond;
     Loop& m_loop;
-};
-
-struct AwaitableAsyncFunction {
-    typedef std::function<CoroutineAsyncTask(std::coroutine_handle<>)> _TFunction;
-    _TFunction func_;
-    CoroutineAsyncTask m_result;
-
-    AwaitableAsyncFunction(_TFunction&& func)
-        : func_(std::move(func))
-    {
-    }
-    AwaitableAsyncFunction(const _TFunction& func)
-        : func_(func)
-    {
-    }
-
-    bool await_ready() const { return false; }
-
-    void await_suspend(std::coroutine_handle<> handle)
-    {
-        m_result = func_(handle); // handle.resume() called by func_
-    }
-
-    CoroutineAsyncTask await_resume() { return m_result; }
-};
-
-struct AwaitableSyncCall {
-    struct SyncCallCoroutineHandle { // could use unique_ptr and set deleter
-        SyncCallCoroutineHandle(std::coroutine_handle<> handle)
-            : handle_(handle)
-        {
-        }
-        SyncCallCoroutineHandle(const SyncCallCoroutineHandle& rValue)
-        {
-            if (handle_) {
-                handle_.resume();
-            }
-
-            handle_ = rValue.handle_;
-            rValue.handle_ = nullptr;
-        }
-        SyncCallCoroutineHandle(SyncCallCoroutineHandle&& rValue)
-        {
-            if (handle_) {
-                handle_.resume();
-            }
-
-            handle_ = rValue.handle_;
-            rValue.handle_ = nullptr;
-        }
-
-        SyncCallCoroutineHandle& operator=(const SyncCallCoroutineHandle& rValue)
-        {
-            if (handle_) {
-                handle_.resume();
-            }
-
-            handle_ = rValue.handle_;
-            rValue.handle_ = nullptr;
-            return *this;
-        }
-
-        SyncCallCoroutineHandle& operator=(SyncCallCoroutineHandle&& rValue)
-        {
-            if (handle_) {
-                handle_.resume();
-            }
-
-            handle_ = rValue.handle_;
-            rValue.handle_ = nullptr;
-            return *this;
-        }
-
-        ~SyncCallCoroutineHandle()
-        {
-            if (handle_) {
-                handle_.resume();
-            }
-        }
-
-    private:
-        mutable std::coroutine_handle<> handle_;
-    };
-
-    typedef std::function<CoroutineAsyncTask(SyncCallCoroutineHandle)> _TFunction;
-    _TFunction func_;
-    CoroutineAsyncTask m_result;
-    std::coroutine_handle<> handle_;
-
-    AwaitableSyncCall(_TFunction&& func)
-        : func_(std::move(func))
-    {
-    }
-    AwaitableSyncCall(const _TFunction& func)
-        : func_(func)
-    {
-    }
-
-    bool await_ready() const { return false; }
-
-    void await_suspend(std::coroutine_handle<> handle)
-    {
-        handle_ = handle;
-        m_result = func_(SyncCallCoroutineHandle(handle)); // handle.resume() on func_ return
-    }
-
-    CoroutineAsyncTask await_resume()
-    {
-        return m_result;
-    }
 };
 
 TONY_CAT_SPACE_END
