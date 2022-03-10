@@ -120,4 +120,9 @@ Loop& ModuleManager::GetMainLoop()
     return m_loop;
 }
 
+bool ModuleManager::OnMainLoop()
+{
+    return &ModuleManager::GetMainLoop() == &Loop::GetCurrentThreadLoop();
+}
+
 TONY_CAT_SPACE_END

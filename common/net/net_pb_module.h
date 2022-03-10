@@ -5,6 +5,7 @@
 #include "common/log/log_module.h"
 #include "common/loop/loop_coroutine.h"
 #include "common/module_base.h"
+#include "common/module_manager.h"
 #include "common/net/net_session.h"
 #include "common/utility/spin_lock.h"
 #include "protocol/client_base.pb.h"
@@ -36,10 +37,11 @@ public:
     virtual void OnUpdate() override;
 
 public:
-    enum {
-        enm_head_len = 12,
-        enm_packet_head_max_len = 16 * 1024,
-        enm_packet_body_max_cache = 64 * 1024,
+    enum : int {
+        kHeadLen = 12,
+        kPacketHeadMaxLen = 16 * 1024,
+        kPacketBodyMaxCache = 64 * 1024,
+        kPacketTTLDefaultvalue = 30,
     };
 
     void Listen(const std::string& strAddress, uint16_t addressPort);
@@ -129,6 +131,11 @@ private:
                 LOG_ERROR("recv pb packet head error, sessionId:{} type:{}", sessionId, msgType);
                 return false;
             }
+            if (!CheckHeadTTLError(msgPacketHead)) {
+                LOG_ERROR("recv pb packet ttl, sessionId:{} msgId:{}", sessionId, msgType);
+                return false;
+            }
+
             _TypeMsgPacketBody msgPacketBody;
             if (false == msgPacketBody.ParseFromArray(pData, int(pbPacketBodyLen))) [[unlikely]] {
                 LOG_ERROR("recv pb packet body error, sessionId:{} type:{}", sessionId, msgType);
@@ -162,7 +169,7 @@ public:
     {
         FillHeadCommon(packetHead);
         uint32_t msgType = _TypeMsgPacketBody::msgid;
-        char buffHead[sizeof(uint32_t) + enm_packet_head_max_len + enm_packet_body_max_cache];
+        char buffHead[sizeof(uint32_t) + kPacketHeadMaxLen + kPacketBodyMaxCache];
         char* pData = buffHead;
 
         // Serialize packetHead
@@ -192,7 +199,7 @@ public:
     bool SendPacket(Session::session_id_t sessionId, uint32_t msgType, _TypeMsgPacketHead& packetHead, const char* data, std::size_t length)
     {
         FillHeadCommon(packetHead);
-        char buffHead[sizeof(uint32_t) + enm_packet_head_max_len + enm_packet_body_max_cache];
+        char buffHead[sizeof(uint32_t) + kPacketHeadMaxLen + kPacketBodyMaxCache];
         char* pData = buffHead;
         // Serialize packetHead
         uint32_t pbPacketHeadLen = static_cast<uint32_t>(packetHead.ByteSizeLong());
@@ -219,16 +226,6 @@ public:
         _TypeRet (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&))
     {
         std::function<_TypeRet(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
-            = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-        RegisterHandle(funHandle);
-    }
-
-    // for CoroutineTask Function register, and thie Function args could not be ref
-    template <class _TypeClass, class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeRet>
-    void RegisterHandle(_TypeClass* pClass,
-        CoroutineTask<_TypeRet> (_TypeClass::*func)(Session::session_id_t, _TypeMsgPacketHead, _TypeMsgPacketBody))
-    {
-        std::function<void(Session::session_id_t, _TypeMsgPacketHead&, _TypeMsgPacketBody&)> funHandle
             = std::bind(func, pClass, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         RegisterHandle(funHandle);
     }
@@ -270,6 +267,9 @@ protected:
 private:
     void FillHeadCommon(Pb::ClientHead& packetHead);
     void FillHeadCommon(Pb::ServerHead& packetHead);
+    bool CheckHeadTTLError(Pb::ClientHead& packetHead);
+    bool CheckHeadTTLError(Pb::ServerHead& packetHead);
+    void GenTransId(std::string& strTransId);
 
 protected:
     std::unordered_map<uint32_t, FuncPacketHandleType> m_mapPackethandle;

@@ -6,6 +6,8 @@
 #include "common/service/service_government_module.h"
 #include "common/utility/crc.h"
 
+#include <ctime>
+
 TONY_CAT_SPACE_BEGIN
 
 NetPbModule* NetPbModule::m_pNetPbModule = nullptr;
@@ -27,6 +29,7 @@ void NetPbModule::BeforeInit()
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
 
+    assert(NetPbModule::m_pNetPbModule == nullptr);
     NetPbModule::m_pNetPbModule = this;
 }
 
@@ -57,7 +60,7 @@ Session::session_id_t NetPbModule::Connect(const std::string& strAddress, uint16
 bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf)
 {
     size_t readStart = 0;
-    while (buf.GetReadableSize() >= enm_head_len) {
+    while (buf.GetReadableSize() >= kHeadLen) {
         auto readBuff = buf.GetReadData();
         uint32_t checkCode = 0, msgType = 0;
         size_t packetLen = 0;
@@ -71,21 +74,21 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf)
             msgType = SwapUint32(*((uint32_t*)readBuff + 2));
         }
 
-        if (buf.GetReadableSize() < packetLen + enm_head_len) {
+        if (buf.GetReadableSize() < packetLen + kHeadLen) {
             break;
         }
 
-        uint32_t remoteCheck = CheckCode(readBuff + enm_head_len, packetLen);
+        uint32_t remoteCheck = CheckCode(readBuff + kHeadLen, packetLen);
         if (checkCode != remoteCheck) {
             LOG_ERROR("check code error, remote code: {}, remote data check: {}", checkCode, remoteCheck);
             return false;
         }
 
-        if (ReadPbPacket(sessionId, msgType, readBuff + enm_head_len, packetLen) == false) {
+        if (ReadPbPacket(sessionId, msgType, readBuff + kHeadLen, packetLen) == false) {
             LOG_ERROR("read msg fail, msgType:{}", msgType);
             return false;
         }
-        buf.RemoveData(packetLen + enm_head_len);
+        buf.RemoveData(packetLen + kHeadLen);
     }
 
     return true;
@@ -103,7 +106,7 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType, c
     }
 
     uint32_t checkCode = CheckCode(data, length);
-    uint8_t head[enm_head_len];
+    uint8_t head[kHeadLen];
     if constexpr (std::endian::native == std::endian::big) {
         *(uint32_t*)head = (uint32_t)length;
         *((uint32_t*)head + 1) = checkCode;
@@ -128,11 +131,11 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     if (lengthBody > 0xffffff) {
         return false;
     }
-    if (lengthHead > enm_packet_head_max_len) {
+    if (lengthHead > kPacketHeadMaxLen) {
         return false;
     }
 
-    uint8_t head[enm_head_len + enm_packet_head_max_len];
+    uint8_t head[kHeadLen + kPacketHeadMaxLen];
     uint32_t checkCode = CheckCode(dataHead, lengthHead, dataBody, lengthBody);
     if constexpr (std::endian::native == std::endian::big) {
         *(uint32_t*)head = (uint32_t)(lengthHead + lengthBody);
@@ -224,8 +227,44 @@ void NetPbModule::FillHeadCommon(Pb::ClientHead& packetHead)
 
 void NetPbModule::FillHeadCommon(Pb::ServerHead& packetHead)
 {
+    // set sent server info
     packetHead.set_src_server_type(m_pServiceGovernmentModule->GetServerType());
     packetHead.set_src_server_index(m_pServiceGovernmentModule->GetServerId());
+
+    //set request ttl
+    if (packetHead.ttl() == 0) {
+        packetHead.set_ttl(kPacketTTLDefaultvalue);
+    } else {
+        packetHead.set_ttl(packetHead.ttl() - 1);
+    }
+
+    // set teansId
+    if (packetHead.trans_id().empty()) {
+        GenTransId(*packetHead.mutable_trans_id());
+    }
+}
+
+bool NetPbModule::CheckHeadTTLError(Pb::ClientHead& packetHead)
+{
+    return true;
+}
+
+bool NetPbModule::CheckHeadTTLError(Pb::ServerHead& packetHead)
+{
+    bool bPass = packetHead.ttl() > 0;
+    if (!bPass) {
+        LOG_ERROR("check ttl error, serverType:{},ServerId:{},transId:{}", packetHead.src_server_type(), packetHead.src_server_index(), packetHead.trans_id());
+    }
+    return bPass;
+}
+
+void NetPbModule::GenTransId(std::string& strTransId)
+{
+    strTransId.clear();
+    static std::string strTransIdPrefix = std::to_string(m_pServiceGovernmentModule->GetServerType()).append(" - ").append(std::to_string(m_pServiceGovernmentModule->GetServerId())).append(std::to_string(time(nullptr)));
+    static int64_t nSuffix = 0;
+    ++nSuffix;
+    strTransId.append(strTransIdPrefix).append(std::to_string(nSuffix));
 }
 
 TONY_CAT_SPACE_END
