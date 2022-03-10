@@ -94,7 +94,7 @@ void ServiceGovernmentModule::InitConfig()
 void ServiceGovernmentModule::InitListen()
 {
     if (GetServerInfo().strServerIp.empty() || GetServerInfo().nPort == 0) {
-        LOG_ERROR("Get Server Address empty");
+        LOG_ERROR("Get App Address Empty");
         return;
     }
     m_pNetPbModule->Listen(GetServerInfo().strServerIp, GetServerInfo().nPort);

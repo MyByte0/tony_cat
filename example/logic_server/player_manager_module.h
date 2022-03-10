@@ -8,6 +8,7 @@
 #include "common/net/net_session.h"
 #include "protocol/client_common.pb.h"
 #include "protocol/server_base.pb.h"
+#include "protocol/server_db.pb.h"
 
 #include "game/data_define.h"
 
@@ -35,6 +36,9 @@ public:
 
 public:
     PlayerDataPtr GetPlayerData(const USER_ID& user_id);
+
+private:
+    bool LoadPlayerData(PlayerData& playerData, const Pb::SSQueryDataRsp& queryData);
 
 private:
     std::unordered_map<USER_ID, PlayerDataPtr> m_mapLoadingPlayer;
