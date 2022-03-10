@@ -9,6 +9,13 @@ message ClientHead
    int32     error_code = 3;
 }
 
+enum CSMessageCode
+{
+    cs_msg_success = 0;
+    cs_msg_not_find_user = 1;
+    cs_msg_user_loading = 2;
+}
+
 
 enum CSMessageId
 {
