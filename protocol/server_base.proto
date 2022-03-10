@@ -17,7 +17,8 @@ message ServerHead
 enum SSMessageCode
 {
     ss_msg_success = 0;
-    ss_msg_timeout = 1;
+    ss_msg_timeout = 0x40000000;
+    ss_msg_invalid_session = 0x40000001;
 }
 
 
