@@ -47,23 +47,40 @@ ClientManagerModule::ClientDataPtr ClientManagerModule::GetPlayerData(const ACCO
 CoroutineTask<void> ClientManagerModule::StartTestClient()
 {
     // waiting for server start
-    uint32_t nWaitMillSecond = 15000;
+    uint32_t nWaitMillSecond = 20000;
     co_await AwaitableExecAfter(nWaitMillSecond);
 
+    nWaitMillSecond = 1000;
+    for (int i = 0; i < 10; ++i) {
+        LOG_TRACE("start login client");
+        auto nResult = co_await CreateNewClient();
+        if (nResult != 0) {
+            LOG_ERROR("connect to server error:{}", nResult);
+        } else {
+            LOG_TRACE("start login success");
+        }
+    }
+}
+
+CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient()
+{
+    co_await AwaitableExecAfter(1000);
     // connect to gate server
     auto pServerInstanceInfo = m_pServiceGovernmentModule->GetServerInstanceInfo(ServerType::eTypeGateServer, 1);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find gate info");
-        co_return;
+        co_return 1;
     }
     LOG_TRACE("client login start");
     auto nSessionId = co_await NetPbModule::AwaitableConnect(pServerInstanceInfo->strPublicIp, pServerInstanceInfo->nPublicPort);
     if (0 == nSessionId) {
         LOG_ERROR("connect gate error, addr:{}, port:{}", pServerInstanceInfo->strPublicIp, pServerInstanceInfo->nPublicPort);
-        co_return;
+        co_return 1;
     }
 
-    ACCOUNT_ID strAccount = "test";
+    static int32_t s_nCLientNum = 0;
+
+    ACCOUNT_ID strAccount = std::string("test").append(std::to_string(++s_nCLientNum));
     auto pClientData = std::make_shared<ClientData>();
     pClientData->strAccount = strAccount;
     pClientData->nSessionId = nSessionId;
@@ -80,11 +97,11 @@ CoroutineTask<void> ClientManagerModule::StartTestClient()
     co_await RpcModule::AwaitableRpcRequest(nSessionId, head, req, nSessionIdRsp, headRsp, msgRsp);
     if (headRsp.error_code() != 0) {
         LOG_ERROR("login failed, client:{}", strAccount);
-        co_return;
+        co_return headRsp.error_code();
     }
 
-    LOG_TRACE("client login success");
-    co_return;
+    LOG_TRACE("client login success on:{}", strAccount);
+    co_return 0;
 }
 
 TONY_CAT_SPACE_END
