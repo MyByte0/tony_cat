@@ -26,6 +26,7 @@ public:
     void Run();
 
     Loop& GetMainLoop();
+    bool OnMainLoop();
 
 private:
     void UpdateModules();
