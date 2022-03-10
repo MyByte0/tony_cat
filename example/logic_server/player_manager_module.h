@@ -32,7 +32,7 @@ public:
     virtual void BeforeInit() override;
 
 public:
-    CoroutineTask<void> OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ServerHead head, Pb::CSPlayerLoginReq playerLoginReq);
+    void OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::CSPlayerLoginReq& playerLoginReq);
 
 public:
     PlayerDataPtr GetPlayerData(const USER_ID& user_id);

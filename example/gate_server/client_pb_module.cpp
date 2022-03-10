@@ -84,9 +84,9 @@ void ClientPbModule::OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, P
     playerLoginReq.token();
 
     // \TODO : check token fail return
-    // Get user_id
+    // Get user_id by token
 
-    USER_ID userId = "test";
+    USER_ID userId = playerLoginReq.user_name();
     auto sessionServer = m_pServiceGovernmentModule->GetServerSessionIdByKey(ServerType::eTypeLogicServer, userId);
     Pb::ServerHead headServer;
     headServer.set_user_id(userId);
