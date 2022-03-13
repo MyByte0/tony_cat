@@ -1,2 +1,2 @@
-
--style=WebKit
+Language: Cpp
+BasedOnStyle: WebKit
