@@ -6,9 +6,9 @@ using libasio, glog, libformat, libmysql.
   
 The linux environment on docker hub  
 debian os for developing:  
-https://hub.docker.com/repository/docker/mybyte0/dem_ser  
+https://hub.docker.com/repository/docker/mybyte0/tony_cat  
 for examlpe:  
-docker pull mybyte0/dem_ser:dev  
+docker pull docker pull mybyte0/tony_cat:v0.1  
 docker run -it --cap-add sys_ptrace -v /mnt/hgfs/proj/:/data/proj image_id /bin/bash  
   
 For Windows use vcpkg  
