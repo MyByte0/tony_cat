@@ -4,21 +4,33 @@ package Db;
 
 enum EDBConfigCommonPrimekeyDef
 {
-     db_common_primekey_invalid = 0;
-     db_common_primekey_max = 10;
+     db_common_tag_primekey_begin = 0;
+     db_common_tag_no_primekey_begin = 1000;       // field_num > db_common_tag_no_primekey_begin means not contain key
 }
 
 message UserBase
 {
-   string user_name = 100;
-   int64 update_time = 101;
+   string user_name = 1001;
+   int64 update_time = 1002;
 }
 
+message UserCount
+{
+   int32 count_type = 1;
+   int32 count_subtype = 2;
+   int32 count_value = 1001;
+   int64 count_tick = 1002;
+}
+
+message UserCountVector
+{
+   repeated UserCount user_count = 1;
+}
 
 message ZoneInfoDataElem
 {
-   string zone_name = 1;
-   int64 modify_time = 2;
+   string zone_name = 1001;
+   int64 modify_time = 1002;
 }
 
 
@@ -32,21 +44,23 @@ message UserZoneInfo
    map<int32, UserZoneInfoData> map_zoneid_zone_info = 1;
 }
 
-enum EPrimeKeyUserDataDef
+// tables data
+enum EDBConfigCommonTableDef
 {
-     primekey_invalid_UserZoneInfo = 0;
-     primekey_map_count_UserZoneInfo = 2;
+     db_common_tag_table_begin = 0;
+     db_common_tag_table_primekey_begin = 1000;     // field_num > db_common_tag_table_primekey_begin means table has prime key
 }
 
 message UserData
 {
    string user_id = 1;
-   int64 has_flag = 11;
-   UserBase user_base = 100;
-   UserZoneInfo user_zoneinfo = 101;
+   UserCountVector user_counts = 1001;
+   UserZoneInfo user_zoneinfo = 1002;
+   UserBase user_base = 1003;
+
 }
 
 message KVData
 {
-   UserData user_data = 100;
+   UserData user_data = 1;
 }

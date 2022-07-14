@@ -55,7 +55,8 @@ void PlayerManagerModule::OnHandleCSPlayerLoginReq(Session::session_id_t session
     queryDataReq.set_user_id(head.user_id());
     auto querySessionId = m_pServiceGovernmentModule->GetServerSessionIdByKey(ServerType::eTypeDBServer, head.user_id());
     // respond msg data
-    return m_pRpcModule->RpcRequest(querySessionId, head, queryDataReq, [=, this](Session::session_id_t nSessionIdRsp, Pb::ServerHead& headRsp, Pb::SSQueryDataRsp& msgRsp) mutable {
+    return m_pRpcModule->RpcRequest(querySessionId, head, queryDataReq, 
+        [=, this](Session::session_id_t nSessionIdRsp, Pb::ServerHead& headRsp, Pb::SSQueryDataRsp& msgRsp) mutable {
         do {
             if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
                 LOG_ERROR("user loading failed, user_id:{}, error:{}", head.user_id(), head.error_code());

@@ -246,7 +246,7 @@ def gen_code(argv):
         cpp_file_write.write('\n        }')
         cpp_file_write.write('\n    }')
     
-    cpp_file_write.write('\n        return true;')
+    cpp_file_write.write('\n    return true;')
     
     # function define end
     cpp_file_write.write('\n}')

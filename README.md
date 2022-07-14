@@ -1,10 +1,10 @@
-# server_cat  
+# server_demo  
   
 It is a multi-platform server frame base on c++20.  
-using libasio, glog, libformat(on gcc).  
-wiki: https://github.com/MyByte0/tony_cat/wiki  
+using libasio, glog, libformat, libmysql.  
+ 
   
-The linux environment on doker hub  
+The linux environment on docker hub  
 debian os for developing:  
 https://hub.docker.com/repository/docker/mybyte0/dem_ser  
 for examlpe:  
@@ -14,13 +14,12 @@ docker run -it --cap-add sys_ptrace -v /mnt/hgfs/proj/:/data/proj image_id /bin/
 For Windows use vcpkg  
   
 vcpkg install asio:x64-windows   
-vcpkg install fmt:x64-windows  
-vcpkg install glog:x64-windows  
+vcpkg install fmt:x64-windows
+vcpkg install glog:x64-windows
 vcpkg install tinyxml2:x64-windows  
 vcpkg install protobuf:x64-windows  
-  
-  
+vcpkg install libmysql:x64-windows  
   
 install python3 and openpyxl  
   
-open the project with cmake   
+open the project with cmake  

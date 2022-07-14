@@ -43,15 +43,42 @@ private:
 
 private:
     struct DBKeyValue {
-        bool bPrimeKey = false;
+        enum EDBValueType{
+            eTypeInvalid = 0,
+            eTypeBool = 1,
+            eTypeInt = 2,
+            eTypeUint = 3,
+            eTypeBigInt = 4,
+            eTypeBigUint = 5,
+            eTypeFloat = 6,
+            eTypeDouble = 7,
+            eTypeString = 8,
+            eTypeBinary = 9,
+        };
+        EDBValueType eType = eTypeInvalid;
         std::string strKey;
         std::string strValue;
     };
-    void PaserProto(const google::protobuf::Message& message);
-    void PaserProtoBasePrimeKey(std::vector<DBKeyValue>& vecCommonKeys, const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& strKayName);
-    void PaserMapProto(std::vector<DBKeyValue>& vecResult, int nPrimeKeyCnt, const google::protobuf::Message& message);
-    void PaserMsgProto(std::vector<DBKeyValue>& vecResult, const google::protobuf::Message& message);
-    std::string GetStringValue(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
+
+    struct DBRecord {
+        std::vector<DBKeyValue> vecPriKeyFields;
+        std::vector<DBKeyValue> vecValueFields;
+    };
+    
+    typedef std::map<std::string, std::vector<DBRecord>> MapTableRecord;
+
+    void PaserProtoTables(const google::protobuf::Message& message, MapTableRecord& mapTableRecord);
+
+    void PaserMsgProto(const std::vector<DBKeyValue>& vecPriKeys, std::vector<DBRecord>& vecResultList, 
+        const google::protobuf::Message& message, bool bWithValue = true);
+    void PaserMapProto(const std::vector<DBKeyValue>& vecPriKeys, std::vector<DBRecord>& vecResultList,
+        const google::protobuf::Message& message, bool bWithValue = true);
+
+    bool IsProtoBasePrimeKeyType(const google::protobuf::FieldDescriptor& fieldDescriptor);
+    void PaserProtoBasePrimeKey(std::vector<DBKeyValue>& vecCommonKeys, const google::protobuf::Message& message,
+        const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& strKayName);
+    std::string PaserStringValue(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
+    DBKeyValue::EDBValueType GetDBType(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
 
 private:
     NetPbModule* m_pNetPbModule = nullptr;
