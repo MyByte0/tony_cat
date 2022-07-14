@@ -46,7 +46,7 @@ message SSQueryDataRsp
         msgid = 0x40010004;
    }
 
-   Db.UserBase user_base = 1;
+   Db.UserData user_data = 1;
 }
 
 

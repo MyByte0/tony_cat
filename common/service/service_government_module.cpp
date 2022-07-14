@@ -224,6 +224,7 @@ int32_t ServiceGovernmentModule::GetServerKeyIndex(int32_t nServerType, const ::
         return 0;
     }
 
+    // \TODO fix: ServerIndex calculate
     auto& mapServerInfo = itMapServerConnectList->second;
     return (std::size_t(CRC32(strKey)) % mapServerInfo.size()) + 1;
 }

@@ -42,6 +42,7 @@ SET(LIB_DEPEND
 	${LIB_DEPEND}
 	glog::glog
 	tinyxml2::tinyxml2
+	
 )
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -49,16 +50,20 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	SET(LIB_DEPEND
 	${LIB_DEPEND}
 	${Protobuf_LIBRARIES}
+	"-lmysqlclient"
 	)
+
 endif()
 
 if(MSVC)
     FIND_PACKAGE(Protobuf CONFIG REQUIRED)
 	FIND_PACKAGE(fmt)
+	FIND_PACKAGE(libmysql REQUIRED)
 	SET(LIB_DEPEND
 		${LIB_DEPEND}
 		fmt::fmt
 		protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
+		${MYSQL_LIBRARIES}
 	)
 endif()
 

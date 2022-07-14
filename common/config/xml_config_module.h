@@ -1,7 +1,8 @@
 #ifndef XML_CONFIG_MODULE_H_
 #define XML_CONFIG_MODULE_H_
 
-#include "ServerListConfigData.h"
+#include "common/config/data/ServerListConfigData.h"
+#include "common/config/data/DataBaseConfigData.h"
 
 #include "common/core_define.h"
 #include "common/log/log_module.h"
@@ -9,6 +10,7 @@
 
 #include <tinyxml2.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <ctime>
 #include <map>
@@ -16,9 +18,6 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef _WIN32
-#include <algorithm>
-#endif
 
 TONY_CAT_SPACE_BEGIN
 
@@ -80,12 +79,11 @@ public:
             return false;
         }
 #endif
-        tinyxml2::XMLElement* root = doc.RootElement();
-        for (tinyxml2::XMLElement* elementNode = root->FirstChildElement("element"); elementNode != nullptr;
-             elementNode = elementNode->NextSiblingElement()) {
+        for (const tinyxml2::XMLElement* pElementNode = FirstSiblingElement(doc); pElementNode != nullptr;
+             pElementNode = NextSiblingElement(*pElementNode)) {
             _TConfgData stConfgData;
-            for (const tinyxml2::XMLAttribute* pXMLAttribute = elementNode->FirstAttribute();
-                 pXMLAttribute != nullptr; pXMLAttribute = pXMLAttribute->Next()) {
+            for (const tinyxml2::XMLAttribute* pXMLAttribute = FirstAttribute(*pElementNode);
+                 pXMLAttribute != nullptr; pXMLAttribute = NextAttribute(*pXMLAttribute)) {
                 if (false == stConfgData.LoadXmlElement(pXMLAttribute)) {
                     LOG_ERROR("Paser error on:{}", xmlPath);
                     return false;
@@ -96,7 +94,17 @@ public:
         return true;
     }
 
+private:
+    static const tinyxml2::XMLElement* FirstSiblingElement(tinyxml2::XMLDocument& doc); 
+    static const tinyxml2::XMLElement* NextSiblingElement(const tinyxml2::XMLElement& elementNode); 
+
+    static const tinyxml2::XMLAttribute* FirstAttribute(const tinyxml2::XMLElement& elementNode); 
+    static const tinyxml2::XMLAttribute* NextAttribute(const tinyxml2::XMLAttribute& elementAttribute); 
+
+public:
     DEFINE_CONFIG_DATA(ServerListConfigData, CONFIG_PATH_COMMON_PREFIX "config/xml/ServerList.xml");
+    DEFINE_CONFIG_DATA(DataBaseConfigData, CONFIG_PATH_COMMON_PREFIX "config/xml/DataBase.xml");
+
 };
 
 TONY_CAT_SPACE_END
