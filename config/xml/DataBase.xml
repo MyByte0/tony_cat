@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+	<element Id="10001" DatabaseType="mysql" IP="192.168.137.128" Port="3306" User="root" Password="123456" />
+</root>
