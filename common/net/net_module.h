@@ -20,7 +20,7 @@ TONY_CAT_SPACE_BEGIN
 class NetPbModule;
 
 class NetModule : public ModuleBase {
- public:
+public:
     explicit NetModule(ModuleManager* pModuleManager);
     virtual ~NetModule();
 
@@ -28,13 +28,16 @@ class NetModule : public ModuleBase {
     void OnInit() override;
     void OnStop() override;
 
- public:
+public:
     typedef std::function<bool(Session::session_id_t, SessionBuffer&)>
         FunNetRead;
 
     enum int32_t {
         kDefaultTimeoutMillseconds = 3 * 60 * 1000,
+        kReorganizeRate = 2,
     };
+
+    static_assert(kReorganizeRate > 1, "ReorganizeRate wrong!");
 
     LoopPtr GetDefaultListenLoop() {
         if (m_defaultListenLoop == nullptr) {
@@ -46,7 +49,7 @@ class NetModule : public ModuleBase {
 
     void Listen(AcceptorPtr pAcceptor);
     void Connect(
-        const std::string& strAddress, uint16_t addressPort,
+        const std::string& strAddress, uint16_t addressPort, Loop& loopRun,
         const Session::FunSessionRead& funOnSessionRead,
         const Session::FunSessionConnect& funOnSessionConnect = nullptr,
         const Session::FunSessionClose& funOnSessionClose = nullptr);
@@ -59,14 +62,14 @@ class NetModule : public ModuleBase {
 
     bool SessionSend(SessionPtr pSession) { return DoSessionWrite(pSession); }
 
- private:
+private:
     void Accept(AcceptorPtr pAcceptor);
     Session::session_id_t CreateSessionId();
     void RemoveMapSession(Session::session_id_t sessionId);
     bool OnReadSession(AcceptorPtr pAcceptor, Session::session_id_t sessionId,
                        SessionBuffer& buff);
 
- private:
+private:
     void HandleSessionRead(SessionPtr pSession);
     void DoSessionConnect(
         SessionPtr pSession, asio::ip::tcp::endpoint& address,
@@ -78,7 +81,7 @@ class NetModule : public ModuleBase {
 
     void DoTimerSessionReadTimeout(Session::session_id_t sessionId);
 
- private:
+private:
     // sessions for main loop manager
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
     static THREAD_LOCAL_VAR

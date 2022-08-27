@@ -80,8 +80,9 @@ void NetHttpModule::Connect(
     const std::string& strAddress, uint16_t addressPort,
     const Session::FunSessionConnect& funOnSessionConnect /* = nullptr*/,
     const Session::FunSessionClose& funOnSessionClose /* = nullptr*/) {
+    static uint64_t cnt = 0;
     m_pNetModule->Connect(
-        strAddress, addressPort,
+        strAddress, addressPort, *m_workLoop->GetLoop(cnt++),
         std::bind(&NetHttpModule::ReadData, this, std::placeholders::_1,
                   std::placeholders::_2),
         funOnSessionConnect, funOnSessionClose);
@@ -146,16 +147,19 @@ bool NetHttpModule::WriteData(Session::session_id_t sessionId,
         return false;
     }
 
-    pSession->WriteAppend(Http::Reply::ToErrorHead(respond.statusCode));
-    for (auto& [name, value] : respond.headers) {
-        pSession->WriteAppend(name);
-        pSession->WriteAppend(s_name_value_separator);
-        pSession->WriteAppend(value);
+    pSession->GetLoop().Exec([this, pSession, respond]() {
+        pSession->WriteAppend(Http::Reply::ToErrorHead(respond.statusCode));
+        for (auto& [name, value] : respond.headers) {
+            pSession->WriteAppend(name);
+            pSession->WriteAppend(s_name_value_separator);
+            pSession->WriteAppend(value);
+            pSession->WriteAppend(s_crlf);
+        }
         pSession->WriteAppend(s_crlf);
-    }
-    pSession->WriteAppend(s_crlf);
-    pSession->WriteAppend(respond.content);
-    m_pNetModule->SessionSend(pSession);
+        pSession->WriteAppend(respond.content);
+        m_pNetModule->SessionSend(pSession);
+    });
+
     return true;
 }
 
