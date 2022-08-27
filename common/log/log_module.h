@@ -90,24 +90,24 @@ TONY_CAT_SPACE_END
         }                                                          \
     } while (false)
 
-#define LOG_INFO(_STR_FMT_TEXT, ...)                           \
-    do {                                                       \
-        LOG(INFO) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
+#define LOG_INFO(_STR_FMT_TEXT, ...)                                       \
+    do {                                                                   \
+        LOG(INFO) << "INFO: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
 
-#define LOG_WARN(_STR_FMT_TEXT, ...)                              \
-    do {                                                          \
-        LOG(WARNING) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
+#define LOG_WARN(_STR_FMT_TEXT, ...)                                          \
+    do {                                                                      \
+        LOG(WARNING) << "WARN: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
 
-#define LOG_ERROR(_STR_FMT_TEXT, ...)                           \
-    do {                                                        \
-        LOG(ERROR) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
+#define LOG_ERROR(_STR_FMT_TEXT, ...)                                        \
+    do {                                                                     \
+        LOG(ERROR) << "ERROR: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
 
-#define LOG_FATAL(_STR_FMT_TEXT, ...)                           \
-    do {                                                        \
-        LOG(FATAL) << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
+#define LOG_FATAL(_STR_FMT_TEXT, ...)                                        \
+    do {                                                                     \
+        LOG(FATAL) << "FATAL: " << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__); \
     } while (false)
 
 #endif  // COMMON_LOG_LOG_MODULE_H_
