@@ -2,6 +2,7 @@
 
 #include <csignal>
 
+#include "app/game/server_define.h"
 #include "client_pb_module.h"
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
@@ -12,7 +13,6 @@
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
 #include "common/utility/magic_enum.h"
-#include "app/game/server_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
@@ -54,12 +54,12 @@ void GateServerApp::InitModule(int32_t nServerIndex) {
     auto pServiceGovernmentModule =
         FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerInstance(
-        magic_enum::enum_name(ServerType::GateServer),
-        ServerType::GateServer, nServerIndex);
-    auto pLogModule =
-        FIND_MODULE(&m_moduleManager, LogModule);
+        magic_enum::enum_name(ServerType::GateServer), ServerType::GateServer,
+        nServerIndex);
+    auto pLogModule = FIND_MODULE(&m_moduleManager, LogModule);
     pLogModule->SetLogName(
-        std::string(magic_enum::enum_name(ServerType::GateServer)).append(std::to_string(nServerIndex)));
+        std::string(magic_enum::enum_name(ServerType::GateServer))
+            .append(std::to_string(nServerIndex)));
 
     m_moduleManager.Init();
 
