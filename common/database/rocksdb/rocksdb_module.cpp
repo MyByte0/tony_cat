@@ -57,6 +57,11 @@ void RocksDBModule::BeforeInit() {
         LOG_ERROR("get DataBase strAddress empty {}", strDBType);
         return;
     }
+
+    m_strDBInstanceName = m_pServiceGovernmentModule->GetServerName();
+    m_strDBInstanceName.append(
+        std::to_string(m_pServiceGovernmentModule->GetServerId()));
+
     if (!std::filesystem::exists(pDataBaseConfig->strAddress)) {
         std::filesystem::create_directories(pDataBaseConfig->strAddress);
     }
@@ -68,16 +73,13 @@ void RocksDBModule::BeforeInit() {
     InitRocksDb(*pDataBaseConfig);
 }
 
-void RocksDBModule::OnInit() {
-    m_strDBInstanceName = m_pServiceGovernmentModule->GetServerName();
-    m_strDBInstanceName.append(
-        std::to_string(m_pServiceGovernmentModule->GetServerId()));
-}
+void RocksDBModule::OnInit() {}
 
 void RocksDBModule::AfterStop() {
     m_loopPool.Broadcast([=, this]() {
         if (rocksdb::DB* db = GetThreadRocksDB(); db != nullptr) {
             db->Close();
+            delete db;
             db = nullptr;
         }
     });
@@ -115,6 +117,7 @@ void RocksDBModule::DestoryDBToc(const DataBaseConfigData& dataBaseConfigData,
                                  rocksdb::DB* pRocksDB) {
     if (pRocksDB != nullptr) {
         pRocksDB->Close();
+        delete pRocksDB;
     }
 }
 
