@@ -9,6 +9,7 @@
 #include "common/core_define.h"
 #include "common/loop/loop_coroutine.h"
 #include "common/module_base.h"
+#include "common/net/net_memory_pool.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "common/var_define.h"
@@ -84,9 +85,10 @@ public:
                                              int32_t nServerId);
     Session::session_id_t GetServerSessionIdByKey(int32_t nServerType,
                                                   const std::string& strKey);
-    void OnHandleSSHeartbeatReq(Session::session_id_t sessionId,
-                                Pb::ServerHead& head,
-                                Pb::SSHeartbeatReq& heartbeat);
+    void OnHandleSSHeartbeatReq(
+        Session::session_id_t sessionId,
+        NetMemoryPool::PacketNode<Pb::ServerHead> head,
+        NetMemoryPool::PacketNode<Pb::SSHeartbeatReq> heartbeat);
 
 private:
     void ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);

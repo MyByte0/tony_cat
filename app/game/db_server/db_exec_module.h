@@ -11,6 +11,7 @@
 #include "common/core_define.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
+#include "common/net/net_memory_pool.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "protoc/db_data.pb.h"
@@ -43,12 +44,12 @@ class NetModule;
 class ServiceGovernmentModule;
 
 class DBExecModule : public ModuleBase {
- public:
+public:
     explicit DBExecModule(ModuleManager* pModuleManager);
     ~DBExecModule();
     void BeforeInit() override;
 
- public:
+public:
     typedef std::string USER_ID;
 
     struct GateUserInfo {
@@ -58,14 +59,17 @@ class DBExecModule : public ModuleBase {
 
     typedef std::shared_ptr<GateUserInfo> GateUserInfoPtr;
 
- private:
-    void OnHandleSSSaveDataReq(Session::session_id_t sessionId,
-                               Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq);
-    void OnHandleSSQueryDataReq(Session::session_id_t sessionId,
-                                Pb::ServerHead& head,
-                                Pb::SSQueryDataReq& msgReq);
+private:
+    void OnHandleSSSaveDataReq(
+        Session::session_id_t sessionId,
+        NetMemoryPool::PacketNode<Pb::ServerHead> head,
+        NetMemoryPool::PacketNode<Pb::SSSaveDataReq> msgReq);
+    void OnHandleSSQueryDataReq(
+        Session::session_id_t sessionId,
+        NetMemoryPool::PacketNode<Pb::ServerHead> head,
+        NetMemoryPool::PacketNode<Pb::SSQueryDataReq> msgReq);
 
- private:
+private:
     NetPbModule* m_pNetPbModule = nullptr;
     DBModule* m_pDBModule = nullptr;
 };

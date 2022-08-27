@@ -35,7 +35,7 @@ void RpcModule::OnStop() {
 int64_t RpcModule::GenQueryId() {
     // \TODO: if server restart, cause duplicate QueryId
     ++m_nQueryId;
-    LOG_TRACE("add query_id:{}", m_nQueryId);
+    LOG_TRACE("add queryId: {}", m_nQueryId);
     return m_nQueryId;
 }
 

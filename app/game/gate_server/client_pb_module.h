@@ -10,6 +10,7 @@
 #include "common/core_define.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
+#include "common/net/net_memory_pool.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "game/data_define.h"
@@ -23,13 +24,13 @@ class RpcModule;
 class ServiceGovernmentModule;
 
 class ClientPbModule : public NetPbModule {
- public:
+public:
     explicit ClientPbModule(ModuleManager* pModuleManager);
     ~ClientPbModule();
     void BeforeInit() override;
     void OnInit() override;
 
- public:
+public:
     struct GateUserInfo {
         USER_ID userId;
         Session::session_id_t userSessionId;
@@ -37,7 +38,7 @@ class ClientPbModule : public NetPbModule {
 
     typedef std::shared_ptr<GateUserInfo> GateUserInfoPtr;
 
- private:
+private:
     void OnClientMessage(Session::session_id_t clientSessionId,
                          uint32_t msgType, const char* data,
                          std::size_t length);
@@ -45,9 +46,10 @@ class ClientPbModule : public NetPbModule {
                          uint32_t msgType, const char* data,
                          std::size_t length);
 
-    void OnHandleCSPlayerLoginReq(Session::session_id_t sessionId,
-                                  Pb::ClientHead& head,
-                                  Pb::CSPlayerLoginReq& playerLoginReq);
+    void OnHandleCSPlayerLoginReq(
+        Session::session_id_t sessionId,
+        NetMemoryPool::PacketNode<Pb::ClientHead> head,
+        NetMemoryPool::PacketNode<Pb::CSPlayerLoginReq> playerLoginReq);
 
     bool OnUserLogin(Session::session_id_t clientSessionId, USER_ID userId);
     bool OnUserLogout(USER_ID userId, bool bKick);
@@ -55,10 +57,10 @@ class ClientPbModule : public NetPbModule {
     GateUserInfoPtr GetGateUserInfoBySessionId(
         Session::session_id_t clientSessionId);
 
- private:
+private:
     RpcModule* m_pRpcModule = nullptr;
 
- private:
+private:
     std::unordered_map<Session::session_id_t, GateUserInfoPtr>
         m_mapSessionUserInfo;
     std::unordered_map<USER_ID, GateUserInfoPtr> m_mapUserInfo;

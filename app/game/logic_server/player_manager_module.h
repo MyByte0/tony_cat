@@ -11,6 +11,7 @@
 #include "common/loop/loop_coroutine.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
+#include "common/net/net_memory_pool.h"
 #include "common/net/net_session.h"
 #include "game/data_define.h"
 #include "protoc/server_db.pb.h"
@@ -24,29 +25,30 @@ class NetPbModule;
 class ServiceGovernmentModule;
 
 class PlayerManagerModule : public ModuleBase {
- public:
+public:
     explicit PlayerManagerModule(ModuleManager* pModuleManager);
     ~PlayerManagerModule();
 
     void BeforeInit() override;
 
- public:
-    void OnHandleCSPlayerLoginReq(Session::session_id_t sessionId,
-                                  Pb::ServerHead& head,
-                                  Pb::CSPlayerLoginReq& playerLoginReq);
+public:
+    void OnHandleCSPlayerLoginReq(
+        Session::session_id_t sessionId,
+        NetMemoryPool::PacketNode<Pb::ServerHead> head,
+        NetMemoryPool::PacketNode<Pb::CSPlayerLoginReq> playerLoginReq);
 
- public:
+public:
     PlayerDataPtr GetPlayerData(const USER_ID& user_id);
 
- private:
+private:
     bool LoadPlayerData(PlayerData& playerData,
                         const Pb::SSQueryDataRsp& queryData);
 
- private:
+private:
     std::unordered_map<USER_ID, PlayerDataPtr> m_mapLoadingPlayer;
     std::unordered_map<USER_ID, PlayerDataPtr> m_mapOnlinePlayer;
 
- private:
+private:
     RpcModule* m_pRpcModule = nullptr;
     NetPbModule* m_pNetPbModule = nullptr;
     ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;

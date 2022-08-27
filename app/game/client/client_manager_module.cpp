@@ -61,7 +61,7 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
     static int32_t s_nCLientNum = 0;
     auto nCurClient = ++s_nCLientNum;
 
-    co_await AwaitableExecAfter(1000);
+    co_await AwaitableExecAfter(10);
     // connect to gate server
     auto pServerInstanceInfo =
         m_pServiceGovernmentModule->GetServerInstanceInfo(
@@ -88,9 +88,9 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
     m_mapClient.emplace(strAccount, pClientData);
 
     // msg request
-    Pb::ClientHead head;
-    Pb::CSPlayerLoginReq req;
-    req.set_user_name(strAccount);
+    auto head = NetMemoryPool::PacketCreate<Pb::ClientHead>();
+    auto req = NetMemoryPool::PacketCreate<Pb::CSPlayerLoginReq>();
+    req->set_user_name(strAccount);
     // msg respond
     // Session::session_id_t nSessionIdRsp;
     // Pb::ClientHead headRsp;
@@ -99,9 +99,9 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
         co_await RpcModule::AwaitableRpcFetch(Pb::CSPlayerLoginRsp, nSessionId,
                                               head, req);
     m_pNetModule->CloseInMainLoop(nSessionId);
-    if (headRsp.error_code() != 0) {
+    if (headRsp->error_code() != 0) {
         LOG_ERROR("login failed, client:{}", strAccount);
-        co_return headRsp.error_code();
+        co_return headRsp->error_code();
     }
 
     LOG_TRACE("client login success on:{}", strAccount);

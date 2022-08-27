@@ -48,7 +48,7 @@ void ClientPbModule::OnClientMessage(Session::session_id_t clientSessionId,
                                      uint32_t msgType, const char* data,
                                      std::size_t length) {
     if (msgType >= Pb::SSMessageId::ss_msgid_begin) {
-        LOG_WARN("client req invalid msg_id, session_id:{} msg_id:{}",
+        LOG_WARN("client req invalid msg_id, sessionId:{} msg_id:{}",
                  clientSessionId, msgType);
         return;
     }
@@ -63,11 +63,14 @@ void ClientPbModule::OnClientMessage(Session::session_id_t clientSessionId,
         LOG_ERROR("not find user info, clientSessionId:{}", clientSessionId);
         return;
     }
-    Pb::ServerHead serverHead;
-    serverHead.set_user_id(pUserInfo->userId);
+    auto pServerHead = NetMemoryPool::PacketCreate<Pb::ServerHead>();
+    pServerHead->set_user_id(pUserInfo->userId);
+
+    auto pbPacket = NetMemoryPool::PacketCreate<NetPbModule::StrData>(
+        pData, pbPacketBodyLen);
     SendPacket(m_pServiceGovernmentModule->GetServerSessionId(
                    ServerType::LogicServer, 1),
-               msgType, serverHead, pData, pbPacketBodyLen);
+               msgType, pServerHead, pbPacket);
 }
 
 void ClientPbModule::OnServerMessage(Session::session_id_t serverSessionId,
@@ -75,16 +78,17 @@ void ClientPbModule::OnServerMessage(Session::session_id_t serverSessionId,
                                      std::size_t length) {
     const char* pData = nullptr;
     std::size_t pbPacketBodyLen = 0;
-    Pb::ServerHead serverHead;
+    auto pServerHead = NetMemoryPool::PacketCreate<Pb::ServerHead>();
     // auto userId = serverHead.user_id();
-    PaserPbHead(data, length, serverHead, pData, pbPacketBodyLen);
+    PaserPbHead(data, length, *pServerHead, pData, pbPacketBodyLen);
 
     Pb::ClientHead clientHead;
     USER_ID userId;
     if (auto pUserInfo = GetGateUserInfoByUserId(userId);
         nullptr != pUserInfo) {
-        SendPacket(pUserInfo->userSessionId, msgType, serverHead, pData,
-                   pbPacketBodyLen);
+        auto pbPacket = NetMemoryPool::PacketCreate<NetPbModule::StrData>(
+            pData, pbPacketBodyLen);
+        SendPacket(pUserInfo->userSessionId, msgType, pServerHead, pbPacket);
     } else {
         LOG_ERROR("not find user info, userId:{}", userId);
     }
@@ -92,34 +96,37 @@ void ClientPbModule::OnServerMessage(Session::session_id_t serverSessionId,
 }
 
 void ClientPbModule::OnHandleCSPlayerLoginReq(
-    Session::session_id_t sessionId, Pb::ClientHead& head,
-    Pb::CSPlayerLoginReq& playerLoginReq) {
-    playerLoginReq.user_name();
-    playerLoginReq.token();
+    Session::session_id_t sessionId,
+    NetMemoryPool::PacketNode<Pb::ClientHead> head,
+    NetMemoryPool::PacketNode<Pb::CSPlayerLoginReq> playerLoginReq) {
+    playerLoginReq->user_name();
+    playerLoginReq->token();
 
     // \TODO : check token fail return
     // Get user_id by token
 
-    USER_ID userId = playerLoginReq.user_name();
+    USER_ID userId = playerLoginReq->user_name();
     auto sessionServer = m_pServiceGovernmentModule->GetServerSessionIdByKey(
         ServerType::LogicServer, userId);
-    Pb::ServerHead headServer;
-    headServer.set_user_id(userId);
+    auto pHeadServer = NetMemoryPool::PacketCreate<Pb::ServerHead>();
+    pHeadServer->set_user_id(userId);
     m_pRpcModule->RpcRequest(
-        sessionServer, headServer, playerLoginReq,
-        [this, sessionId, head](Session::session_id_t serverSessionId,
-                                Pb::ServerHead& headRsp,
-                                Pb::CSPlayerLoginRsp& queryDataRsp) mutable {
-            if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
+        sessionServer, pHeadServer, playerLoginReq,
+        [this, sessionId, head](
+            Session::session_id_t serverSessionId,
+            NetMemoryPool::PacketNode<Pb::ServerHead> headRsp,
+            NetMemoryPool::PacketNode<Pb::CSPlayerLoginRsp>
+                queryDataRsp) mutable {
+            if (headRsp->error_code() != Pb::SSMessageCode::ss_msg_success) {
                 LOG_ERROR(
                     "server PlayerLogin request error:{}, sessionId:{} user{}",
-                    headRsp.error_code(), serverSessionId, headRsp.user_id());
+                    headRsp->error_code(), serverSessionId, headRsp->user_id());
                 return;
             }
 
-            if (!OnUserLogin(sessionId, headRsp.user_id())) {
+            if (!OnUserLogin(sessionId, headRsp->user_id())) {
                 LOG_ERROR("server OnUserLogin user:{}, sessionId:{}",
-                          headRsp.user_id(), sessionId);
+                          headRsp->user_id(), sessionId);
                 return;
             }
 
@@ -138,7 +145,7 @@ bool ClientPbModule::OnUserLogin(Session::session_id_t clientSessionId,
     if (m_mapUserInfo.count(userId) > 0) {
         bool bKick = true;
         if (!OnUserLogout(userId, bKick)) {
-            LOG_ERROR("UserLogout faield, userId:{}, Session:{}", userId,
+            LOG_ERROR("UserLogout faield, userId:{}, SessionId:{}", userId,
                       clientSessionId);
         }
     }
@@ -164,10 +171,10 @@ bool ClientPbModule::OnUserLogout(USER_ID userId, bool bKick) {
         LOG_ERROR("user pUserInfo null, user:{}", userId);
         return false;
     }
-    LOG_INFO("user logout, user_id:{}, session:{}", userId,
+    LOG_INFO("user logout, user_id:{}, SessionId:{}", userId,
              pUserInfo->userSessionId);
     if (bKick) {
-        LOG_INFO("user kick out, user_id:{}, session:{}", userId,
+        LOG_INFO("user kick out, user_id:{}, SessionId:{}", userId,
                  pUserInfo->userSessionId);
         // \TODO:send kickout to old session
     }

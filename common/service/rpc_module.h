@@ -11,6 +11,7 @@
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
+#include "common/net/net_memory_pool.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
 #include "protocol/client_base.pb.h"
@@ -31,11 +32,12 @@ public:
 private:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
     struct RpcContext {
-        using PbFunction = std::function<void(Session::session_id_t sessionId,
-                                              _TypeMsgPacketHead& packetHead,
-                                              _TypeMsgPacketBody& packetBody)>;
-        std::unordered_map<int64_t, PbFunction> mapLastCallback;
-        std::unordered_map<int64_t, PbFunction> mapCurrentCallback;
+        using PbFunction = std::function<void(
+            Session::session_id_t sessionId,
+            NetMemoryPool::PacketNode<_TypeMsgPacketHead> packetHead,
+            NetMemoryPool::PacketNode<_TypeMsgPacketBody> packetBody)>;
+        std::unordered_map<uint64_t, PbFunction> mapLastCallback;
+        std::unordered_map<uint64_t, PbFunction> mapCurrentCallback;
     };
 
 public:
@@ -44,7 +46,7 @@ public:
     };
 
     template <class _TypeRpcContext>
-    auto InitRpcContextMap(uint32_t msgId) {
+    auto InitRpcContextMap(uint64_t msgId) {
         auto pRpcContext = new _TypeRpcContext();
         m_mapRpcContext[msgId] = pRpcContext;
         m_mapRpcContextDeleter[msgId] = [](void* pData) {
@@ -55,42 +57,53 @@ public:
     }
 
     template <class _TypeRpcContext>
-    auto GetRpcContext(uint32_t msgId) {
+    auto GetRpcContext(uint64_t msgId) {
         return reinterpret_cast<_TypeRpcContext*>(m_mapRpcContext[msgId]);
     }
 
     template <class _TypePbRspHead, class _TypePbRspBody, class _TypeRpcContext>
     void RegisterNetHandle() {
-        m_pNetPbModule->RegisterHandle([this](Session::session_id_t sessionId,
-                                              _TypePbRspHead& headRsp,
-                                              _TypePbRspBody& bodyRsp) {
-            assert(m_pModuleManager->OnMainLoop());
-            // find callBack of the query_id, and call
-            auto pRpcContext =
-                GetRpcContext<_TypeRpcContext>(_TypePbRspBody::msgid);
-            auto nRspQueryId = headRsp.query_id();
-            if (auto itContext =
-                    pRpcContext->mapCurrentCallback.find(nRspQueryId);
-                itContext != pRpcContext->mapCurrentCallback.end()) {
-                if (auto func = std::move(itContext->second); nullptr != func) {
-                    pRpcContext->mapCurrentCallback.erase(itContext);
-                    func(sessionId, headRsp, bodyRsp);
-                }
-            } else {
-                if (itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
-                    itContext != pRpcContext->mapLastCallback.end()) {
+        m_pNetPbModule->RegisterHandle(
+            [this](Session::session_id_t sessionId,
+                   NetMemoryPool::PacketNode<_TypePbRspHead> headRsp,
+                   NetMemoryPool::PacketNode<_TypePbRspBody> bodyRsp) {
+                uint64_t msgID = _TypePbRspBody::msgid;
+                assert(m_pModuleManager->OnMainLoop());
+                // find callBack of the query_id, and call
+                auto pRpcContext = GetRpcContext<_TypeRpcContext>(msgID);
+                auto nRspQueryId = headRsp->query_id();
+                if (auto itContext =
+                        pRpcContext->mapCurrentCallback.find(nRspQueryId);
+                    itContext != pRpcContext->mapCurrentCallback.end()) {
                     if (auto func = std::move(itContext->second);
                         nullptr != func) {
-                        pRpcContext->mapLastCallback.erase(itContext);
+                        pRpcContext->mapCurrentCallback.erase(itContext);
                         func(sessionId, headRsp, bodyRsp);
                     }
                 } else {
-                    LOG_ERROR(
-                        "can not find rpc callback, session:{}, query_id:{}",
-                        sessionId, nRspQueryId);
+                    if (itContext =
+                            pRpcContext->mapLastCallback.find(nRspQueryId);
+                        itContext != pRpcContext->mapLastCallback.end()) {
+                        if (auto func = std::move(itContext->second);
+                            nullptr != func) {
+                            pRpcContext->mapLastCallback.erase(itContext);
+                            func(sessionId, headRsp, bodyRsp);
+                        }
+                    } else {
+                        LOG_ERROR(
+                            "can not find rpc callback, msgType:{}, "
+                            "SessionId:{}, "
+                            "queryId: {}",
+                            msgID, sessionId, nRspQueryId);
+                        return;
+                    }
                 }
-            }
-        });
+
+                LOG_TRACE(
+                    "receive rpc callback, msgType:{}, SessionId:{}, "
+                    "queryId: {}",
+                    msgID, sessionId, nRspQueryId);
+            });
     }
 
     template <class _TypePbRspHead, class _TypePbRspBody, class _TypeRpcContext>
@@ -102,13 +115,16 @@ public:
                 auto pRpcContext = GetRpcContext<_TypeRpcContext>(msgId);
                 for (const auto& elemCallbacks : pRpcContext->mapLastCallback) {
                     auto nQueryId = elemCallbacks.first;
-                    LOG_ERROR("rpc timeout, msgid:{}, query_id:{}", msgId,
+                    LOG_ERROR("rpc timeout, msgid:{}, queryId: {}", msgId,
                               nQueryId);
                     const auto& func = elemCallbacks.second;
                     Session::session_id_t sessionId = 0;
-                    static _TypePbRspHead pbRspHead;
-                    static _TypePbRspBody pbRspBody;
-                    pbRspHead.set_error_code(Pb::SSMessageCode::ss_msg_timeout);
+                    NetMemoryPool::PacketNode<_TypePbRspHead> pbRspHead =
+                        NetMemoryPool::PacketCreate<_TypePbRspHead>();
+                    NetMemoryPool::PacketNode<_TypePbRspBody> pbRspBody =
+                        NetMemoryPool::PacketCreate<_TypePbRspBody>();
+                    pbRspHead->set_error_code(
+                        Pb::SSMessageCode::ss_msg_timeout);
                     func(sessionId, pbRspHead, pbRspBody);
                 }
                 pRpcContext->mapLastCallback.clear();
@@ -120,8 +136,8 @@ public:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody,
               class _TypeHandler>
     void RpcRequest(Session::session_id_t destSessionId,
-                    _TypeMsgPacketHead& pbPacketHead,
-                    const _TypeMsgPacketBody& msgBody,
+                    NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbPacketHead,
+                    NetMemoryPool::PacketNode<_TypeMsgPacketBody> msgBody,
                     const _TypeHandler& funcResult) {
         using GetFunctionMessage_t =
             typename NetPbModule::GetFunctionMessage_t<_TypeHandler>;
@@ -145,36 +161,37 @@ public:
 
         // store cb by query_id
         auto nCurrentQueryId = GenQueryId();
-        LOG_TRACE("request meseage:{}. query_id:{}", _TypeMsgPacketBody::msgid,
-                  nCurrentQueryId);
+        LOG_TRACE("request meseage:{} queryId: {}", msgId, nCurrentQueryId);
         auto pRpcContext = GetRpcContext<RspRpcContext>(msgId);
         pRpcContext->mapCurrentCallback.emplace(nCurrentQueryId,
                                                 PbRspFunction(funcResult));
-        pbPacketHead.set_query_id(nCurrentQueryId);
+        pbPacketHead->set_query_id(nCurrentQueryId);
         m_pNetPbModule->SendPacket(destSessionId, pbPacketHead, msgBody);
     }
 
     struct AwaitableRpcRequest {
         template <class _TypeMsgPacketHead, class _TypeMsgPacketBodyReq,
                   class _TypeMsgPacketBodyRsp>
-        AwaitableRpcRequest(Session::session_id_t destSessionId,
-                            _TypeMsgPacketHead& pbPacketHead,
-                            _TypeMsgPacketBodyReq& msgBody,
-                            Session::session_id_t& rspSessionId,
-                            _TypeMsgPacketHead& rspHead,
-                            _TypeMsgPacketBodyRsp& rspMsg)
-            : m_funSuspend([this, destSessionId, &pbPacketHead, &msgBody,
-                            &rspSessionId, &rspHead,
-                            &rspMsg](std::coroutine_handle<> handle) {
+        AwaitableRpcRequest(
+            Session::session_id_t destSessionId,
+            NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbPacketHead,
+            NetMemoryPool::PacketNode<_TypeMsgPacketBodyReq> msgBody,
+            Session::session_id_t& rspSessionId,
+            NetMemoryPool::PacketNode<_TypeMsgPacketHead> rspHead,
+            NetMemoryPool::PacketNode<_TypeMsgPacketBodyRsp> rspMsg)
+            : m_funSuspend([this, destSessionId, pbPacketHead, msgBody,
+                            &rspSessionId, rspHead,
+                            rspMsg](std::coroutine_handle<> handle) {
                   RpcModule::GetInstance()->RpcRequest(
                       destSessionId, pbPacketHead, msgBody,
-                      [this, handle, &rspSessionId, &rspHead, &rspMsg](
+                      [this, handle, &rspSessionId, rspHead, rspMsg](
                           Session::session_id_t sessionId,
-                          _TypeMsgPacketHead& pbHead,
-                          _TypeMsgPacketBodyRsp& pbRsp) {
+                          NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbHead,
+                          NetMemoryPool::PacketNode<_TypeMsgPacketBodyRsp>
+                              pbRsp) {
                           rspSessionId = sessionId;
-                          rspHead = pbHead;
-                          rspMsg = pbRsp;
+                          *rspHead = *pbHead;
+                          *rspMsg = *pbRsp;
                           handle.resume();
                       });
               }) {}
@@ -191,25 +208,28 @@ public:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBodyReq,
               class _TypeMsgPacketBodyRsp>
     struct AwaitableRpcFetchHelper {
-        AwaitableRpcFetchHelper(Session::session_id_t destSessionId,
-                                _TypeMsgPacketHead& pbPacketHead,
-                                _TypeMsgPacketBodyReq& msgBody)
+        AwaitableRpcFetchHelper(
+            Session::session_id_t destSessionId,
+            NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbPacketHead,
+            NetMemoryPool::PacketNode<_TypeMsgPacketBodyReq> msgBody)
             : destSessionId_(destSessionId),
               pbPacketHead_(pbPacketHead),
               msgBody_(msgBody){};
 
         bool await_ready() const { return false; }
         auto await_resume() {
-            return std::tuple<Session::session_id_t, _TypeMsgPacketHead,
-                              _TypeMsgPacketBodyRsp>{rspSessionId_, rspHead_,
-                                                     rspMsg_};
+            return std::tuple<Session::session_id_t,
+                              NetMemoryPool::PacketNode<_TypeMsgPacketHead>,
+                              NetMemoryPool::PacketNode<_TypeMsgPacketBodyRsp>>{
+                rspSessionId_, rspHead_, rspMsg_};
         }
         void await_suspend(std::coroutine_handle<> handle) {
             RpcModule::GetInstance()->RpcRequest(
                 destSessionId_, pbPacketHead_, msgBody_,
-                [this, handle](Session::session_id_t sessionId,
-                               _TypeMsgPacketHead& pbHead,
-                               _TypeMsgPacketBodyRsp& pbRsp) {
+                [this, handle](
+                    Session::session_id_t sessionId,
+                    NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbHead,
+                    NetMemoryPool::PacketNode<_TypeMsgPacketBodyRsp> pbRsp) {
                     rspSessionId_ = sessionId;
                     rspHead_ = pbHead;
                     rspMsg_ = pbRsp;
@@ -218,12 +238,12 @@ public:
         }
 
         Session::session_id_t destSessionId_;
-        _TypeMsgPacketHead& pbPacketHead_;
-        _TypeMsgPacketBodyReq& msgBody_;
+        NetMemoryPool::PacketNode<_TypeMsgPacketHead> pbPacketHead_;
+        NetMemoryPool::PacketNode<_TypeMsgPacketBodyReq> msgBody_;
 
         Session::session_id_t rspSessionId_;
-        _TypeMsgPacketHead rspHead_;
-        _TypeMsgPacketBodyRsp rspMsg_;
+        NetMemoryPool::PacketNode<_TypeMsgPacketHead> rspHead_;
+        NetMemoryPool::PacketNode<_TypeMsgPacketBodyRsp> rspMsg_;
     };
 
 private:
@@ -235,16 +255,16 @@ private:
     NetPbModule* m_pNetPbModule = nullptr;
 
     int64_t m_nQueryId = 0;
-    std::unordered_map<uint32_t, void*> m_mapRpcContext;
-    std::unordered_map<uint32_t, std::function<void(void*)>>
+    std::unordered_map<uint64_t, void*> m_mapRpcContext;
+    std::unordered_map<uint64_t, std::function<void(void*)>>
         m_mapRpcContextDeleter;
 };
 
-#define AwaitableRpcFetch(_TypeMsgPacketBodyRsp, _destSessionId,          \
-                          _pbPacketHead, _msgBody)                        \
-    AwaitableRpcFetchHelper<std::remove_cvref_t<decltype(_pbPacketHead)>, \
-                            std::remove_cvref_t<decltype(_msgBody)>,      \
-                            std::remove_cvref_t<_TypeMsgPacketBodyRsp>>(  \
+#define AwaitableRpcFetch(_TypeMsgPacketBodyRsp, _destSessionId,           \
+                          _pbPacketHead, _msgBody)                         \
+    AwaitableRpcFetchHelper<std::remove_cvref_t<decltype(*_pbPacketHead)>, \
+                            std::remove_cvref_t<decltype(*_msgBody)>,      \
+                            std::remove_cvref_t<_TypeMsgPacketBodyRsp>>(   \
         _destSessionId, _pbPacketHead, _msgBody);
 
 TONY_CAT_SPACE_END

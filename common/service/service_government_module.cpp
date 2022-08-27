@@ -150,9 +150,17 @@ void ServiceGovernmentModule::OnConnectSucess(
     Session::session_id_t nSessionId,
     const ServerInstanceInfo& stServerInstanceInfo, bool bSuccess) {
     if (bSuccess) {
-        LOG_INFO("server connect success, SessionId:{}, ", nSessionId);
+        LOG_INFO(
+            "server connect success, SessionId:{}, ServerType:{}, "
+            "ServerIndex:{}",
+            nSessionId, stServerInstanceInfo.nServerType,
+            stServerInstanceInfo.nServerIndex);
     } else {
-        LOG_WARN("server connect fail, SessionId:{}, ", nSessionId);
+        LOG_WARN(
+            "server connect fail, SessionId:{}, ServerType:{}, "
+            "ServerIndex:{}",
+            nSessionId, stServerInstanceInfo.nServerType,
+            stServerInstanceInfo.nServerIndex);
         OnDisconnect(nSessionId, stServerInstanceInfo);
         return;
     }
@@ -191,7 +199,7 @@ void ServiceGovernmentModule::OnDisconnect(
         pServerInstanceInfo->nSessionId == nSessionId) {
         pServerInstanceInfo->nSessionId = 0;
     } else {
-        LOG_ERROR("server disconnect on session:{}",
+        LOG_ERROR("server disconnect on sessionId:{}",
                   pServerInstanceInfo->nSessionId);
     }
 
@@ -217,24 +225,24 @@ void ServiceGovernmentModule::OnDisconnect(
 CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(
     ServerInstanceInfo stServerInstanceInfo) {
     auto nSessionId = stServerInstanceInfo.nSessionId;
-    Pb::ServerHead head;
-    Pb::SSHeartbeatReq heartbeat;
-    heartbeat.set_req_time(time(nullptr));
-    // m_pRpcModule->RpcRequest(nSessionId, head, heartbeat,
-    // [](Session::session_id_t sessionId, Pb::ServerHead& head,
-    // Pb::SSHeartbeatRsp& heartbeat) {
-    //    if (head.error_code() != Pb::SSMessageCode::ss_msg_success) {
-    //        LOG_ERROR("server heartbeat request timeout");
-    //        return;
-    //    }
-    //    LOG_TRACE("server heartbeat request");
-    //    });
+    auto head = NetMemoryPool::PacketCreate<Pb::ServerHead>();
+    auto pHeartbeat = NetMemoryPool::PacketCreate<Pb::SSHeartbeatReq>();
+    pHeartbeat->set_req_time(time(nullptr));
+    // m_pRpcModule->RpcRequest(
+    //     nSessionId, head, pHeartbeat,
+    //     [](Session::session_id_t sessionId,
+    //        NetMemoryPool::PacketNode<Pb::ServerHead> head,
+    //        NetMemoryPool::PacketNode<Pb::SSHeartbeatRsp> heartbeat) {
+    //         if (head->error_code() != Pb::SSMessageCode::ss_msg_success) {
+    //             LOG_ERROR("server heartbeat request timeout");
+    //             return;
+    //         }
+    //         LOG_TRACE("server heartbeat request");
+    //     });
 
-    Session::session_id_t rspSessionId = 0;
-    Pb::ServerHead headRsp;
-    Pb::SSHeartbeatRsp msgRsp;
-    co_await RpcModule::AwaitableRpcRequest(nSessionId, head, heartbeat,
-                                            rspSessionId, headRsp, msgRsp);
+    auto [rspSessionId, headRsp, msgRsp] =
+        co_await RpcModule::AwaitableRpcFetch(Pb::SSHeartbeatRsp, nSessionId,
+                                              head, pHeartbeat);
     auto pServerInstanceInfo = GetServerInstanceInfo(
         stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
     if (nullptr == pServerInstanceInfo) {
@@ -259,7 +267,7 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(
                 }
             });
 
-    if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
+    if (headRsp->error_code() != Pb::SSMessageCode::ss_msg_success) {
         LOG_ERROR("server heartbeat request timeout");
         m_pNetModule->CloseInMainLoop(nSessionId);
         OnDisconnect(nSessionId, stServerInstanceInfo);
@@ -317,41 +325,44 @@ Session::session_id_t ServiceGovernmentModule::GetServerSessionIdByKey(
 }
 
 void ServiceGovernmentModule::OnHandleSSHeartbeatReq(
-    Session::session_id_t sessionId, Pb::ServerHead& head,
-    Pb::SSHeartbeatReq& heartbeat) {
-    auto pSrcServerInstanceInfo =
-        GetServerInstanceInfo(head.src_server_type(), head.src_server_index());
+    Session::session_id_t sessionId,
+    NetMemoryPool::PacketNode<Pb::ServerHead> head,
+    NetMemoryPool::PacketNode<Pb::SSHeartbeatReq> heartbeat) {
+    auto pSrcServerInstanceInfo = GetServerInstanceInfo(
+        head->src_server_type(), head->src_server_index());
     if (nullptr == pSrcServerInstanceInfo) {
-        head.set_error_code(1);
+        head->set_error_code(1);
 
     } else {
         auto pConnectServerInstanceInfo = GetServerInstanceInfo(
-            head.src_server_type(), head.src_server_index());
+            head->src_server_type(), head->src_server_index());
         if (nullptr == pConnectServerInstanceInfo) {
-            LOG_INFO("on server connect, serverType:{}, serverIndex:{}",
-                     head.src_server_type(), head.src_server_index());
-            m_mapServerList[head.src_server_type()].emplace(
-                head.src_server_index(), *pSrcServerInstanceInfo);
+            LOG_INFO(
+                "on server connect, serverType:{}, serverIndex:{}, "
+                "sessionId:{}",
+                head->src_server_type(), head->src_server_index(), sessionId);
+            m_mapServerList[head->src_server_type()].emplace(
+                head->src_server_index(), *pSrcServerInstanceInfo);
             pConnectServerInstanceInfo =
-                &(m_mapServerList[head.src_server_type()]
-                                 [head.src_server_index()]);
+                &(m_mapServerList[head->src_server_type()]
+                                 [head->src_server_index()]);
         }
 
         if (pConnectServerInstanceInfo->nSessionId != sessionId) {
             LOG_INFO(
                 "on server session update, serverType:{}, serverIndex:{}, "
-                "oldSession:{}, newSession:{}",
-                head.src_server_type(), head.src_server_index(),
+                "oldSessionId:{}, newSessionId:{}",
+                head->src_server_type(), head->src_server_index(),
                 pConnectServerInstanceInfo->nSessionId, sessionId);
             pConnectServerInstanceInfo->nSessionId = sessionId;
         }
     }
 
-    LOG_TRACE("receive heartbeat from server:{}, index:{}",
-              head.src_server_type(), head.src_server_index());
-    Pb::SSHeartbeatRsp msgHeartbeatRsp;
-    msgHeartbeatRsp.set_req_time(heartbeat.req_time());
-    m_pNetPbModule->SendPacket(sessionId, head, msgHeartbeatRsp);
+    LOG_TRACE("receive heartbeat from server:{}, index:{} sessionId:{}",
+              head->src_server_type(), head->src_server_index(), sessionId);
+    auto pMsgHeartbeatRsp = NetMemoryPool::PacketCreate<Pb::SSHeartbeatRsp>();
+    pMsgHeartbeatRsp->set_req_time(heartbeat->req_time());
+    m_pNetPbModule->SendPacket(sessionId, head, pMsgHeartbeatRsp);
 }
 
 bool ServiceGovernmentModule::AddressToIpPort(const std::string& strAddress,

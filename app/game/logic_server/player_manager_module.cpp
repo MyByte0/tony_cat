@@ -29,80 +29,87 @@ void PlayerManagerModule::BeforeInit() {
 }
 
 void PlayerManagerModule::OnHandleCSPlayerLoginReq(
-    Session::session_id_t sessionId, Pb::ServerHead& head,
-    Pb::CSPlayerLoginReq& playerLoginReq) {
-    auto pPlayerData = GetPlayerData(head.user_id());
+    Session::session_id_t sessionId,
+    NetMemoryPool::PacketNode<Pb::ServerHead> head,
+    NetMemoryPool::PacketNode<Pb::CSPlayerLoginReq> playerLoginReq) {
+    auto pPlayerData = GetPlayerData(head->user_id());
     if (nullptr != pPlayerData) {
-        head.set_error_code(Pb::CSMessageCode::cs_msg_not_find_user);
+        head->set_error_code(Pb::CSMessageCode::cs_msg_not_find_user);
         // \TODO: or kick player and return login success
-        Pb::CSPlayerLoginRsp clientMsgRsp;
-        m_pNetPbModule->SendPacket(sessionId, head, clientMsgRsp);
+        auto pClientMsgRsp =
+            NetMemoryPool::PacketCreate<Pb::CSPlayerLoginRsp>();
+        m_pNetPbModule->SendPacket(sessionId, head, pClientMsgRsp);
         return;
     }
 
-    if (m_mapLoadingPlayer.count(head.user_id()) > 0) {
-        head.set_error_code(Pb::CSMessageCode::cs_msg_user_loading);
-        Pb::CSPlayerLoginRsp clientMsgRsp;
-        m_pNetPbModule->SendPacket(sessionId, head, clientMsgRsp);
+    if (m_mapLoadingPlayer.count(head->user_id()) > 0) {
+        head->set_error_code(Pb::CSMessageCode::cs_msg_user_loading);
+        auto pClientMsgRsp =
+            NetMemoryPool::PacketCreate<Pb::CSPlayerLoginRsp>();
+        m_pNetPbModule->SendPacket(sessionId, head, pClientMsgRsp);
         return;
     }
 
-    assert(m_mapOnlinePlayer.find(head.user_id()) == m_mapOnlinePlayer.end());
-    m_mapLoadingPlayer.emplace(head.user_id(), std::make_shared<PlayerData>());
+    assert(m_mapOnlinePlayer.find(head->user_id()) == m_mapOnlinePlayer.end());
+    m_mapLoadingPlayer.emplace(head->user_id(), std::make_shared<PlayerData>());
 
     // request msg data
-    Pb::SSQueryDataReq queryDataReq;
-    queryDataReq.set_user_id(head.user_id());
+    auto pQueryDataReq = NetMemoryPool::PacketCreate<Pb::SSQueryDataReq>();
+    pQueryDataReq->set_user_id(head->user_id());
     auto querySessionId = m_pServiceGovernmentModule->GetServerSessionIdByKey(
-        ServerType::DBServer, head.user_id());
+        ServerType::DBServer, head->user_id());
     // respond msg data
     return m_pRpcModule->RpcRequest(
-        querySessionId, head, queryDataReq,
-        [=, this](Session::session_id_t nSessionIdRsp, Pb::ServerHead& headRsp,
-                  Pb::SSQueryDataRsp& msgRsp) mutable {
+        querySessionId, head, pQueryDataReq,
+        [=, this](
+            Session::session_id_t nSessionIdRsp,
+            NetMemoryPool::PacketNode<Pb::ServerHead> headRsp,
+            NetMemoryPool::PacketNode<Pb::SSQueryDataRsp> msgRsp) mutable {
             do {
-                if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
+                if (headRsp->error_code() !=
+                    Pb::SSMessageCode::ss_msg_success) {
                     LOG_ERROR("user loading failed, user_id:{}, error:{}",
-                              head.user_id(), headRsp.error_code());
-                    m_mapLoadingPlayer.erase(head.user_id());
-                    // head.set_error_code(1);
+                              head->user_id(), headRsp->error_code());
+                    m_mapLoadingPlayer.erase(head->user_id());
+                    // head->set_error_code(1);
                     break;
                 }
 
                 // move player from mapLoadingPlayer to mapOnlinePlayer,
                 // and load playerData
                 auto itMapLoadingPlayer =
-                    m_mapLoadingPlayer.find(head.user_id());
+                    m_mapLoadingPlayer.find(head->user_id());
                 if (itMapLoadingPlayer == m_mapLoadingPlayer.end()) {
-                    // head.set_error_code(1);
+                    // head->set_error_code(1);
                     LOG_ERROR("not find data in loading map, user:{}",
-                              head.user_id());
+                              head->user_id());
                     break;
                 }
 
                 auto pPlayData = itMapLoadingPlayer->second;
                 if (nullptr == pPlayData) {
                     LOG_ERROR(" find data null in loading map, user:{}",
-                              head.user_id());
-                    // head.set_error_code(1);
+                              head->user_id());
+                    // head->set_error_code(1);
                     break;
                 }
 
-                if (!LoadPlayerData(*pPlayData, msgRsp)) {
+                if (!LoadPlayerData(*pPlayData, *msgRsp)) {
                     LOG_ERROR(" load player data fail, user:{}",
-                              head.user_id());
-                    // head.set_error_code(1);
+                              head->user_id());
+                    // head->set_error_code(1);
                     break;
                 }
 
-                m_mapOnlinePlayer.emplace(head.user_id(),
+                m_mapOnlinePlayer.emplace(head->user_id(),
                                           itMapLoadingPlayer->second);
                 m_mapLoadingPlayer.erase(itMapLoadingPlayer);
                 LOG_INFO("loading player data success, user_id:{}",
-                         head.user_id());
+                         head->user_id());
             } while (false);
-            Pb::CSPlayerLoginRsp clientMsgRsp;
-            m_pNetPbModule->SendPacket(sessionId, head, clientMsgRsp);
+            auto pClientMsgRsp =
+                NetMemoryPool::PacketCreate<Pb::CSPlayerLoginRsp>();
+            m_pNetPbModule->SendPacket(sessionId, head, pClientMsgRsp);
         });
 
     return;
