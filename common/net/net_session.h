@@ -13,7 +13,7 @@
 TONY_CAT_SPACE_BEGIN
 
 class Session {
- public:
+public:
     typedef int64_t session_id_t;
     friend class NetModule;
 
@@ -22,7 +22,7 @@ class Session {
     typedef std::function<bool(session_id_t, SessionBuffer&)> FunSessionRead;
     typedef std::function<void(void* protoContext)> FunSessionProtoContextClose;
 
- public:
+public:
     Session(Loop& io_context, session_id_t session_id);
     ~Session();
 
@@ -41,6 +41,9 @@ class Session {
     session_id_t GetSessionId();
     asio::ip::tcp::socket& GetSocket();
 
+    char* GetWriteData(size_t len);
+    bool MoveWritePos(size_t len);
+
     bool WriteAppend(const std::string& data);
     bool WriteAppend(const char* data, size_t length);
     bool WriteAppend(const char* dataHead, size_t lenHead, const char* data,
@@ -58,6 +61,7 @@ private:
 
     SessionBuffer m_buffRead;
     SessionBuffer m_buffWrite;
+    bool m_onWriting = false;
 
     session_id_t m_nSessionId;
     FunSessionClose m_funSessionClose;

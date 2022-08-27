@@ -52,6 +52,12 @@ asio::ip::tcp::socket& Session::GetSocket() { return m_socket; }
 
 void* Session::GetSessionContext() { return m_pSessionContext; }
 
+char* Session::GetWriteData(size_t len) {
+    return m_buffWrite.GetWriteData(len);
+}
+
+bool Session::MoveWritePos(size_t len) { return m_buffWrite.MoveWritePos(len); }
+
 bool Session::WriteAppend(const std::string& data) {
     return m_buffWrite.Write(data.c_str(), data.length());
 }

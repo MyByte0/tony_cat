@@ -33,9 +33,12 @@ size_t SessionBuffer::GetReadableSize() {
 }
 
 void SessionBuffer::RemoveData(size_t len) {
+    assert(len <= GetReadableSize());
     if (len > GetReadableSize()) [[unlikely]] {
         len = GetReadableSize();
     }
+
+    DebugThreadWriteCheck();
 
     bufContext.nReadPos += len;
     if (bufContext.nReadPos == bufContext.nWritePos) {
@@ -43,21 +46,26 @@ void SessionBuffer::RemoveData(size_t len) {
     }
 }
 
-bool SessionBuffer::FillData(size_t len) {
-    if (len > MaxWritableSize()) [[unlikely]] {
+bool SessionBuffer::PaddingData(size_t len) {
+    if (len > CurrentWritableSize()) [[unlikely]] {
         return false;
     }
 
-    if (len > CurrentWritableSize()) {
-        size_t beforeSize = bufContext.vecData.size();
-        size_t curSize = beforeSize;
+    bufContext.nWritePos += len;
+    return true;
+}
 
-        ReorganizeData();
-        while (len > curSize - bufContext.nWritePos) {
-            curSize = std::min(curSize << 2, nMaxBuffSize);
-        }
+char* SessionBuffer::GetWriteData(size_t len) {
+    if (len > CurrentWritableSize()) [[unlikely]] {
+        return nullptr;
+    }
 
-        bufContext.vecData.resize(curSize);
+    return GetWriteData();
+}
+
+bool SessionBuffer::MoveWritePos(size_t len) {
+    if (bufContext.nWritePos + len > bufContext.vecData.size()) {
+        return false;
     }
 
     bufContext.nWritePos += len;
@@ -69,7 +77,7 @@ char* SessionBuffer::GetWriteData() {
 }
 
 bool SessionBuffer::Write(const char* data, size_t len) {
-    if (false == FillData(len)) {
+    if (false == PaddingData(len)) {
         return false;
     }
 
@@ -87,6 +95,8 @@ size_t SessionBuffer::MaxWritableSize() {
 }
 
 void SessionBuffer::ReorganizeData() {
+    DebugThreadWriteCheck();
+
     if (bufContext.nReadPos > 0) {
         std::memmove(bufContext.vecData.data(), GetReadData(),
                      GetReadableSize());
@@ -95,7 +105,20 @@ void SessionBuffer::ReorganizeData() {
     }
 }
 
+void SessionBuffer::ShrinkByLength(size_t len) {
+    size_t beforeSize = bufContext.vecData.size();
+    size_t curSize = beforeSize;
+
+    while (len > curSize - bufContext.nWritePos) {
+        curSize = std::min(curSize << 2, nMaxBuffSize);
+    }
+
+    bufContext.vecData.resize(curSize);
+}
+
 bool SessionBuffer::Shrink() {
+    DebugThreadWriteCheck();
+
     size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
     if (GetReadableSize() >= nDefaultBuffSize) {
         return false;
