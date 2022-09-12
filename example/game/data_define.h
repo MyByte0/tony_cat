@@ -14,7 +14,7 @@ typedef std::string USER_ID;
 
 struct PlayerData {
     std::vector<Db::UserCount> user_count;
-    Db::UserZoneInfo user_zoneinfo;
+    // Db::UserZoneInfo user_zoneinfo;
     Db::UserBase user_base;
 
 

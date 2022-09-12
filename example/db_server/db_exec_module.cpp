@@ -1,9 +1,14 @@
 #include "db_exec_module.h"
+#include "db_define.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
+#include "common/mysql/mysql_module.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
+#include "common/utility/crc.h"
 #include "server_common/server_define.h"
+
+#include  <cstdlib>
 
 TONY_CAT_SPACE_BEGIN
 
@@ -16,351 +21,511 @@ DBExecModule::~DBExecModule() { }
 
 void DBExecModule::BeforeInit()
 {
-    Pb::ServerHead head;
-    Pb::SSSaveDataReq req;
-    req.mutable_kv_data()->mutable_user_data()->set_user_id("111");
-    req.mutable_kv_data()->mutable_user_data()->mutable_user_base()->set_update_time(1);
-    auto pUser = req.mutable_kv_data()->mutable_user_data()->mutable_user_counts()->add_user_count();
-    pUser->set_count_type(1);
-    pUser = req.mutable_kv_data()->mutable_user_data()->mutable_user_counts()->add_user_count();
-    pUser->set_count_type(3);
-    OnHandleSSSaveDataReq(0, head, req);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
+    m_pMysqlModule = FIND_MODULE(m_pModuleManager, MysqlModule);
 
-    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSSaveDataReq);
-    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSQueryDataReq);
+    // OnTest();
 }
-
-#ifdef GetMessage // for windows define GetMessage
-#undef GetMessage
-#endif
 
 void DBExecModule::OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq)
 {
-    auto& message = msgReq.kv_data();
-    auto pReflection = message.GetReflection();
-    auto pDescriptor = message.GetDescriptor();
-    for (int i = 0; i < pDescriptor->field_count(); ++i) {
-        const google::protobuf::FieldDescriptor* pField = pDescriptor->field(i);
-        if (!pField) {
-            continue;
-        }
-        auto strDatabaseName = pField->name();
-        if (pField->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
-            continue;
-        }
-        
-        std::vector<DBRecord> vecResultList;
-        MapTableRecord mapTable;
-        PaserProtoTables(pReflection->GetMessage(message, pField), mapTable);
-        // \TODO write to db
-    }
+    auto userId = head.user_id();
+
+    auto& loop = Loop::GetCurrentThreadLoop();
+    m_pMysqlModule->GetLoopPool().Exec(CRC32(userId),
+        [this, sessionId, head, userId, &loop, msgReq = std::move(msgReq)]() mutable {
+            auto pMsgRsp = std::make_shared<Pb::SSSaveDataRsp>();
+            UpdateMessage(*msgReq.mutable_kv_data_update()->mutable_user_data());
+            DeleteMessage(*msgReq.mutable_kv_data_delete()->mutable_user_data());
+            loop.Exec([=]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
+        });
 }
 
 void DBExecModule::OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSQueryDataReq& msgReq)
 {
-    Pb::SSQueryDataRsp msgRsp;
+    auto userId = msgReq.user_id();
 
-    m_pNetPbModule->SendPacket(sessionId, head, msgRsp);
+    auto& loop = Loop::GetCurrentThreadLoop();
+    m_pMysqlModule->GetLoopPool().Exec(CRC32(userId),
+        [this, sessionId, head, userId, &loop]() mutable {
+            auto pMsgRsp = std::make_shared<Pb::SSQueryDataRsp>();
+            auto pUserData = pMsgRsp->mutable_user_data();
+            pUserData->set_user_id(userId);
+            LoadMessage(*pUserData);
+            loop.Exec([=]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
+            return;
+        });
+    
     return;
-
 }
 
-void DBExecModule::PaserProtoTables(const google::protobuf::Message& message, MapTableRecord& mapTableRecord)
+int32_t DBExecModule::LoadMessage(google::protobuf::Message& message)
 {
-    std::vector<DBKeyValue> vecCommonKeys;
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
-    if (!pReflection || !pDescriptor) {
-        return;
-    }
 
-    for (int i = 0; i < pDescriptor->field_count(); ++i) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(i);
+    std::vector<std::string> vecArgs;
+    std::string strQueryCommonKey;
+    // loop tables
+    for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
+        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
         if (!pFieldDescriptor) {
             continue;
         }
-        auto strFieldName = pFieldDescriptor->name();
-
-        // handle common keys
-        int nTag = pFieldDescriptor->number();
-        if (nTag < Db::db_common_tag_table_primekey_begin) {
-            PaserProtoBasePrimeKey(vecCommonKeys, message, *pFieldDescriptor, strFieldName);
+        auto strTabName = pFieldDescriptor->name();
+        // add common key
+        if (IsCommonKeyType(pFieldDescriptor->cpp_type())) {
+            AddQueryCondition(message, *pFieldDescriptor, strQueryCommonKey, vecArgs);
             continue;
         }
 
-        auto& strTableName = strFieldName;
-        auto& vecResultList = mapTableRecord[strTableName];
-        if (pFieldDescriptor->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
-            if (pFieldDescriptor->is_map()) {
-               // \TODO: read proto map type
-               // auto& fieldSubMessage = pReflection->GetMessage(message, pFieldDescriptor);
-               // PaserMapProto(vecDBSchemaAppend, vecResultList, fieldSubMessage);
-            } else if (!pFieldDescriptor->is_repeated()) {
-                if (pReflection->HasField(message, pFieldDescriptor)) {
-                    PaserMsgProto(vecCommonKeys, vecResultList, pReflection->GetMessage(message, pFieldDescriptor));
-                }
-            } else {
-                for (int iRepeated = 0; iRepeated < pReflection->FieldSize(message, pFieldDescriptor); ++iRepeated) {
-                    PaserMsgProto(vecCommonKeys, vecResultList, pReflection->GetRepeatedMessage(message, pFieldDescriptor, iRepeated));
+        // load db data
+        std::string strQueryString = "SELECT ";
+        auto pSubDescriptor = pFieldDescriptor->message_type();
+        for (int iSubField = 0; iSubField < pSubDescriptor->field_count(); ++iSubField) {
+            const google::protobuf::FieldDescriptor* pSubFieldDescriptor = pSubDescriptor->field(iSubField);
+            if (!pSubFieldDescriptor) {
+                continue;
+            }
+
+            auto strFieldName = pSubFieldDescriptor->name();
+            strQueryString.append(strFieldName).append(",");
+        }
+
+        if (!strQueryString.empty()) {
+            strQueryString.back() = ' ';
+        }
+
+        strQueryString.append(STR_FORMAT(" FROM {}", strTabName));
+        if (!strQueryString.empty()) {
+            strQueryString.append(" WHERE").append(strQueryCommonKey);
+        }
+        auto [nError, mapResult] = m_pMysqlModule->QuerySelectRowsInCurrentThread(strQueryString, vecArgs);
+        if (nError != 0) {
+            LOG_ERROR("load data error:{}, {}", nError, strTabName);
+            return nError;
+        }
+
+        // fill protobuf message
+        if (!mapResult.empty()) {
+            std::size_t nResultSize = mapResult.begin()->second.size();
+            for (std::size_t iResult = 0; iResult < nResultSize; ++iResult) {
+                if (pFieldDescriptor->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
                     continue;
                 }
+
+                google::protobuf::Message* pMsg = nullptr;
+                if (pFieldDescriptor->is_repeated()) {
+                    pMsg = pReflection->AddMessage(&message, pFieldDescriptor);
+                } else {
+                    pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
+                }
+
+                auto pMsgReflection = pMsg->GetReflection();
+                auto pMsgDescriptor = pMsg->GetDescriptor();
+                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                    if (!pMsgFieldDescriptor) {
+                        continue;
+                    }
+
+                    if (pMsgFieldDescriptor->is_repeated()) {
+                        StringToProtoMessageAsBlob(*pMsg, *pMsgFieldDescriptor, mapResult[pMsgFieldDescriptor->name()][iResult]);
+                    } else {
+                        StringToProtoMessage(*pMsg, *pMsgFieldDescriptor, mapResult[pMsgFieldDescriptor->name()][iResult]);
+                    }
+                }
             }
-            continue;
         }
-
-        if (pFieldDescriptor->is_map()) {
-            continue;
-        }
-
-        continue;
     }
 
-    return;
+    return 0;
 }
 
-void DBExecModule::PaserMsgProto(const std::vector<DBKeyValue>& vecPriKeys, std::vector<DBRecord>& vecResultList, 
-    const google::protobuf::Message& message, bool bWithValue /*= true*/)
+int32_t DBExecModule::UpdateMessage(google::protobuf::Message& message)
 {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
-    if (!pReflection || !pDescriptor) {
-        return;
-    }
-    DBRecord stDBRecord;
-    stDBRecord.vecPriKeyFields = vecPriKeys;
-    for (int i = 0; i < pDescriptor->field_count(); ++i) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(i);
+
+    std::vector<std::string> vecCommonKeyArgs;
+    std::vector<std::string> vecFieldNameCommon;
+    std::vector<std::string> vecFieldParamCharCommon;
+    // loop tables
+    for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
+        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
         if (!pFieldDescriptor) {
             continue;
         }
-        auto strFieldName = pFieldDescriptor->name();
+
+        auto strTabName = pFieldDescriptor->name();
+        // handle common keys
+        if (IsCommonKeyType(pFieldDescriptor->cpp_type())) {
+            vecFieldNameCommon.emplace_back(pFieldDescriptor->name());
+            vecCommonKeyArgs.emplace_back(ProtoMessageToString(message, *pFieldDescriptor));
+            if (pFieldDescriptor->cpp_type() == google::protobuf::FieldDescriptor::CppType::CPPTYPE_STRING) {
+                vecFieldParamCharCommon.emplace_back("'{}'");
+            } else {
+                vecFieldParamCharCommon.emplace_back("{}");
+            }
+            
+            continue;
+        }
+
+        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
+            continue;
+        }
+        if (!pFieldDescriptor->is_repeated() && !pReflection->HasField(message, pFieldDescriptor)) {
+            continue;
+        }
+
+        std::vector<std::string> vecCurFieldName(vecFieldNameCommon.begin(), vecFieldNameCommon.end());
+        std::vector<std::string> vecCurFieldParamCharCommon(vecFieldParamCharCommon.begin(), vecFieldParamCharCommon.end());
+        std::vector<std::string> vecCurFieldDataNames;
+        auto pSubDescriptor = pFieldDescriptor->message_type();
+        for (int iSubField = 0; iSubField < pSubDescriptor->field_count(); ++iSubField) {
+            const google::protobuf::FieldDescriptor* pSubFieldDescriptor = pSubDescriptor->field(iSubField);
+            if (!pSubFieldDescriptor) {
+                continue;
+            }
+            if (!IsKey(message, *pSubFieldDescriptor)) {
+                vecCurFieldDataNames.emplace_back(pSubFieldDescriptor->name());
+            }
+            vecCurFieldName.emplace_back(pSubFieldDescriptor->name());
+            if (pSubFieldDescriptor->cpp_type() == google::protobuf::FieldDescriptor::CppType::CPPTYPE_STRING) {
+                vecCurFieldParamCharCommon.emplace_back("'{}'");
+            } else {
+                vecCurFieldParamCharCommon.emplace_back("{}");
+            }
+        }
+
+        // QueryModify(0, std::string("insert into test (id, name) values({}, '{}') on duplicate key update name=values(name)"), std::vector<std::string> { "121", "ok" }, nullptr);
+        // load db data
+        std::vector<std::string> vecArgs;
+        std::string strQueryString = "INSERT INTO ";
+        strQueryString.append(strTabName);
+        strQueryString.append(" (");
+
+        for (size_t iFieldName = 0; iFieldName < vecCurFieldName.size(); ++iFieldName) {
+            if (iFieldName != 0) {
+                strQueryString.append(", ");
+            }
+            strQueryString.append(vecCurFieldName[iFieldName]);
+        }
+        strQueryString.append(")");
+        strQueryString.append(" VALUES");
+        std::string strValuesElem;
+        strValuesElem.append("(");
+        for (size_t iFieldName = 0; iFieldName < vecCurFieldParamCharCommon.size(); ++iFieldName) {
+            if (iFieldName != 0) {
+                strValuesElem.append(", ");
+            }
+            strValuesElem.append(vecCurFieldParamCharCommon[iFieldName]);
+        }
+        strValuesElem.append(" )");
+        if (pFieldDescriptor->is_repeated()) {
+            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
+                auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
+                std::string strRepeatedQueryString;
+                std::vector<std::string> elemRepeatedArgs;
+
+                vecArgs.insert(vecArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
+                auto pMsgReflection = pMsg->GetReflection();
+                auto pMsgDescriptor = pMsg->GetDescriptor();
+                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                    if (!pMsgFieldDescriptor) {
+                        continue;
+                    }
+
+                    vecArgs.emplace_back(ProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+                }
+
+                if (iChildField != 0) {
+                    strQueryString.append(",");
+                }
+                strQueryString.append(strValuesElem);
+            }
+        }
+        else {
+            auto pSubDescriptor = pFieldDescriptor->message_type();
+            auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
+            auto pMsgReflection = pMsg->GetReflection();
+            auto pMsgDescriptor = pMsg->GetDescriptor();
+            vecArgs.insert(vecArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
+            for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
+                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                if (!pMsgFieldDescriptor) {
+                    continue;
+                }
+                if (IsKey(*pMsg, *pMsgFieldDescriptor)) {
+                    continue;
+                }
+
+                vecArgs.emplace_back(ProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+            }
+            strQueryString.append(strValuesElem);
+        }
+
+        strQueryString.append(" ON DUPLICATE KEY UPDATE ");
+        for (size_t iFieldName = 0; iFieldName < vecCurFieldDataNames.size(); ++iFieldName) {
+            if (iFieldName != 0) {
+                strQueryString.append(", ");
+            }
+            strQueryString.append(vecCurFieldDataNames[iFieldName]).append("=values(").append(vecCurFieldDataNames[iFieldName]).append(")");
+        }
+
+        auto [nError, nAffectRows, nInsertId] = m_pMysqlModule->QueryModifyInCurrentThread(strQueryString, vecArgs);
+        if (nError != 0) {
+            LOG_ERROR("load data error:{}, {}", nError, strTabName);
+            return nError;
+        }
+    }
+
+    return 0;
+}
+
+int32_t DBExecModule::DeleteMessage(google::protobuf::Message& message)
+{
+    auto pReflection = message.GetReflection();
+    auto pDescriptor = message.GetDescriptor();
+
+    std::vector<std::string> vecKeyCommonArgs;
+    std::string strQueryCommonKey;
+    // loop tables
+    for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
+        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
+        if (!pFieldDescriptor) {
+            continue;
+        }
 
         // handle common keys
-        int nTag = pFieldDescriptor->number();
-        if (nTag < Db::db_common_tag_no_primekey_begin) {
-            // key type map not support other values
-            if (pFieldDescriptor->is_map()) {
-                // PaserMapProto();
-                return;
-            }
-            // type repeated not support other values
-            if (pFieldDescriptor->is_repeated()) {
-                for (int iRepeated = 0; iRepeated < pReflection->FieldSize(message, pFieldDescriptor); ++iRepeated) {
-                    PaserMsgProto(stDBRecord.vecPriKeyFields, vecResultList, pReflection->GetRepeatedMessage(message, pFieldDescriptor, iRepeated));
+        if (IsCommonKeyType(pFieldDescriptor->cpp_type())) {
+            AddQueryCondition(message, *pFieldDescriptor, strQueryCommonKey, vecKeyCommonArgs);
+            continue;
+        }
+
+        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
+            continue;
+        }
+        if (!pFieldDescriptor->is_repeated() && !pReflection->HasField(message, pFieldDescriptor)) {
+            continue;
+        }
+        // QueryModify(0, std::string("delete from test.website where name='{}'"), std::vector<std::string> { "ok" }, nullptr);
+        // load db data
+        auto strTabName = pFieldDescriptor->name();
+        std::vector<std::string> vecArgs(vecKeyCommonArgs.begin(), vecKeyCommonArgs.end());
+        std::string strQueryString = "DELETE FROM ";
+        strQueryString.append(strTabName);
+        strQueryString.append(" WHERE ");
+        strQueryString.append(strQueryCommonKey);
+        std::string strQueryConditionAppend;
+
+        if (pFieldDescriptor->is_repeated()) {
+            std::vector<std::string> vecRepeatedQueryString;
+            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
+                auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
+                std::string strRepeatedQueryString;
+                std::vector<std::string> elemRepeatedArgs;
+
+                auto pMsgReflection = pMsg->GetReflection();
+                auto pMsgDescriptor = pMsg->GetDescriptor();
+                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                    if (!pMsgFieldDescriptor) {
+                        continue;
+                    }
+                   
+                    if (!IsKey(*pMsg, *pMsgFieldDescriptor)) {
+                        continue;
+                    }
+
+                    AddQueryCondition(*pMsg, *pMsgFieldDescriptor, strRepeatedQueryString, elemRepeatedArgs);
                 }
-                return;
+                vecRepeatedQueryString.emplace_back(std::move(strRepeatedQueryString));
+                vecArgs.insert(vecArgs.end(), elemRepeatedArgs.begin(), elemRepeatedArgs.end());
             }
-            if (IsProtoBasePrimeKeyType(*pFieldDescriptor)) {
-                PaserProtoBasePrimeKey(stDBRecord.vecPriKeyFields, message, *pFieldDescriptor, strFieldName);
-            } else if (pFieldDescriptor->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
-                PaserMsgProto(stDBRecord.vecPriKeyFields, vecResultList, pReflection->GetMessage(message, pFieldDescriptor));
-                break;
-            } else {
-                LOG_ERROR("paser data error on:{}", strFieldName);
-                break;
+
+            for (size_t iRepeatedQuery = 0; iRepeatedQuery < vecRepeatedQueryString.size(); ++iRepeatedQuery) {
+                if (iRepeatedQuery != 0) {
+                    strQueryConditionAppend.append(" OR");
+                }
+                strQueryConditionAppend.append(" (").append(vecRepeatedQueryString[iRepeatedQuery]).append(")");
+            }
+        } else {
+            auto pSubDescriptor = pFieldDescriptor->message_type();
+            auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
+            auto pMsgReflection = pMsg->GetReflection();
+            auto pMsgDescriptor = pMsg->GetDescriptor();
+            for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
+                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                if (!pMsgFieldDescriptor) {
+                    continue;
+                }
+                if (!IsKey(*pMsg, *pMsgFieldDescriptor)) {
+                    continue;
+                }
+
+                AddQueryCondition(*pMsg, *pMsgFieldDescriptor, strQueryConditionAppend, vecArgs);
             }
         }
-        // handle values
-        else if (bWithValue) {
-            DBKeyValue stDBKeyValue;
-            stDBKeyValue.eType = GetDBType(message, *pFieldDescriptor);
-            stDBKeyValue.strValue = PaserStringValue(message, *pFieldDescriptor);
-            stDBKeyValue.strKey = strFieldName;
-            stDBRecord.vecValueFields.emplace_back(std::move(stDBKeyValue));
+
+        if (!strQueryConditionAppend.empty()) {
+            strQueryString.append(" AND").append(strQueryConditionAppend);
+        }
+        auto [nError, nAffectRows, nInsertId] = m_pMysqlModule->QueryModifyInCurrentThread(strQueryString, vecArgs);
+        if (nError != 0) {
+            LOG_ERROR("load data error:{}, {}", nError, strTabName);
+            return nError;
         }
     }
 
-    vecResultList.emplace_back(std::move(stDBRecord));
+    return 0;
 }
 
-void DBExecModule::PaserMapProto(const std::vector<DBKeyValue>& vecPriKeys, std::vector<DBRecord>& vecResultList,
-    const google::protobuf::Message& message, bool bWithValue /*= true*/)
+bool DBExecModule::IsKey(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor)
 {
-    auto pReflection = message.GetReflection();
-    auto pDescriptor = message.GetDescriptor();
-    if (!pReflection || !pDescriptor) {
-        return;
-    }
-    // handle common keys
-    if (pDescriptor->field_count() > 1) {
-        LOG_ERROR("prime key not support more than one args");
-        return;
+    if (!IsCommonKeyType(fieldDescriptor.cpp_type())) {
+        return false;
     }
 
-    for (int i = 0; i < pDescriptor->field_count(); ++i) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(i);
-        if (!pFieldDescriptor) {
-            LOG_ERROR("FieldDescriptor empty");
-            continue;
-        }
+    static DbPbFieldKey pbKeys;
+    auto str = message.GetTypeName();
+    return pbKeys.mapMesssageKeys[message.GetTypeName()].count(fieldDescriptor.name()) > 0;
+}
 
-        if (!pFieldDescriptor->is_map()) {
-            LOG_ERROR("prime key need map");
-            return;
-        }
+void DBExecModule::StringToProtoMessage(google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& value)
+{
+    auto reflection = message.GetReflection();
 
-        auto strFieldName = pFieldDescriptor->name();
-        int nTag = pFieldDescriptor->number();
-        if (nTag >= Db::db_common_tag_no_primekey_begin) {
-            PaserMsgProto(vecPriKeys, vecResultList, pReflection->GetMessage(message, pFieldDescriptor));
-            continue;
-        }
-
-        auto pMassageDescriptor = pFieldDescriptor->message_type();
-        auto pFieldDescriptorKey = pMassageDescriptor->map_key();
-        auto pFieldDescriptorValue = pMassageDescriptor->map_value();
-
-        std::string strPrfix = "map_";
-        if (strFieldName.find(strPrfix) != 0) {
-            LOG_ERROR("map field name on {}", strFieldName);
-            return;
-        }
-
-        //DBRecord stDBRecord;
-        //// stDBKeyValue.bPrimeKey = true;
-        //stDBRecord.strKey = strFieldName.substr(strPrfix.length());
-        //stDBKeyValue.strValue = ""; // need contain on vector
-        //vecResultList.emplace_back(std::move(stDBRecord));
-        auto& massageMapValue = pReflection->GetMessage(message, pFieldDescriptor);
-        PaserMapProto(vecPriKeys, vecResultList, massageMapValue);
+    switch (fieldDescriptor.cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+        reflection->SetDouble(&message, &fieldDescriptor, ::atof(value.c_str()));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+        reflection->SetFloat(&message, &fieldDescriptor, static_cast<float>(::atof(value.c_str())));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        reflection->SetEnumValue(&message, &fieldDescriptor, ::atoi(value.c_str()));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
+        StringToProtoMessageAsBlob(message, fieldDescriptor, value);
+        break;
+    }
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+        reflection->SetString(&message, &fieldDescriptor, value);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+        reflection->SetInt64(&message, &fieldDescriptor, ::atoll(value.c_str()));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+        reflection->SetInt32(&message, &fieldDescriptor, ::atoi(value.c_str()));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+        reflection->SetUInt64(&message, &fieldDescriptor, ::strtoull(value.c_str(), nullptr, 10));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+        reflection->SetUInt32(&message, &fieldDescriptor, static_cast<uint32_t>(::atoll(value.c_str())));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+        reflection->SetBool(&message, &fieldDescriptor, ::atoi(value.c_str()) != 0);
+        break;
+	default:
+		break;
     }
 }
 
-bool DBExecModule::IsProtoBasePrimeKeyType(const google::protobuf::FieldDescriptor& fieldDescriptor)
+void DBExecModule::StringToProtoMessageAsBlob(google::protobuf::Message& message, 
+    const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& value)
 {
-    return fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT32
-        || fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_INT64
-        || fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_UINT32
-        || fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_UINT64
-        || fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_STRING;
+    auto reflection = message.GetReflection();
+    auto sub_message = reflection->MutableMessage(&message, &fieldDescriptor);
+    sub_message->ParseFromArray(value.c_str(), static_cast<int32_t>(value.length()));
 }
 
-void DBExecModule::PaserProtoBasePrimeKey(std::vector<DBKeyValue>& vecCommonKeys, const google::protobuf::Message& message,
-    const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& strKayName)
+
+std::string DBExecModule::ProtoMessageToString(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor)
 {
-    auto strFieldName = fieldDescriptor.name();
-    auto pReflection = message.GetReflection();
-    DBKeyValue stDBKeyValue;
-    if (IsProtoBasePrimeKeyType(fieldDescriptor)) {
-        stDBKeyValue.strKey = strKayName;
-        stDBKeyValue.eType = GetDBType(message, fieldDescriptor);
-        stDBKeyValue.strValue = PaserStringValue(message, fieldDescriptor);
-        vecCommonKeys.emplace_back(std::move(stDBKeyValue));
+    std::string strRet;
+    auto reflection = message.GetReflection();
+
+    switch (fieldDescriptor.cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+        strRet = std::to_string(reflection->GetDouble(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+        strRet = std::to_string(reflection->GetFloat(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        strRet = std::to_string(reflection->GetEnumValue(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
+        strRet = ProtoMessageToStringAsBlob(message, fieldDescriptor);
+        break;
+    }
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+        strRet = reflection->GetString(message, &fieldDescriptor);
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+        strRet = std::to_string(reflection->GetInt64(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+        strRet = std::to_string(reflection->GetInt32(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+        strRet = std::to_string(reflection->GetUInt64(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+        strRet = std::to_string(reflection->GetUInt32(message, &fieldDescriptor));
+        break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+        strRet = std::to_string(reflection->GetBool(message, &fieldDescriptor));
+        break;
+	default:
+		break;
+    }
+
+    return strRet;
+}
+
+std::string DBExecModule::ProtoMessageToStringAsBlob(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor)
+{
+    return message.SerializeAsString();
+}
+
+bool DBExecModule::IsCommonKeyType(google::protobuf::FieldDescriptor::CppType cppType) {
+    return cppType == google::protobuf::FieldDescriptor::CppType::CPPTYPE_INT32 || cppType == google::protobuf::FieldDescriptor::CppType::CPPTYPE_UINT32
+        || cppType == google::protobuf::FieldDescriptor::CppType::CPPTYPE_INT64 || cppType == google::protobuf::FieldDescriptor::CppType::CPPTYPE_UINT64
+        || cppType == google::protobuf::FieldDescriptor::CppType::CPPTYPE_STRING;
+}
+
+void DBExecModule::AddQueryCondition(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, std::string& strQuerys, std::vector<std::string>& vecArgs)
+{
+    if (!vecArgs.empty()) {
+        strQuerys.append(" AND ");
+    }
+    strQuerys.append(" ").append(fieldDescriptor.name()).append(" = ");
+    if (fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_STRING) {
+        strQuerys.append(" '{}'");
     } else {
-        LOG_ERROR("primekey protobuf, key:{}", strFieldName);
+        strQuerys.append(" {}");
     }
+    vecArgs.emplace_back(ProtoMessageToString(message, fieldDescriptor));
 }
 
-std::string DBExecModule::PaserStringValue(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor)
+void DBExecModule::OnTest()
 {
-    std::string result;
-    if (fieldDescriptor.is_repeated()) {
-        LOG_ERROR("not support repeated");
-        return result;
-    } else if (fieldDescriptor.is_map())
-    {
-        LOG_ERROR("not support map");
-        return result;
-    }
 
-    auto pReflection = message.GetReflection();
-    switch (fieldDescriptor.cpp_type()) {
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-        result = std::to_string(pReflection->GetInt32(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        result = std::to_string(pReflection->GetInt64(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-        result = std::to_string(pReflection->GetUInt32(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        result = std::to_string(pReflection->GetUInt64(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-        result = std::to_string(pReflection->GetFloat(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-        result = std::to_string(pReflection->GetDouble(
-            message, &fieldDescriptor));
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        result = pReflection->GetBool(
-                     message, &fieldDescriptor)
-            ? "true"
-            : "false";
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-        result = pReflection->GetEnum(
-                                message, &fieldDescriptor)
-                     ->full_name();
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        result = pReflection->GetString(
-            message, &fieldDescriptor);
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-        result = pReflection->GetMessage(
-                                message, &fieldDescriptor)
-                     .SerializeAsString();
-        break;
-    }
+    //Pb::SSQueryDataRsp msgRsp;
+    //auto pUserData = msgRsp.mutable_user_data();
+    //pUserData->set_user_id("user_1");
+    //LoadMessage(*pUserData);
 
-    return result;
-}
-
-DBExecModule::DBKeyValue::EDBValueType DBExecModule::GetDBType(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor)
-{
-    DBKeyValue::EDBValueType result = DBKeyValue::eTypeInvalid;
-    if (fieldDescriptor.is_repeated()) {
-        result = DBKeyValue::eTypeBinary;
-        return result;
-    } else if (fieldDescriptor.is_map()) {
-        result = DBKeyValue::eTypeBinary;
-        return result;
-    }
-
-    auto pReflection = message.GetReflection();
-    switch (fieldDescriptor.cpp_type()) {
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-        result = DBKeyValue::eTypeInt;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        result = DBKeyValue::eTypeBigInt;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-        result = DBKeyValue::eTypeUint;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        result = DBKeyValue::eTypeBigUint;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-        result = DBKeyValue::eTypeFloat;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-        result = DBKeyValue::eTypeDouble;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        result = DBKeyValue::eTypeBool;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-        result = DBKeyValue::eTypeInt;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        result = DBKeyValue::eTypeString;
-        break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-        result = DBKeyValue::eTypeBinary;
-        break;
-    }
-
-    return result;
+    Pb::SSSaveDataReq msgReq;
+    msgReq.mutable_kv_data_delete()->mutable_user_data()->set_user_id("user_1");
+    // msgReq.mutable_kv_data_delete()->mutable_user_data()->mutable_user_base()->set_user_name("hi");
+    msgReq.mutable_kv_data_delete()->mutable_user_data()->add_user_counts()->set_count_type(1);
+    msgReq.mutable_kv_data_delete()->mutable_user_data()->add_user_counts()->set_count_type(3);
+    DeleteMessage(*msgReq.mutable_kv_data_delete()->mutable_user_data());
 }
 
 TONY_CAT_SPACE_END

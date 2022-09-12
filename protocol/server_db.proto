@@ -5,48 +5,48 @@ package Pb;
 
 message SSSaveDataReq
 {
-   enum SSMessageId
-   {
-        msgid_invalid = 0;
-        msgid = 0x40010001;
-   }
+    enum SSMessageId
+    {
+         msgid_invalid = 0;
+         msgid = 0x40010001;
+    }
 
-   int64     save_tick = 1;
-   int64     flag_field1 = 2;
-
-   Db.KVData kv_data = 100;
+    int64     save_tick = 1;
+    
+    Db.KVData kv_data_update = 2;
+    Db.KVData kv_data_delete = 3;
 }
 
 message SSSaveDataRsp
 {
-   enum SSMessageId
-   {
-        msgid_invalid = 0;
-        msgid = 0x40010002;
-   }
+    enum SSMessageId
+    {
+         msgid_invalid = 0;
+         msgid = 0x40010002;
+    }
 }
 
 
 message SSQueryDataReq
 {
-   enum SSMessageId
-   {
-        msgid_invalid = 0;
-        msgid = 0x40010003;
-   }
+    enum SSMessageId
+    {
+         msgid_invalid = 0;
+         msgid = 0x40010003;
+    }
 
-   string     user_id = 1;
+    string     user_id = 1;
 }
 
 message SSQueryDataRsp
 {
-   enum SSMessageId
-   {
-        msgid_invalid = 0;
-        msgid = 0x40010004;
-   }
+    enum SSMessageId
+    {
+         msgid_invalid = 0;
+         msgid = 0x40010004;
+    }
 
-   Db.UserData user_data = 1;
+    Db.UserData user_data = 1;
 }
 
 

@@ -75,18 +75,8 @@ int32_t MysqlModule::QueryModify(uint32_t nIndex, const std::string& strQueryStr
     auto& loop = Loop::GetCurrentThreadLoop();
     m_loopPool.Exec(nIndex, [this, strQueryString, vecArgs, &loop, cb = std::move(cb)]() {
         auto pMysqlHandle = GetMysqlHandle();
-        int32_t nError = 0;
-        int64_t nAffectRows = 0;
-        int64_t nInsertId = 0;
-        do {
-            if ((nError = MysqlQuery(pMysqlHandle, strQueryString, vecArgs)) != 0) {
-                LOG_ERROR("query error, aueryString:{}", strQueryString);
-                break;
-            }
-
-            nAffectRows = mysql_affected_rows(pMysqlHandle);
-            nInsertId = mysql_insert_id(pMysqlHandle);
-        } while (false);
+        assert(nullptr != pMysqlHandle);
+        auto [nError, nAffectRows, nInsertId] = QueryModifyInCurrentThread(strQueryString, vecArgs);
 
         if (cb != nullptr) {
             loop.Exec([cb = std::move(cb), nError, nAffectRows, nInsertId]() {
@@ -104,38 +94,7 @@ int32_t MysqlModule::QuerySelectRows(uint32_t nIndex, const std::string& strQuer
     auto& loop = Loop::GetCurrentThreadLoop();
     m_loopPool.Exec(nIndex,
         [this, strQueryString, vecArgs, &loop, cb = std::move(cb)]() {
-            int32_t nError = 0;
-            std::unordered_map<std::string, std::vector<std::string>> mapResult;
-            auto pMysqlHandle = GetMysqlHandle();
-            do {
-                if ((nError = MysqlQuery(pMysqlHandle, strQueryString, vecArgs)) != 0) {
-                    LOG_ERROR("query error, aueryString:{}", strQueryString);
-                    break;
-                }
-
-                std::vector<std::string> vecFieldName;
-                MYSQL_ROW row;
-                MYSQL_FIELD* field;
-                auto result = mysql_store_result(pMysqlHandle);
-                int32_t num_fields = mysql_num_fields(result);
-                while ((row = mysql_fetch_row(result))) {
-                    unsigned long* length = mysql_fetch_lengths(result);
-                    for (int i = 0; i < num_fields; i++) {
-                        if (i == 0) {
-                            while (field = mysql_fetch_field(result)) {
-                                vecFieldName.emplace_back(field->name);
-                            }
-                        }
-
-                        const char* pRow = row[i];
-                        if (pRow != nullptr) {
-                            mapResult[vecFieldName[i]].emplace_back(pRow, length[i]);
-                        } else {
-                            mapResult[vecFieldName[i]].emplace_back("");
-                        }
-                    }
-                }
-            } while (false);
+            auto [nError, mapResult] = QuerySelectRowsInCurrentThread(strQueryString, vecArgs);
 
             if (cb != nullptr) {
                 loop.Exec([cb = std::move(cb), nError, mapResult = std::move(mapResult)]() mutable { cb(nError, mapResult); });
@@ -200,6 +159,8 @@ std::string MysqlModule::QueryStringReplace(const std::string& strQueryString, c
 
 int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString, const std::vector<std::string>& vecArgs)
 {
+    assert(nullptr != pMysqlHandle);
+    assert(GetMysqlHandle() == pMysqlHandle);
     if (vecArgs.size() >= kArgNumMax) {
         LOG_ERROR("vecArgs size, query: {}", strQueryString);
         return Pb::SSMessageCode::ss_msg_cache_length_overflow;
@@ -225,6 +186,66 @@ int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQuery
     }
 
     return Pb::SSMessageCode::ss_msg_success;
+}
+
+std::tuple<int32_t, MysqlModule::MysqlSelectResultMap> MysqlModule::QuerySelectRowsInCurrentThread(
+    const std::string& strQueryString, const std::vector<std::string>& vecArgs)
+{
+    int32_t nError = 0;
+    MysqlSelectResultMap mapResult;
+    auto pMysqlHandle = GetMysqlHandle();
+    assert(nullptr != pMysqlHandle);
+    do {
+        if ((nError = MysqlQuery(pMysqlHandle, strQueryString, vecArgs)) != 0) {
+            LOG_ERROR("query error, aueryString:{}", strQueryString);
+            break;
+        }
+
+        std::vector<std::string> vecFieldName;
+        MYSQL_ROW row;
+        MYSQL_FIELD* field;
+        auto result = mysql_store_result(pMysqlHandle);
+        int32_t num_fields = mysql_num_fields(result);
+        while ((row = mysql_fetch_row(result))) {
+            unsigned long* length = mysql_fetch_lengths(result);
+            for (int i = 0; i < num_fields; i++) {
+                if (i == 0) {
+                    while (field = mysql_fetch_field(result)) {
+                        vecFieldName.emplace_back(field->name);
+                    }
+                }
+
+                const char* pRow = row[i];
+                if (pRow != nullptr) {
+                    mapResult[vecFieldName[i]].emplace_back(pRow, length[i]);
+                } else {
+                    mapResult[vecFieldName[i]].emplace_back("");
+                }
+            }
+        }
+    } while (false);
+
+    return { nError, mapResult };
+}
+
+std::tuple<int32_t, uint64_t, uint64_t> MysqlModule::QueryModifyInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs)
+{
+    auto pMysqlHandle = GetMysqlHandle();
+    assert(nullptr != pMysqlHandle);
+    int32_t nError = 0;
+    int64_t nAffectRows = 0;
+    int64_t nInsertId = 0;
+    do {
+        if ((nError = MysqlQuery(pMysqlHandle, strQueryString, vecArgs)) != 0) {
+            LOG_ERROR("query error, aueryString:{}", strQueryString);
+            break;
+        }
+
+        nAffectRows = mysql_affected_rows(pMysqlHandle);
+        nInsertId = mysql_insert_id(pMysqlHandle);
+    } while (false);
+
+    return { nError, nAffectRows, nInsertId };
 }
 
 TONY_CAT_SPACE_END

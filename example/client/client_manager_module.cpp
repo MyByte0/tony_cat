@@ -91,10 +91,10 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient()
     Pb::CSPlayerLoginReq req;
     req.set_user_name(strAccount);
     // msg respond
-    Session::session_id_t nSessionIdRsp;
-    Pb::ClientHead headRsp;
-    Pb::CSPlayerLoginRsp msgRsp;
-    co_await RpcModule::AwaitableRpcRequest(nSessionId, head, req, nSessionIdRsp, headRsp, msgRsp);
+    //Session::session_id_t nSessionIdRsp;
+    //Pb::ClientHead headRsp;
+    //Pb::CSPlayerLoginRsp msgRsp;
+    auto [nSessionIdRsp, headRsp, msgRsp] = co_await RpcModule::AwaitableRpcFetch(Pb::CSPlayerLoginRsp, nSessionId, head, req);
     if (headRsp.error_code() != 0) {
         LOG_ERROR("login failed, client:{}", strAccount);
         co_return headRsp.error_code();

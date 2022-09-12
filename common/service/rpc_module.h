@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <type_traits>
 #include <unordered_map>
 
 TONY_CAT_SPACE_BEGIN
@@ -138,8 +139,8 @@ public:
     }
 
     struct AwaitableRpcRequest {
-        template <class _TypeMsgPacketHead, class _TypeMsgPacketBody, class _TypeMsgPacketBodyRsp>
-        AwaitableRpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, _TypeMsgPacketBody& msgBody,
+        template <class _TypeMsgPacketHead, class _TypeMsgPacketBodyReq, class _TypeMsgPacketBodyRsp>
+        AwaitableRpcRequest(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, _TypeMsgPacketBodyReq& msgBody,
             Session::session_id_t& rspSessionId, _TypeMsgPacketHead& rspHead, _TypeMsgPacketBodyRsp& rspMsg)
             : m_funSuspend([this, destSessionId, &pbPacketHead, &msgBody, &rspSessionId, &rspHead, &rspMsg](std::coroutine_handle<> handle) {
                 RpcModule::GetInstance()->RpcRequest(destSessionId, pbPacketHead, msgBody,
@@ -161,6 +162,37 @@ public:
         std::function<void(std::coroutine_handle<>)> m_funSuspend;
     };
 
+    template <class _TypeMsgPacketHead, class _TypeMsgPacketBodyReq, class _TypeMsgPacketBodyRsp>
+    struct AwaitableRpcFetchHelper {
+        AwaitableRpcFetchHelper(Session::session_id_t destSessionId, _TypeMsgPacketHead& pbPacketHead, _TypeMsgPacketBodyReq& msgBody)
+                : destSessionId_(destSessionId)
+                , pbPacketHead_(pbPacketHead)
+                , msgBody_(msgBody) {};
+
+        bool await_ready() const { return false; }
+        auto await_resume() { return std::tuple<Session::session_id_t, _TypeMsgPacketHead, _TypeMsgPacketBodyRsp> { rspSessionId_, rspHead_, rspMsg_ }; }
+        void await_suspend(std::coroutine_handle<> handle)
+        {
+            RpcModule::GetInstance()->RpcRequest(destSessionId_, pbPacketHead_, msgBody_,
+                [this, handle](Session::session_id_t sessionId, _TypeMsgPacketHead& pbHead, _TypeMsgPacketBodyRsp& pbRsp) {
+                    rspSessionId_ = sessionId;
+                    rspHead_ = pbHead;
+                    rspMsg_ = pbRsp;
+                    handle.resume();
+                });
+        }
+
+        Session::session_id_t destSessionId_;
+        _TypeMsgPacketHead& pbPacketHead_;
+        _TypeMsgPacketBodyReq& msgBody_;
+
+        Session::session_id_t rspSessionId_;
+        _TypeMsgPacketHead rspHead_;
+        _TypeMsgPacketBodyRsp rspMsg_;
+
+    };
+
+
 private:
     int64_t GenQueryId();
     static RpcModule* GetInstance();
@@ -173,6 +205,13 @@ private:
     std::unordered_map<uint32_t, void*> m_mapRpcContext;
     std::unordered_map<uint32_t, std::function<void(void*)>> m_mapRpcContextDeleter;
 };
+
+
+#define AwaitableRpcFetch(_TypeMsgPacketBodyRsp, _destSessionId, _pbPacketHead, _msgBody) \
+    AwaitableRpcFetchHelper<                                                              \
+        std::remove_cvref_t<decltype(_pbPacketHead)>, std::remove_cvref_t<decltype(_msgBody)>, std::remove_cvref_t<_TypeMsgPacketBodyRsp>> \
+        (_destSessionId, _pbPacketHead, _msgBody);
+
 
 TONY_CAT_SPACE_END
 

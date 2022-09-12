@@ -8,6 +8,7 @@
 #include <mysql/mysql.h>
 
 #include <functional>
+#include <tuple>
 
 TONY_CAT_SPACE_BEGIN
 
@@ -28,12 +29,13 @@ public:
 public:
     enum : int {
         kArgNumMax = 80,
-        kArgLenMax = 2000,
+        kArgLenMax = 20000,
         kQueryLenMax = 20000,
     };
 
+    typedef std::unordered_map<std::string, std::vector<std::string>> MysqlSelectResultMap;
     // get return: (nError, mapResult)
-    typedef std::function<void(int32_t, std::unordered_map<std::string, std::vector<std::string>>& mapResult)> MysqlSelectCb;
+    typedef std::function<void(int32_t, MysqlSelectResultMap& mapResult)> MysqlSelectCb;
     // get return: (nError, nAffectRows, nInsertId)
     typedef std::function<void(int32_t, uint64_t, uint64_t)> MysqlModifyCb;
     
@@ -42,16 +44,24 @@ public:
     int32_t QuerySelectRows(uint32_t nIndex, const std::string& strQueryString, const std::vector<std::string>& vecArgs, const MysqlSelectCb& cb);
 
 
-     static MYSQL* GetMysqlHandle()
+    static MYSQL* GetMysqlHandle()
     {
         return reinterpret_cast<MYSQL*>(t_pMysql);
     }
+
+
+    LoopPool& GetLoopPool() { return m_loopPool; }
+    // return: (nError, mapResult)
+    std::tuple<int32_t, MysqlSelectResultMap> QuerySelectRowsInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs);
+    // return: (nError, nAffectRows, nInsertId)
+    std::tuple<int32_t, uint64_t, uint64_t> QueryModifyInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs);
 
 private:
     std::string QueryStringReplace(const std::string& strQueryString, const std::vector<std::string>& vecReplaces);
     std::string QueryStringReplace(const std::string& strQueryString, const char buffReplaces[][kArgLenMax], unsigned long buffLengths[], std::size_t nBuffSize);
 
     int32_t MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString, const std::vector<std::string>& vecArgs);
+
 
 private:
     void MysqlTest();
