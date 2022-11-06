@@ -26,7 +26,7 @@ TONY_CAT_SPACE_BEGIN
 
 class LogModule : public ModuleBase {
 public:
-    LogModule(ModuleManager* pModuleManager);
+    explicit LogModule(ModuleManager* pModuleManager);
     virtual ~LogModule();
 
     virtual void BeforeInit() override;

@@ -2,11 +2,12 @@
 
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
-#include "common/mysql/mysql_module.h"
+#include "common/database/mysql/mysql_module.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
+#include "common/utility/magic_enum.h"
 #include "db_exec_module.h"
 
 #include <csignal>
@@ -62,7 +63,7 @@ void DBServerApp::InitModule(int32_t nServerIndex)
     auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerType(ServerType::eTypeDBServer);
     pServiceGovernmentModule->SetServerId(nServerIndex);
-    pServiceGovernmentModule->SetServerName(GetServerType<ServerType::eTypeDBServer>());
+    pServiceGovernmentModule->SetServerName(magic_enum::enum_name(ServerType::eTypeDBServer));
 
     m_moduleManager.Init();
 

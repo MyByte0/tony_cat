@@ -29,7 +29,7 @@ class ServiceGovernmentModule;
 
 class NetPbModule : public ModuleBase {
 public:
-    NetPbModule(ModuleManager* pModuleManager);
+    explicit NetPbModule(ModuleManager* pModuleManager);
     virtual ~NetPbModule();
 
     virtual void BeforeInit() override;
@@ -103,10 +103,9 @@ public:
             return false;
         }
         assert(length < UINT32_MAX);
-        const char* pData = data;
         // compelete PacketBodyLen
         uint32_t pbPacketBodyLen = uint32_t(length) - pbPacketHeadLen - sizeof pbPacketHeadLen;
-        pData = data + sizeof pbPacketHeadLen;
+        const char* pData = data + sizeof pbPacketHeadLen;
         if (false == pbHead.ParseFromArray(pData, pbPacketHeadLen)) [[unlikely]] {
             return false;
         }

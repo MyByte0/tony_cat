@@ -301,7 +301,7 @@ bool ConfigValueToStringMapString(const char* pData, std::unordered_map<std::str
         if (elemVecResult.size() > 0) {
             strKey = elemVecResult[0];
         }
-        std::string strValue = 0;
+        std::string strValue;
         if (elemVecResult.size() > 1) {
             strValue = elemVecResult[1];
         }

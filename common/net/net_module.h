@@ -17,7 +17,7 @@ class NetPbModule;
 
 class NetModule : public ModuleBase {
 public:
-    NetModule(ModuleManager* pModuleManager);
+    explicit NetModule(ModuleManager* pModuleManager);
     virtual ~NetModule();
 
     virtual void BeforeInit() override;
@@ -50,7 +50,7 @@ private:
     Loop m_loopAccpet;
     std::vector<Acceptor*> m_vecAcceptors;
 
-    Session::session_id_t m_nextSessionId;
+    Session::session_id_t m_nextSessionId = 0;
     LoopPool m_poolSessionContext;
 };
 

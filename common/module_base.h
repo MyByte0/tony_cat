@@ -9,7 +9,7 @@ class ModuleManager;
 
 class ModuleBase {
 public:
-    ModuleBase(ModuleManager* pModuleManager);
+    explicit ModuleBase(ModuleManager* pModuleManager);
     virtual ~ModuleBase();
 
     virtual void BeforeInit() { }

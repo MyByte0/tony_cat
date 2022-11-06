@@ -22,7 +22,7 @@ class ServiceGovernmentModule;
 
 class ClientManagerModule : public ModuleBase {
 public:
-    ClientManagerModule(ModuleManager* pModuleManager);
+    explicit ClientManagerModule(ModuleManager* pModuleManager);
     ~ClientManagerModule();
 
     virtual void BeforeInit() override;

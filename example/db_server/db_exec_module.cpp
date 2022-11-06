@@ -1,8 +1,8 @@
 #include "db_exec_module.h"
-#include "db_define.h"
+#include "common/database/db_define.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
-#include "common/mysql/mysql_module.h"
+#include "common/database/mysql/mysql_module.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
 #include "common/utility/crc.h"
@@ -37,7 +37,7 @@ void DBExecModule::OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::Se
             auto pMsgRsp = std::make_shared<Pb::SSSaveDataRsp>();
             UpdateMessage(*msgReq.mutable_kv_data_update()->mutable_user_data());
             DeleteMessage(*msgReq.mutable_kv_data_delete()->mutable_user_data());
-            loop.Exec([=]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
+            loop.Exec([this, sessionId, head, pMsgRsp]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
         });
 }
 
@@ -52,7 +52,7 @@ void DBExecModule::OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::S
             auto pUserData = pMsgRsp->mutable_user_data();
             pUserData->set_user_id(userId);
             LoadMessage(*pUserData);
-            loop.Exec([=]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
+            loop.Exec([this, sessionId, head, pMsgRsp]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
             return;
         });
     
@@ -123,8 +123,8 @@ int32_t DBExecModule::LoadMessage(google::protobuf::Message& message)
 
                 auto pMsgReflection = pMsg->GetReflection();
                 auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                for (int iSubField = 0; iSubField < pMsgDescriptor->field_count(); ++iSubField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iSubField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
@@ -225,14 +225,12 @@ int32_t DBExecModule::UpdateMessage(google::protobuf::Message& message)
         if (pFieldDescriptor->is_repeated()) {
             for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
                 auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
-                std::string strRepeatedQueryString;
-                std::vector<std::string> elemRepeatedArgs;
 
                 vecArgs.insert(vecArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
                 auto pMsgReflection = pMsg->GetReflection();
                 auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
@@ -247,13 +245,12 @@ int32_t DBExecModule::UpdateMessage(google::protobuf::Message& message)
             }
         }
         else {
-            auto pSubDescriptor = pFieldDescriptor->message_type();
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
             auto pMsgReflection = pMsg->GetReflection();
             auto pMsgDescriptor = pMsg->GetDescriptor();
             vecArgs.insert(vecArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
-            for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
-                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                 if (!pMsgFieldDescriptor) {
                     continue;
                 }
@@ -329,8 +326,8 @@ int32_t DBExecModule::DeleteMessage(google::protobuf::Message& message)
 
                 auto pMsgReflection = pMsg->GetReflection();
                 auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
@@ -356,8 +353,8 @@ int32_t DBExecModule::DeleteMessage(google::protobuf::Message& message)
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
             auto pMsgReflection = pMsg->GetReflection();
             auto pMsgDescriptor = pMsg->GetDescriptor();
-            for (int iField = 0; iField < pMsgDescriptor->field_count(); ++iField) {
-                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iField);
+            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                 if (!pMsgFieldDescriptor) {
                     continue;
                 }
@@ -389,8 +386,7 @@ bool DBExecModule::IsKey(const google::protobuf::Message& message, const google:
     }
 
     static DbPbFieldKey pbKeys;
-    auto str = message.GetTypeName();
-    return pbKeys.mapMesssageKeys[message.GetTypeName()].count(fieldDescriptor.name()) > 0;
+    return pbKeys.mapMesssageKeys.count(message.GetTypeName()) > 0 && pbKeys.mapMesssageKeys[message.GetTypeName()].count(fieldDescriptor.name()) > 0;
 }
 
 void DBExecModule::StringToProtoMessage(google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, const std::string& value)

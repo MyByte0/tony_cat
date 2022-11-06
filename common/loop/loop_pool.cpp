@@ -46,7 +46,7 @@ void LoopPool::Exec(std::size_t index, const Loop::FunctionRun& func)
 
 void LoopPool::Broadcast(Loop::FunctionRun&& func)
 {
-    std::for_each(m_vecLoops.begin(), m_vecLoops.end(), [func(std::move(func))](Loop& loop) { loop.Exec(std::move(func)); });
+    std::for_each(m_vecLoops.begin(), m_vecLoops.end(), [func = std::move(func)](Loop& loop) mutable{ loop.Exec(std::move(func)); });
 }
 
 void LoopPool::Broadcast(const Loop::FunctionRun& func)

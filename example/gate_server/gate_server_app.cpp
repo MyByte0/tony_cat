@@ -8,6 +8,7 @@
 #include "common/net/net_pb_module.h"
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
+#include "common/utility/magic_enum.h"
 #include "server_common/server_define.h"
 
 #include <csignal>
@@ -61,7 +62,7 @@ void GateServerApp::InitModule(int32_t nServerIndex)
     auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerType(ServerType::eTypeGateServer);
     pServiceGovernmentModule->SetServerId(nServerIndex);
-    pServiceGovernmentModule->SetServerName(GetServerType<ServerType::eTypeGateServer>());
+    pServiceGovernmentModule->SetServerName(magic_enum::enum_name(ServerType::eTypeGateServer));
 
     m_moduleManager.Init();
 

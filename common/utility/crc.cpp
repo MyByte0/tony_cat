@@ -77,11 +77,10 @@ uint16_t CRC16(const void* data, size_t len)
 {
     const uint8_t* pData = (const uint8_t*)data;
     uint16_t crc16 = 0x0000;
-    uint16_t crc_h4 = 0, crc_l12 = 0;
 
     while (len--) {
-        crc_h4 = (crc16 >> 12);
-        crc_l12 = (crc16 << 4);
+        uint16_t crc_h4 = (crc16 >> 12);
+        uint16_t crc_l12 = (crc16 << 4);
         crc16 = crc_l12 ^ crc16table[crc_h4 ^ (*pData >> 4)];
         crc_h4 = (crc16 >> 12);
         crc_l12 = (crc16 << 4);

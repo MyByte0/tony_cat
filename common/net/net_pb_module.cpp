@@ -41,7 +41,7 @@ void NetPbModule::OnUpdate()
         m_vecMsgFunction.swap(vecGetFunction);
     }
 
-    std::for_each(vecGetFunction.begin(), vecGetFunction.end(), [](std::function<void()>& cb) { cb(); });
+    std::for_each(vecGetFunction.begin(), vecGetFunction.end(), [](const std::function<void()>& cb) { cb(); });
 }
 
 void NetPbModule::Listen(const std::string& strAddress, uint16_t addressPort)
@@ -59,7 +59,6 @@ Session::session_id_t NetPbModule::Connect(const std::string& strAddress, uint16
 
 bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf)
 {
-    size_t readStart = 0;
     while (buf.GetReadableSize() >= kHeadLen) {
         auto readBuff = buf.GetReadData();
         uint32_t checkCode = 0, msgType = 0;

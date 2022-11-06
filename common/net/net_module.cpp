@@ -8,7 +8,6 @@ TONY_CAT_SPACE_BEGIN
 NetModule::NetModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
-    m_nextSessionId = 0;
     // default net thread num = 1
     // could SetNetThreadNum on BeforeInit()
     SetNetThreadNum(1);

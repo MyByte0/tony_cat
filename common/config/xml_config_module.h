@@ -54,7 +54,7 @@ class NetPbModule;
 
 class XmlConfigModule : public ModuleBase {
 public:
-    XmlConfigModule(ModuleManager* pModuleManager);
+    explicit XmlConfigModule(ModuleManager* pModuleManager);
     virtual ~XmlConfigModule();
 
 public:

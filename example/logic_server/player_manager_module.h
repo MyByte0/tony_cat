@@ -26,7 +26,7 @@ class ServiceGovernmentModule;
 
 class PlayerManagerModule : public ModuleBase {
 public:
-    PlayerManagerModule(ModuleManager* pModuleManager);
+    explicit PlayerManagerModule(ModuleManager* pModuleManager);
     ~PlayerManagerModule();
 
     virtual void BeforeInit() override;

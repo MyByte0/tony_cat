@@ -1,7 +1,7 @@
 # tony_cat  
   
 It is a multi-platform server frame base on c++20.  
-using libasio, glog, libformat, libmysql.  
+using libasio, glog, libformat, libmysql,rocksdb(optional).  
  
   
 The linux environment on docker hub  
@@ -23,3 +23,9 @@ vcpkg install libmysql:x64-windows
 install python3 and openpyxl  
   
 open the project with cmake  
+
+  
+get start with:  
+https://github.com/MyByte0/tony_cat/wiki
+
+please give advices on the issues site.

@@ -8,8 +8,10 @@
 #include "common/net/net_pb_module.h"
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
+#include "common/utility/magic_enum.h"
 #include "player_manager_module.h"
 #include "server_common/server_define.h"
+
 
 #include <csignal>
 
@@ -63,7 +65,7 @@ void LogicServerApp::InitModule(int32_t nServerIndex)
     auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerType(ServerType::eTypeLogicServer);
     pServiceGovernmentModule->SetServerId(nServerIndex);
-    pServiceGovernmentModule->SetServerName(GetServerType<ServerType::eTypeLogicServer>());
+    pServiceGovernmentModule->SetServerName(magic_enum::enum_name(ServerType::eTypeLogicServer));
 
     m_moduleManager.Init();
 

@@ -63,23 +63,21 @@ def gen_code(argv):
     header_file_write.write('\n    DbPbFieldKey() {')
 
     for meta in data_metas:
-        for comment in meta.comment:
-            print('comment: {}\n'.format(comment))
         if len(meta.comment) > 1 and meta.comment[1] == 'user_data':
 			# format key=(key_name1,key_name2...) or key=key_name
             if len(meta.comment) > 2 and meta.comment[2].startswith('key'):
                 keys_line = meta.comment[2][meta.comment[2].find('=') + len('='):]
                 if keys_line.startswith('('):
                     keys_line = keys_line[keys_line.find('(') + len('(') : keys_line.find(')')]
-                keys = keys_line.splite(',')
+                keys = keys_line.split(',')
                 key_fields = []
                 msg_name = ''
                 if meta.namespace != '':
                     msg_name = "{}.{}".format(meta.namespace, meta.name)
                 else:
                     msg_name = meta.name
-                header_file_write.write('\n		mapMesssageKeys[std::string("{}")] = { '.format(msg_name))
-                for index,key_name in keys:
+                header_file_write.write('\n		mapMesssageKeys[std::string("{}")] = {{ '.format(msg_name))
+                for index, key_name in enumerate(keys):
                     field = meta.GetPbMetaFieldByName(key_name)
                     if None == field:
                         print('error: on message:{} key_name:{}!\n'.format(meta.name, key_name))
@@ -88,19 +86,13 @@ def gen_code(argv):
                         print("not support key type name:{} type:{} !".format(meta.name, meta.pb_type))
                         break
                     key_fields.append(field)
-                    header_file_write.write('\n            std::string("{}")'.format(key_name))
-                    if index+1 != len(keys):
+                    if index + 1 != len(keys):
                         header_file_write.write('\n            std::string("{}"),'.format(key_name))
                     else:
                         header_file_write.write('\n            std::string("{}")'.format(key_name))
-                header_file_write.write('}')
+                header_file_write.write('\n        };')
                 continue
 
-    header_file_write.write('\n        mapMesssageKeys[std::string("UserBase")] = { };')
-    header_file_write.write('\n        mapMesssageKeys[std::string("UserCount")] = {')
-    header_file_write.write('\n            std::string("count_type"), ')
-    header_file_write.write('\n            std::string("count_subtype")};')
-    header_file_write.write('\n        mapMesssageKeys[std::string("ClientCache")] = {std::string("cache_type")};')
     header_file_write.write('\n    }')
     header_file_write.write('\n')
     header_file_write.write('\n    std::unordered_map<std::string, std::unordered_set<std::string>> mapMesssageKeys;')

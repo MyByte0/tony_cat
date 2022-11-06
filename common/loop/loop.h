@@ -20,8 +20,11 @@ TONY_CAT_SPACE_BEGIN
 class Loop {
 public:
     Loop();
-    Loop(Loop&& loop) = default;
+    Loop(Loop&&) = default;
+    Loop(const Loop&) = delete;
     ~Loop();
+
+    Loop& operator = (const Loop&) = delete;
 
 public:
     void Start();

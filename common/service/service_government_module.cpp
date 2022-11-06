@@ -171,7 +171,7 @@ void ServiceGovernmentModule::OnDisconnect(Session::session_id_t nSessionId, con
     });
 }
 
-CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(const ServerInstanceInfo stServerInstanceInfo)
+CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(ServerInstanceInfo stServerInstanceInfo)
 {
     auto nSessionId = stServerInstanceInfo.nSessionId;
     Pb::ServerHead head;
@@ -233,13 +233,13 @@ ServiceGovernmentModule::ServerInstanceInfo* ServiceGovernmentModule::GetServerI
 {
     auto itMapServerList = m_mapServerList.find(nServerType);
     if (itMapServerList == m_mapServerList.end()) {
-        return 0;
+        return nullptr;
     }
 
     auto& mapServerInfo = itMapServerList->second;
     auto itMapServerInfo = mapServerInfo.find(nServerId);
     if (itMapServerInfo == mapServerInfo.end()) {
-        return 0;
+        return nullptr;
     }
 
     return &itMapServerInfo->second;

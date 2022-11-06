@@ -17,7 +17,7 @@ void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_
         delete m_acceptor;
         m_acceptor = nullptr;
     }
-
+    //port = 0;
     m_funSessionRead = funSessionRead;
     m_acceptor = new asio::ip::tcp::acceptor(
         ioContext,

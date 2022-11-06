@@ -21,7 +21,7 @@ class XmlConfigModule;
 
 class RpcModule : public ModuleBase {
 public:
-    RpcModule(ModuleManager* pModuleManager);
+    explicit RpcModule(ModuleManager* pModuleManager);
     virtual ~RpcModule();
 
     virtual void BeforeInit() override;

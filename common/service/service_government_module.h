@@ -21,7 +21,7 @@ class RpcModule;
 
 class ServiceGovernmentModule : public ModuleBase {
 public:
-    ServiceGovernmentModule(ModuleManager* pModuleManager);
+    explicit ServiceGovernmentModule(ModuleManager* pModuleManager);
     virtual ~ServiceGovernmentModule();
 
     virtual void BeforeInit() override;
@@ -70,7 +70,7 @@ private:
     void OnConnectSucess(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo, bool bSuccess);
     void OnDisconnect(Session::session_id_t nSessionId, const ServerInstanceInfo& stServerInstanceInfo);
 
-    CoroutineTask<void> OnHeartbeat(const ServerInstanceInfo stServerInstanceInfo);
+    CoroutineTask<void> OnHeartbeat(ServerInstanceInfo stServerInstanceInfo);
 
 private:
     static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);

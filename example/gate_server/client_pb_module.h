@@ -24,7 +24,7 @@ class ServiceGovernmentModule;
 
 class ClientPbModule : public NetPbModule {
 public:
-    ClientPbModule(ModuleManager* pModuleManager);
+    explicit ClientPbModule(ModuleManager* pModuleManager);
     ~ClientPbModule();
     virtual void BeforeInit() override;
     virtual void OnInit() override;

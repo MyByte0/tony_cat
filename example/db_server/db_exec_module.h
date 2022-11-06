@@ -24,7 +24,7 @@ class ServiceGovernmentModule;
 
 class DBExecModule : public ModuleBase {
 public:
-    DBExecModule(ModuleManager* pModuleManager);
+    explicit DBExecModule(ModuleManager* pModuleManager);
     ~DBExecModule();
     virtual void BeforeInit() override;
 
