@@ -18,7 +18,6 @@
 
 TONY_CAT_SPACE_BEGIN
 
-class MysqlModule;
 class NetModule;
 class ServiceGovernmentModule;
 
@@ -44,7 +43,7 @@ private:
 
 private:
     NetPbModule* m_pNetPbModule = nullptr;
-    MysqlModule* m_pMysqlModule = nullptr;
+    void* m_pDBModule = nullptr;
 
 };
 
