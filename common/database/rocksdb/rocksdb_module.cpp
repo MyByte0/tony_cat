@@ -3,6 +3,7 @@
 #include "rocksdb_module.h"
 
 #include "common/config/xml_config_module.h"
+#include "common/database/db_utils.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 
@@ -12,6 +13,8 @@
 TONY_CAT_SPACE_BEGIN
 
 THREAD_LOCAL_POD_VAR void* RocksDBModule::t_pRocksDB = nullptr;
+
+const char* strTableSpacer = "#";
 
 RocksDBModule::RocksDBModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
@@ -47,8 +50,24 @@ rocksdb::DB* RocksDBModule::GetThreadRocksDB()
     return db;
 }
 
+bool RocksDBModule::CheckDBBaseData(uint64_t nThreadNum, const std::string& strDBBasePath)
+{
+    // \TODO
+    return true;
+}
+
+void RocksDBModule::RemapDBData()
+{
+    // \TODO
+}
+
 void RocksDBModule::InitLoopsRocksDb(uint64_t nThreadNum, const std::string& strDBBasePath)
 {
+    if (CheckDBBaseData(nThreadNum, strDBBasePath) == false) {
+        LOG_ERROR("rocksdb save infomation change, please remap this database");
+        return;
+    }
+
     std::shared_ptr<std::atomic<int32_t>> pDBIndex = std::make_shared<std::atomic<int32_t>>(0);
     m_loopPool.Start(nThreadNum);
     m_loopPool.Broadcast([=, this]() {
@@ -67,6 +86,21 @@ void RocksDBModule::InitLoopsRocksDb(uint64_t nThreadNum, const std::string& str
 
         // db->Delete(rocksdb::WriteOptions(), a);
     });
+}
+
+int32_t RocksDBModule::LoadMessage(google::protobuf::Message& message)
+{
+    return 0;
+}
+
+int32_t RocksDBModule::UpdateMessage(google::protobuf::Message& message)
+{
+    return 0;
+}
+
+int32_t RocksDBModule::DeleteMessage(google::protobuf::Message& message)
+{
+    return 0;
 }
 
 void RocksDBModule::Test()

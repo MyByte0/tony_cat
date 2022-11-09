@@ -7,7 +7,9 @@
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 
-#include "rocksdb/db.h"
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/message.h>
+#include <rocksdb/db.h>
 
 TONY_CAT_SPACE_BEGIN
 
@@ -25,13 +27,23 @@ public:
 public:
     rocksdb::DB* GetThreadRocksDB();
     
+public:
+    int32_t LoadMessage(google::protobuf::Message& message);
+    int32_t UpdateMessage(google::protobuf::Message& message);
+    int32_t DeleteMessage(google::protobuf::Message& message);
+
 private:
     void InitLoopsRocksDb(uint64_t nThreadNum, const std::string& strDBBasePath);
+
+    bool CheckDBBaseData(uint64_t nThreadNum, const std::string& strDBBasePath);
+
+    void RemapDBData();
 
 private:
     void Test();
 
 private:
+    std::string m_strDBInstanceName;
     LoopPool m_loopPool;
     static THREAD_LOCAL_POD_VAR void* t_pRocksDB;
 

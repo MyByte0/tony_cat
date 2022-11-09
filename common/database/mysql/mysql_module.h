@@ -11,6 +11,8 @@
 #include <functional>
 #include <tuple>
 
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/message.h>
 #include <mysql/mysql.h>
 
 TONY_CAT_SPACE_BEGIN
@@ -58,14 +60,22 @@ public:
     // return: (nError, nAffectRows, nInsertId)
     std::tuple<int32_t, uint64_t, uint64_t> QueryModifyInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs);
 
+public:
+    int32_t LoadMessage(google::protobuf::Message& message);
+    int32_t UpdateMessage(google::protobuf::Message& message);
+    int32_t DeleteMessage(google::protobuf::Message& message);
+
 private:
+    void AddQueryCondition(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, std::string& strQuerys, std::vector<std::string>& vecArgs);
+
     std::string QueryStringReplace(const std::string& strQueryString, const std::vector<std::vector<char>>& vecBuff);
 
     int32_t MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString, const std::vector<std::string>& vecArgs);
 
-
 private:
     void MysqlTest();
+
+    void OnPbTest();
 
 private:
     XmlConfigModule* m_pXmlConfigModule = nullptr;
