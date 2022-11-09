@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -45,26 +46,30 @@ private:                                     \
 #define DEFINE_MEMBER_INT64(_NAME) DEFINE_MEMBER_INT_TYPE(int64_t, _NAME)
 #define DEFINE_MEMBER_UINT64(_NAME) DEFINE_MEMBER_INT_TYPE(uint64_t, _NAME)
 
-#define DEFINE_MEMBER_STR(_NAME)            \
-public:                                     \
-    const std::string& Get##_NAME() const   \
-    {                                       \
-        return m_str##_NAME;                \
-    }                                       \
-    std::string& Get##_NAME()               \
-    {                                       \
-        return m_str##_NAME;                \
-    }                                       \
-    void Set##_NAME(const std::string& val) \
-    {                                       \
-        m_str##_NAME = val;                 \
-    }                                       \
-    void Set##_NAME(std::string&& val)      \
-    {                                       \
-        m_str##_NAME = std::move(val);      \
-    }                                       \
-                                            \
-private:                                    \
+#define DEFINE_MEMBER_STR(_NAME)                \
+public:                                         \
+    const std::string& Get##_NAME() const       \
+    {                                           \
+        return m_str##_NAME;                    \
+    }                                           \
+    std::string& Get##_NAME()                   \
+    {                                           \
+        return m_str##_NAME;                    \
+    }                                           \
+    void Set##_NAME(const std::string& val)     \
+    {                                           \
+        m_str##_NAME = val;                     \
+    }                                           \
+    void Set##_NAME(std::string&& val)          \
+    {                                           \
+        m_str##_NAME = std::move(val);          \
+    }                                           \
+    void Set##_NAME(const std::string_view& val)\
+    {                                           \
+        m_str##_NAME = std::move(val);          \
+    }                                           \
+                                                \
+private:                                        \
     std::string m_str##_NAME;
 
 #define DEFINE_MEMBER_VAR(_TYPE, _NAME) \
