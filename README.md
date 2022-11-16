@@ -20,16 +20,16 @@ vcpkg install tinyxml2:x64-windows
 vcpkg install protobuf:x64-windows  
 
 optional:
-vcpkg install libmysql:x64-windows 
-vcpkg install rocksdb:x64-windows 
+vcpkg install libmysql:x64-windows  
+vcpkg install rocksdb:x64-windows  
   
 
 other tools:
 install python3 and openpyxl  
   
 open the project with cmake  
-use database mysql: -DUSE_MYSQL=ON 
-use database rocksdb: -DUSE_ROCKSDB=ON 
+use database mysql: -DUSE_MYSQL=ON  
+use database rocksdb: -DUSE_ROCKSDB=ON  
   
 get start with:  
 https://github.com/MyByte0/tony_cat/wiki
