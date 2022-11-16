@@ -19,7 +19,7 @@ vcpkg install glog:x64-windows
 vcpkg install tinyxml2:x64-windows  
 vcpkg install protobuf:x64-windows  
 
-optional:
+optional:  
 vcpkg install libmysql:x64-windows  
 vcpkg install rocksdb:x64-windows  
   
