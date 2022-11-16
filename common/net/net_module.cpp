@@ -50,8 +50,7 @@ Session::session_id_t NetModule::CreateSessionId()
 
 SessionPtr NetModule::GetSessionById(Session::session_id_t sessionId)
 {
-    auto itMapSession = m_mapSession.find(sessionId);
-    if (itMapSession != m_mapSession.end()) {
+    if (auto itMapSession = m_mapSession.find(sessionId); itMapSession != m_mapSession.end()) {
         return itMapSession->second;
     }
 
@@ -162,12 +161,10 @@ Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16
 
 void NetModule::Close(Session::session_id_t session_id)
 {
-    auto itMapSession = m_mapSession.find(session_id);
-    if (itMapSession == m_mapSession.end()) {
-        return;
+    if (auto itMapSession = m_mapSession.find(session_id); itMapSession != m_mapSession.end()) {
+        itMapSession->second->AsyncClose();
     }
-
-    itMapSession->second->AsyncClose();
+    return;
 }
 
 TONY_CAT_SPACE_END

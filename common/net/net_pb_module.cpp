@@ -175,8 +175,7 @@ uint32_t NetPbModule::CheckCode(const void* dataHead, size_t lenHead, const void
 
 bool NetPbModule::ReadPbPacket(Session::session_id_t sessionId, uint32_t msgType, const char* data, std::size_t length)
 {
-    auto itMapPackethandle = m_mapPackethandle.find(msgType);
-    if (itMapPackethandle != m_mapPackethandle.end()) {
+    if (auto itMapPackethandle = m_mapPackethandle.find(msgType); itMapPackethandle != m_mapPackethandle.end()) {
         auto& funcCb = itMapPackethandle->second;
         funcCb(sessionId, msgType, data, length);
         return true;

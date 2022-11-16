@@ -200,8 +200,7 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(ServerInstanceInfo stSe
         pServerInstanceInfo->timerHeartbeat = nullptr;
     }
     pServerInstanceInfo->timerHeartbeat = m_pModuleManager->GetMainLoop().ExecAfter(kHeartbeatServerTimeMillSeconds, [this, stServerInstanceInfo]() {
-        auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex);
-        if (nullptr != pServerInstanceInfo) {
+        if (auto pServerInstanceInfo = GetServerInstanceInfo(stServerInstanceInfo.nServerType, stServerInstanceInfo.nServerIndex); nullptr != pServerInstanceInfo) {
             OnHeartbeat(*pServerInstanceInfo);
         }
     });

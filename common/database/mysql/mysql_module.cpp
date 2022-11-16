@@ -53,8 +53,7 @@ void MysqlModule::MysqlTest()
     int nThreadNum = 2;
     m_loopPool.Start(nThreadNum);
     m_loopPool.Broadcast([=, this]() {
-        t_pMysql = mysql_init(nullptr);
-        if (t_pMysql == nullptr) {
+        if (t_pMysql = mysql_init(nullptr); t_pMysql == nullptr) {
             LOG_ERROR("mysql init error");
             return;
         }
@@ -160,8 +159,7 @@ int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQuery
         elemBuff.resize(nBuffLen);
     }
 
-    std::string strQuery = QueryStringReplace(strQueryString, vecBuff);
-    if (mysql_real_query(pMysqlHandle, strQuery.c_str(), static_cast<unsigned long>(strQuery.length()))) {
+    if (std::string strQuery = QueryStringReplace(strQueryString, vecBuff); mysql_real_query(pMysqlHandle, strQuery.c_str(), static_cast<unsigned long>(strQuery.length()))) {
         LOG_ERROR("query test:{}, {}, aueryString:{}", mysql_errno(pMysqlHandle), mysql_error(pMysqlHandle), strQuery);
         return Pb::SSMessageCode::ss_msg_error_sql;
     }
@@ -196,8 +194,7 @@ std::tuple<int32_t, MysqlModule::MysqlSelectResultMap> MysqlModule::QuerySelectR
                     }
                 }
 
-                const char* pRow = row[i];
-                if (pRow != nullptr) {
+                if (const char* pRow = row[i]; pRow != nullptr) {
                     mapResult[vecFieldName[i]].emplace_back(pRow, length[i]);
                 } else {
                     mapResult[vecFieldName[i]].emplace_back("");

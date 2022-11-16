@@ -22,6 +22,7 @@ void Acceptor::Reset(asio::io_context& ioContext, const std::string& Ip, uint32_
     m_acceptor = new asio::ip::tcp::acceptor(
         ioContext,
         asio::ip::tcp::endpoint(asio::ip::make_address(Ip), port));
+    // \TODO: setup net argments
     //asio::ip::tcp::acceptor::send_buffer_size opt_send_buffer_size(102400);
     //asio::ip::tcp::acceptor::receive_buffer_size opt_recv_buffer_size(102400);
     //m_acceptor->set_option(opt_send_buffer_size);

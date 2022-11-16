@@ -28,6 +28,7 @@ TONY_CAT_SPACE_BEGIN
 // Task::~promise_type()        -->
 // Task::~Task()                -->
 
+//for normal CoroutineFunction return type
 template <class _TypeRet>
 struct CoroutineTask {
     struct promise_type {
@@ -78,7 +79,10 @@ struct CoroutineTask<void> {
     ~CoroutineTask() { }
 };
 
-template <class T>
+
+// use for: call CoroutineAsyncTask<TypeRet> func(...)
+// and co_await func(...);
+template <class _TypeRet>
 struct CoroutineAsyncTask {
     struct promise_type {
         auto get_return_object()
@@ -97,8 +101,7 @@ struct CoroutineAsyncTask {
             void await_resume() noexcept { }
             std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> h) noexcept
             {
-                auto previous = h.promise().previous;
-                if (previous) {
+                if (auto previous = h.promise().previous; previous) {
                     return previous;
                 } else {
                     return std::noop_coroutine();
@@ -113,11 +116,11 @@ struct CoroutineAsyncTask {
         {
             throw;
         }
-        void return_value(T value)
+        void return_value(_TypeRet value)
         {
             result = std::move(value);
         }
-        T result;
+        _TypeRet result;
         std::coroutine_handle<> previous;
     };
 
@@ -136,7 +139,7 @@ struct CoroutineAsyncTask {
         {
             return false;
         }
-        T await_resume()
+        _TypeRet await_resume()
         {
             return std::move(coro.promise().result);
         }
@@ -152,7 +155,7 @@ struct CoroutineAsyncTask {
     {
         return awaiter { coro };
     }
-    T operator()()
+    _TypeRet operator()()
     {
         coro.resume();
         return std::move(coro.promise().result);
@@ -162,6 +165,89 @@ private:
     std::coroutine_handle<promise_type> coro;
 };
 
+template <>
+struct CoroutineAsyncTask<void> {
+    struct promise_type {
+        auto get_return_object()
+        {
+            return CoroutineAsyncTask(std::coroutine_handle<promise_type>::from_promise(*this));
+        }
+        std::suspend_always initial_suspend()
+        {
+            return {};
+        }
+        struct final_awaiter {
+            bool await_ready() noexcept
+            {
+                return false;
+            }
+            void await_resume() noexcept { }
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> h) noexcept
+            {
+                if (auto previous = h.promise().previous; previous) {
+                    return previous;
+                } else {
+                    return std::noop_coroutine();
+                }
+            }
+        };
+        final_awaiter final_suspend() noexcept
+        {
+            return {};
+        }
+        void unhandled_exception()
+        {
+            throw;
+        }
+        void return_void()
+        {
+        }
+        std::coroutine_handle<> previous;
+    };
+
+    CoroutineAsyncTask(std::coroutine_handle<promise_type> h)
+        : coro(h)
+    {
+    }
+    CoroutineAsyncTask(CoroutineAsyncTask&& t) = delete;
+    ~CoroutineAsyncTask()
+    {
+        coro.destroy();
+    }
+
+    struct awaiter {
+        bool await_ready()
+        {
+            return false;
+        }
+        void await_resume()
+        {
+            return;
+        }
+        auto await_suspend(std::coroutine_handle<> h)
+        {
+            coro.promise().previous = h;
+            return coro;
+        }
+        std::coroutine_handle<promise_type> coro;
+    };
+
+    awaiter operator co_await()
+    {
+        return awaiter { coro };
+    }
+    void operator()()
+    {
+        coro.resume();
+        return;
+    }
+
+private:
+    std::coroutine_handle<promise_type> coro;
+};
+
+
+// use for: co_await switch loop
 struct AwaitableLoopSwitch {
     AwaitableLoopSwitch(Loop& loop)
         : m_loop(loop)
@@ -182,6 +268,7 @@ private:
     Loop& m_loop;
 };
 
+//use for: co_await timer
 struct AwaitableExecAfter {
     AwaitableExecAfter(uint32_t millSeconds)
         : m_nWaitMillSecond(millSeconds)

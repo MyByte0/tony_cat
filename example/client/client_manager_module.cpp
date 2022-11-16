@@ -36,8 +36,7 @@ void ClientManagerModule::OnInit()
 
 ClientManagerModule::ClientDataPtr ClientManagerModule::GetPlayerData(const ACCOUNT_ID& user_id)
 {
-    auto itMapOnlinePlayer = m_mapClient.find(user_id);
-    if (itMapOnlinePlayer != m_mapClient.end()) {
+    if (auto itMapOnlinePlayer = m_mapClient.find(user_id); itMapOnlinePlayer != m_mapClient.end()) {
         return itMapOnlinePlayer->second;
     }
 
@@ -53,8 +52,8 @@ CoroutineTask<void> ClientManagerModule::StartTestClient()
     nWaitMillSecond = 1000;
     for (int i = 0; i < 10; ++i) {
         LOG_TRACE("start login client");
-        auto nResult = co_await CreateNewClient();
-        if (nResult != 0) {
+        
+        if (auto nResult = co_await CreateNewClient(); nResult != 0) {
             LOG_ERROR("connect to server error:{}", nResult);
         } else {
             LOG_TRACE("start login success");

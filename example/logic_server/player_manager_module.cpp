@@ -99,8 +99,7 @@ void PlayerManagerModule::OnHandleCSPlayerLoginReq(Session::session_id_t session
 
 PlayerDataPtr PlayerManagerModule::GetPlayerData(const USER_ID& user_id)
 {
-    auto itMapOnlinePlayer = m_mapOnlinePlayer.find(user_id);
-    if (itMapOnlinePlayer != m_mapOnlinePlayer.end()) {
+    if (auto itMapOnlinePlayer = m_mapOnlinePlayer.find(user_id); itMapOnlinePlayer != m_mapOnlinePlayer.end()) {
         return itMapOnlinePlayer->second;
     }
 

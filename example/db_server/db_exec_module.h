@@ -1,5 +1,5 @@
-#ifndef GATE_SERVER_CLIENT_PB_MODULE_H_
-#define GATE_SERVER_CLIENT_PB_MODULE_H_
+#ifndef DB_SERVER_DB_EXEC_MODULE_H_
+#define DB_SERVER_DB_EXEC_MODULE_H_
 
 #include "common/core_define.h"
 #include "common/module_base.h"
@@ -15,6 +15,27 @@
 #include <functional>
 #include <memory>
 #include <unordered_map>
+
+#ifdef USE_MYSQL
+#include "common/database/mysql/mysql_module.h"
+TONY_CAT_SPACE_BEGIN
+class MysqlModule;
+TONY_CAT_SPACE_END
+typedef tony_cat::MysqlModule DBModule;
+
+#else
+#ifdef USE_ROCKSDB
+#include "common/database/rocksdb/rocksdb_module.h"
+TONY_CAT_SPACE_BEGIN
+class RocksDBModule;
+TONY_CAT_SPACE_END
+
+typedef tony_cat::RocksDBModule DBModule;
+
+#endif
+
+#endif
+
 
 TONY_CAT_SPACE_BEGIN
 
@@ -43,10 +64,10 @@ private:
 
 private:
     NetPbModule* m_pNetPbModule = nullptr;
-    void* m_pDBModule = nullptr;
+    DBModule* m_pDBModule = nullptr;
 
 };
 
 TONY_CAT_SPACE_END
 
-#endif // GATE_SERVER_CLIENT_PB_MODULE_H_
+#endif // DB_SERVER_DB_EXEC_MODULE_H_

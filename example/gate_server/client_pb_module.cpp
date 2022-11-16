@@ -70,12 +70,12 @@ void ClientPbModule::OnServerMessage(Session::session_id_t serverSessionId, uint
 
     Pb::ClientHead clientHead;
     USER_ID userId;
-    auto pUserInfo = GetGateUserInfoByUserId(userId);
-    if (nullptr == pUserInfo) {
+    if (auto pUserInfo = GetGateUserInfoByUserId(userId); nullptr != pUserInfo) {
+        SendPacket(pUserInfo->userSessionId, msgType, serverHead, pData, pbPacketBodyLen);
+    } else {
         LOG_ERROR("not find user info, userId:{}", userId);
-        return;
     }
-    SendPacket(pUserInfo->userSessionId, msgType, serverHead, pData, pbPacketBodyLen);
+    return;
 }
 
 void ClientPbModule::OnHandleCSPlayerLoginReq(Session::session_id_t sessionId, Pb::ClientHead& head, Pb::CSPlayerLoginReq& playerLoginReq)
@@ -154,8 +154,7 @@ bool ClientPbModule::OnUserLogout(USER_ID userId, bool bKick)
 
 ClientPbModule::GateUserInfoPtr ClientPbModule::GetGateUserInfoByUserId(USER_ID userId)
 {
-    auto itMapUserInfo = m_mapUserInfo.find(userId);
-    if (itMapUserInfo != m_mapUserInfo.end()) {
+    if (auto itMapUserInfo = m_mapUserInfo.find(userId); itMapUserInfo != m_mapUserInfo.end()) {
         return itMapUserInfo->second;
     }
 
@@ -164,8 +163,7 @@ ClientPbModule::GateUserInfoPtr ClientPbModule::GetGateUserInfoByUserId(USER_ID 
 
 ClientPbModule::GateUserInfoPtr ClientPbModule::GetGateUserInfoBySessionId(Session::session_id_t clientSessionId)
 {
-    auto itMapSessionUserInfo = m_mapSessionUserInfo.find(clientSessionId);
-    if (itMapSessionUserInfo != m_mapSessionUserInfo.end()) {
+    if (auto itMapSessionUserInfo = m_mapSessionUserInfo.find(clientSessionId); itMapSessionUserInfo != m_mapSessionUserInfo.end()) {
         return itMapSessionUserInfo->second;
     }
 

@@ -180,7 +180,6 @@ public:
         uint32_t pbPacketBodyLen = static_cast<uint32_t>(packetBody.ByteSizeLong());
 
         // Serialize packetBody
-
         if (pbPacketBodyLen + pbPacketHeadLen + sizeof(uint32_t) < sizeof buffHead) {
             // enough room to store in buff
             packetBody.SerializeToArray(pData, pbPacketBodyLen);

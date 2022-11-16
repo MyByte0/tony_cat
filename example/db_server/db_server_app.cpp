@@ -2,13 +2,12 @@
 
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
-#include "common/database/mysql/mysql_module.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
 #include "common/utility/magic_enum.h"
-#include "db_exec_module.h"
+#include "db_server/db_exec_module.h"
 
 #include <csignal>
 
@@ -51,7 +50,7 @@ void DBServerApp::RegisterModule()
     REGISTER_MODULE(&m_moduleManager, XmlConfigModule);
     REGISTER_MODULE(&m_moduleManager, NetModule);
     REGISTER_MODULE(&m_moduleManager, NetPbModule);
-    REGISTER_MODULE(&m_moduleManager, MysqlModule);
+    REGISTER_MODULE(&m_moduleManager, DBModule);
     REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
     REGISTER_MODULE(&m_moduleManager, RpcModule);
 

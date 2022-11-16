@@ -35,8 +35,7 @@ void RocksDBModule::BeforeInit()
 void RocksDBModule::AfterStop()
 {
     m_loopPool.Broadcast([=, this]() {
-        rocksdb::DB* db = GetThreadRocksDB();
-        if (db != nullptr) {
+        if (rocksdb::DB* db = GetThreadRocksDB(); db != nullptr) {
             db->Close();
             db = nullptr;
         }

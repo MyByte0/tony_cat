@@ -26,21 +26,17 @@ void LoopPool::Stop()
 
 void LoopPool::Exec(std::size_t index, Loop::FunctionRun&& func)
 {
-    auto pLoop = GetLoop(index);
-    if (pLoop != nullptr) [[likely]] {
+    if (auto pLoop = GetLoop(index); pLoop != nullptr) [[likely]] {
         pLoop->Exec(std::move(func));
     }
-
     return;
 }
 
 void LoopPool::Exec(std::size_t index, const Loop::FunctionRun& func)
 {
-    auto pLoop = GetLoop(index);
-    if (pLoop != nullptr) [[likely]] {
+    if (auto pLoop = GetLoop(index); pLoop != nullptr) [[likely]] {
         pLoop->Exec(func);
     }
-
     return;
 }
 
@@ -56,12 +52,12 @@ void LoopPool::Broadcast(const Loop::FunctionRun& func)
 
 asio::io_context& LoopPool::GetIoContext(std::size_t index)
 {
-    auto pLoop = GetLoop(index);
-    if (pLoop != nullptr) [[likely]] {
+    if (auto pLoop = GetLoop(index); pLoop != nullptr) [[likely]] {
         return pLoop->GetIoContext();
     }
 
     {
+        // maybe abort is better
         static asio::io_context s_oi_context;
         return s_oi_context;
     }

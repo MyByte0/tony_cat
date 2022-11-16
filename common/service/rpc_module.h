@@ -66,18 +66,14 @@ public:
             // find callBack of the query_id, and call
             auto pRpcContext = GetRpcContext<_TypeRpcContext>(_TypePbRspBody::msgid);
             auto nRspQueryId = headRsp.query_id();
-            auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId);
-            if (itContext != pRpcContext->mapCurrentCallback.end()) {
-                auto& func = itContext->second;
-                if (nullptr != func) {
+            if (auto itContext = pRpcContext->mapCurrentCallback.find(nRspQueryId); itContext != pRpcContext->mapCurrentCallback.end()) {
+                if (auto& func = itContext->second; nullptr != func) {
                     func(sessionId, headRsp, bodyRsp);
                 }
                 pRpcContext->mapCurrentCallback.erase(itContext);
             } else {
-                itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
-                if (itContext != pRpcContext->mapLastCallback.end()) {
-                    auto& func = itContext->second;
-                    if (nullptr != func) {
+                if (itContext = pRpcContext->mapLastCallback.find(nRspQueryId); itContext != pRpcContext->mapLastCallback.end()) {
+                    if (auto& func = itContext->second; nullptr != func) {
                         func(sessionId, headRsp, bodyRsp);
                     }
                     pRpcContext->mapLastCallback.erase(itContext);
