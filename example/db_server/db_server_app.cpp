@@ -60,9 +60,7 @@ void DBServerApp::RegisterModule()
 void DBServerApp::InitModule(int32_t nServerIndex)
 {
     auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
-    pServiceGovernmentModule->SetServerType(ServerType::eTypeDBServer);
-    pServiceGovernmentModule->SetServerId(nServerIndex);
-    pServiceGovernmentModule->SetServerName(magic_enum::enum_name(ServerType::eTypeDBServer));
+    pServiceGovernmentModule->SetServerInstance(magic_enum::enum_name(ServerType::eTypeDBServer), ServerType::eTypeDBServer, nServerIndex);
 
     m_moduleManager.Init();
 

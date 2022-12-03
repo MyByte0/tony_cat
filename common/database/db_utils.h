@@ -7,8 +7,11 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
-TONY_CAT_SPACE_BEGIN
+#include <functional>
+#include <string>
+#include <unordered_set>
 
+TONY_CAT_SPACE_BEGIN
 
 bool IsDBKey(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
 
@@ -21,6 +24,15 @@ void DBStringToProtoMessageAsBlob(google::protobuf::Message& message, const goog
 std::string DBProtoMessageToString(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
 
 std::string DBProtoMessageToStringAsBlob(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor);
+
+
+typedef std::function<int32_t(const std::string&, std::string&)> KVGetCb;
+typedef std::function<int32_t(const std::string&, const std::string&)> KVPutCb;
+typedef std::function<int32_t(const std::string&)> KVDelCb;
+
+int32_t LoadMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet);
+int32_t UpdateMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet, const KVPutCb& funPut, const KVDelCb& funDel);
+int32_t DeleteMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet, const KVPutCb& funPut, const KVDelCb& funDel);
 
 template <class _Func>
 void ForEachDBMessageData(google::protobuf::Message& message, const _Func& func)

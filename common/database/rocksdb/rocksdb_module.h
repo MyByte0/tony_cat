@@ -30,7 +30,6 @@ public:
     LoopPool& GetLoopPool() { return m_loopPool; }
     
 public:
-
     int32_t LoadMessage(google::protobuf::Message& message);
     int32_t UpdateMessage(google::protobuf::Message& message);
     int32_t DeleteMessage(google::protobuf::Message& message);

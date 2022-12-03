@@ -14,8 +14,6 @@ TONY_CAT_SPACE_BEGIN
 
 THREAD_LOCAL_POD_VAR void* RocksDBModule::t_pRocksDB = nullptr;
 
-const char* strTableSpacer = "#";
-
 RocksDBModule::RocksDBModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
@@ -51,13 +49,13 @@ rocksdb::DB* RocksDBModule::GetThreadRocksDB()
 
 bool RocksDBModule::CheckDBBaseData(uint64_t nThreadNum, const std::string& strDBBasePath)
 {
-    // \TODO
+    // \TODO: check rocks database schema and table schema
     return true;
 }
 
 void RocksDBModule::RemapDBData()
 {
-    // \TODO
+    // \TODO remap onchange rocks database schema / table schema
 }
 
 void RocksDBModule::InitLoopsRocksDb(uint64_t nThreadNum, const std::string& strDBBasePath)
@@ -89,16 +87,28 @@ void RocksDBModule::InitLoopsRocksDb(uint64_t nThreadNum, const std::string& str
 
 int32_t RocksDBModule::LoadMessage(google::protobuf::Message& message)
 {
+    LoadMessageOnKV(message, [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; });
     return 0;
 }
 
 int32_t RocksDBModule::UpdateMessage(google::protobuf::Message& message)
 {
+    UpdateMessageOnKV(message,
+        [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; },
+        [this](const std::string& strKey, const std::string& strVal) mutable { GetThreadRocksDB()->Put(rocksdb::WriteOptions(), strKey, strVal);  return 0; },
+        [this](const std::string& strKey) mutable { GetThreadRocksDB()->Delete(rocksdb::WriteOptions(), strKey);  return 0; });
+ 
     return 0;
 }
 
 int32_t RocksDBModule::DeleteMessage(google::protobuf::Message& message)
 {
+    DeleteMessageOnKV(
+        message,
+        [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; },
+        [this](const std::string& strKey, const std::string& strVal) mutable { GetThreadRocksDB()->Put(rocksdb::WriteOptions(), strKey, strVal);  return 0; },
+        [this](const std::string& strKey) mutable { GetThreadRocksDB()->Delete(rocksdb::WriteOptions(), strKey);  return 0; });
+
     return 0;
 }
 

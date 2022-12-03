@@ -59,6 +59,20 @@ public:
     DEFINE_MEMBER_VAR(ServerInstanceInfo, ServerInfo);
 
 public:
+    void SetServerInstance(const std::string& strName, int32_t nServerType, uint32_t nServerId) {
+        SetServerName(strName);
+        SetServerId(nServerId);
+        SetServerType(nServerType);
+    }
+
+    void SetServerInstance(const std::string_view& strName, int32_t nServerType, uint32_t nServerId)
+    {
+        SetServerName(strName);
+        SetServerId(nServerId);
+        SetServerType(nServerType);
+    }
+
+public:
     int32_t GetServerKeyIndex(int32_t nServerType, const ::std::string& strKey);
     ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType, int32_t nServerId);
     Session::session_id_t GetServerSessionId(int32_t nServerType, int32_t nServerId);
