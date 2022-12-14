@@ -22,8 +22,8 @@ bool DataBaseConfigData::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttri
             return false;
         }
     }
-    else if (std::string("IP") == pNodeAttribute->Name()) {
-        if (false == ConfigValueToString(pNodeAttribute->Value(), strIP)) {
+    else if (std::string("Address") == pNodeAttribute->Name()) {
+        if (false == ConfigValueToString(pNodeAttribute->Value(), strAddress)) {
             LOG_ERROR("Paser error on Id:{}", nId);
             return false;
         }

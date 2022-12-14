@@ -12,7 +12,7 @@
 
 TONY_CAT_SPACE_BEGIN
 
-// use co_await Awaitable
+// use co_await Awaitable / promise.await_transform / operator co_await
 // need call function return Task with define promise_type
 // run:
 // Task::promise_type()         -->
@@ -22,11 +22,18 @@ TONY_CAT_SPACE_BEGIN
 // if exception, go unhandled_exception(),
 // go final_suspend()
 // otherwise                    -->
-// yield_value() if use         -->
+// yield_value() if use co_yield-->
 // return_void()/return_value() -->
 // final_suspend()              -->
 // Task::~promise_type()        -->
 // Task::~Task()                -->
+
+// awaiter£º
+// if (!awaiter::await_ready) {
+//  // note: if await_suspend return bool false, continue suspend.
+//   awaiter::await_suspend();
+// }
+// return awaiter::await_resume();
 
 //for normal CoroutineFunction return type
 template <class _TypeRet>
@@ -78,7 +85,6 @@ struct CoroutineTask<void> {
     CoroutineTask(std::coroutine_handle<promise_type> h) { }
     ~CoroutineTask() { }
 };
-
 
 // use for: call CoroutineAsyncTask<TypeRet> func(...)
 // and co_await func(...);

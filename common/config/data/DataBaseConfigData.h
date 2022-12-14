@@ -19,7 +19,7 @@ TONY_CAT_SPACE_BEGIN
 struct DataBaseConfigData {
     int64_t nId = 0;
     std::string strDatabaseType;
-    std::string strIP;
+    std::string strAddress;
     int64_t nPort = 0;
     std::string strUser;
     std::string strPassword;

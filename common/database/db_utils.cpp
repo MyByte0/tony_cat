@@ -191,7 +191,8 @@ std::string DBProtoMessageToStringAsBlob(const google::protobuf::Message& messag
     return message.SerializeAsString();
 }
 
-int32_t LoadMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet) {
+int32_t PbMessageKVHandle::LoadMessageOnKV(google::protobuf::Message& message)
+{
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 
@@ -223,9 +224,7 @@ int32_t LoadMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGe
         // get element data
         for (auto& fullKey : vecKeySet) {
             std::string strValueResult;
-            std::string strFullKey;
-            strFullKey.append(strTabName).append(strTableSpacer).append(fullKey);
-            funGet(strFullKey, strValueResult);
+            funGet(fullKey, strValueResult);
 
             if (pFieldDescriptor->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
                 continue;
@@ -245,7 +244,8 @@ int32_t LoadMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGe
     return 0;
 }
 
-int32_t UpdateMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet, const KVPutCb& funPut, const KVDelCb& funDel) {
+int32_t PbMessageKVHandle::UpdateMessageOnKV(google::protobuf::Message& message)
+{
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 
@@ -346,7 +346,8 @@ int32_t UpdateMessageOnKV(google::protobuf::Message& message, const KVGetCb& fun
     return 0;
 }
 
-int32_t DeleteMessageOnKV(google::protobuf::Message& message, const KVGetCb& funGet, const KVPutCb& funPut, const KVDelCb& funDel) {
+int32_t PbMessageKVHandle::DeleteMessageOnKV(google::protobuf::Message& message)
+{
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 

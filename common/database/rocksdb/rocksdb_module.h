@@ -4,6 +4,7 @@
 #ifdef USE_ROCKSDB
 
 #include "common/core_define.h"
+#include "common/database/db_utils.h"
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 
@@ -35,9 +36,9 @@ public:
     int32_t DeleteMessage(google::protobuf::Message& message);
 
 private:
-    void InitLoopsRocksDb(uint64_t nThreadNum, const std::string& strDBBasePath);
+    void InitLoopsRocksDb(const std::string& strDBBasePath);
 
-    bool CheckDBBaseData(uint64_t nThreadNum, const std::string& strDBBasePath);
+    bool CheckDBBaseData(const std::string& strDBBasePath);
 
     void RemapDBData();
 
@@ -45,6 +46,7 @@ private:
     void Test();
 
 private:
+    PbMessageKVHandle m_PbMessageKVHandle;
     std::string m_strDBInstanceName;
     LoopPool m_loopPool;
     static THREAD_LOCAL_POD_VAR void* t_pRocksDB;

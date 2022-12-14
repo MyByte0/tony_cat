@@ -3,9 +3,11 @@
 #include "rocksdb_module.h"
 
 #include "common/config/xml_config_module.h"
-#include "common/database/db_utils.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
+
+#include "protocol/db_data.pb.h"
+#include "protocol/server_base.pb.h"
 
 #include <atomic>
 #include <memory>
@@ -17,6 +19,15 @@ THREAD_LOCAL_POD_VAR void* RocksDBModule::t_pRocksDB = nullptr;
 RocksDBModule::RocksDBModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager)
 {
+    m_PbMessageKVHandle.funGet =
+        [this](const std::string& strKey, std::string& strVal) mutable
+    { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; };
+    m_PbMessageKVHandle.funPut =
+        [this](const std::string& strKey, const std::string& strVal) mutable
+    { GetThreadRocksDB()->Put(rocksdb::WriteOptions(), strKey, strVal);  return 0; };
+    m_PbMessageKVHandle.funDel =
+        [this](const std::string& strKey) mutable 
+    { GetThreadRocksDB()->Delete(rocksdb::WriteOptions(), strKey);  return 0; };
 }
 
 RocksDBModule::~RocksDBModule() { }
@@ -25,9 +36,14 @@ void RocksDBModule::BeforeInit()
 {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
-    std::string strPath = "/data/tonycat";
-    // strPath.append(std::to_sring(serverIndex));
-    InitLoopsRocksDb(2, strPath);
+    int64_t nId = 10002;
+    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(nId);
+    if (pDataBaseConfig == nullptr) {
+        LOG_ERROR("get DataBase Config {}", nId);
+        return;
+    }
+    std::string strPath = pDataBaseConfig->strAddress;
+    InitLoopsRocksDb(strPath);
 }
 
 void RocksDBModule::AfterStop()
@@ -47,7 +63,7 @@ rocksdb::DB* RocksDBModule::GetThreadRocksDB()
     return db;
 }
 
-bool RocksDBModule::CheckDBBaseData(uint64_t nThreadNum, const std::string& strDBBasePath)
+bool RocksDBModule::CheckDBBaseData(const std::string& strDBBasePath)
 {
     // \TODO: check rocks database schema and table schema
     return true;
@@ -58,74 +74,76 @@ void RocksDBModule::RemapDBData()
     // \TODO remap onchange rocks database schema / table schema
 }
 
-void RocksDBModule::InitLoopsRocksDb(uint64_t nThreadNum, const std::string& strDBBasePath)
+void RocksDBModule::InitLoopsRocksDb(const std::string& strDBBasePath)
 {
-    if (CheckDBBaseData(nThreadNum, strDBBasePath) == false) {
+    if (CheckDBBaseData(strDBBasePath) == false) {
         LOG_ERROR("rocksdb save infomation change, please remap this database");
         return;
     }
 
     std::shared_ptr<std::atomic<int32_t>> pDBIndex = std::make_shared<std::atomic<int32_t>>(0);
-    m_loopPool.Start(nThreadNum);
+    m_loopPool.Start(1);
     m_loopPool.Broadcast([=, this]() {
         rocksdb::DB** db = reinterpret_cast<rocksdb::DB**>(&t_pRocksDB);
         rocksdb::Options options;
         options.create_if_missing = true;
         std::string strDbPath = strDBBasePath;
-        auto indexDb = ++(*pDBIndex);
+        auto indexDb = (*pDBIndex)++;
         strDbPath.append(std::to_string(indexDb));
         rocksdb::Status status = rocksdb::DB::Open(options, strDbPath.c_str(), db);
 
-        // std::string a;
-        // db->Put(rocksdb::WriteOptions(), a, a);
-
-        // db->Get(rocksdb::ReadOptions(), a, &a);
-
-        // db->Delete(rocksdb::WriteOptions(), a);
     });
 }
 
 int32_t RocksDBModule::LoadMessage(google::protobuf::Message& message)
 {
-    LoadMessageOnKV(message, [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; });
+    m_PbMessageKVHandle.LoadMessageOnKV(message);
     return 0;
 }
 
 int32_t RocksDBModule::UpdateMessage(google::protobuf::Message& message)
 {
-    UpdateMessageOnKV(message,
-        [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; },
-        [this](const std::string& strKey, const std::string& strVal) mutable { GetThreadRocksDB()->Put(rocksdb::WriteOptions(), strKey, strVal);  return 0; },
-        [this](const std::string& strKey) mutable { GetThreadRocksDB()->Delete(rocksdb::WriteOptions(), strKey);  return 0; });
- 
+    m_PbMessageKVHandle.UpdateMessageOnKV(message);
     return 0;
 }
 
 int32_t RocksDBModule::DeleteMessage(google::protobuf::Message& message)
 {
-    DeleteMessageOnKV(
-        message,
-        [this](const std::string& strKey, std::string& strVal) mutable { GetThreadRocksDB()->Get(rocksdb::ReadOptions(), strKey, &strVal);  return 0; },
-        [this](const std::string& strKey, const std::string& strVal) mutable { GetThreadRocksDB()->Put(rocksdb::WriteOptions(), strKey, strVal);  return 0; },
-        [this](const std::string& strKey) mutable { GetThreadRocksDB()->Delete(rocksdb::WriteOptions(), strKey);  return 0; });
-
+    m_PbMessageKVHandle.DeleteMessageOnKV(message);
     return 0;
 }
 
 void RocksDBModule::Test()
 {
-    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(10002);
-    if (pDataBaseConfig == nullptr) {
-        LOG_ERROR("not find db config");
-        return;
-    }
+    std::string strDbPath = "/data/test";
+    InitLoopsRocksDb(strDbPath);
 
-    auto strPassword = pDataBaseConfig->strPassword;
-    auto strUser = pDataBaseConfig->strUser;
 
-    int nThreadNum = 2;
-    std::string strDbPath = "/tmp/testdb";
-    InitLoopsRocksDb(nThreadNum, strDbPath);
+    m_loopPool.Exec(0, [this]() mutable {
+        
+        Db::KVData msgReq1;
+        msgReq1.mutable_user_data()->set_user_id("user_1");
+        // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
+        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(1);
+        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(2);
+        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(3);
+        UpdateMessage(*msgReq1.mutable_user_data());
+
+
+
+        Db::KVData msgReq2;
+        msgReq2.mutable_user_data()->set_user_id("user_1");
+        // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
+        msgReq2.mutable_user_data()->add_user_counts()->set_count_type(1);
+        msgReq2.mutable_user_data()->add_user_counts()->set_count_type(3);
+        DeleteMessage(*msgReq2.mutable_user_data());
+
+        Db::KVData msgRsp1;
+        msgRsp1.mutable_user_data()->set_user_id("user_1");
+        LoadMessage(*msgRsp1.mutable_user_data());
+        msgRsp1.Clear();
+    });
+
 }
 
 TONY_CAT_SPACE_END

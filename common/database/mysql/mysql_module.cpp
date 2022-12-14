@@ -45,7 +45,7 @@ void MysqlModule::MysqlTest()
         return;
     }
 
-    auto strIP = pDataBaseConfig->strIP;
+    auto strIP = pDataBaseConfig->strAddress;
     auto nPort = pDataBaseConfig->nPort;
     auto strPassword = pDataBaseConfig->strPassword;
     auto strUser = pDataBaseConfig->strUser;
