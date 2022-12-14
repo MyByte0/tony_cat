@@ -41,9 +41,9 @@ endif(USE_MYSQL)
 
 if((NOT USE_ROCKSDB) AND (NOT USE_MYSQL))
 	# default use mysql
-	MESSAGE(STATUS "default use mysql")
-	set(USE_MYSQL ON)
-	ADD_DEFINITIONS(-DUSE_MYSQL)
+	MESSAGE(STATUS "default use rocksdb")
+	set(USE_ROCKSDB ON)
+	ADD_DEFINITIONS(-DUSE_ROCKSDB)
 endif()
 
 if(USE_ROCKSDB)
