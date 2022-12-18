@@ -168,8 +168,17 @@ def gen_code(argv):
             print('infomation: not support type:{} on:{}\n'.format(var_type, var_name))
             continue
         var_code_type = dict_type_base[var_type]
+        is_pod_type = (dict_type_var_prefix[var_type] == 'n')
+        if i == 0:
+            header_file_write.write( '\n    using TypeKey = {};'.format(var_code_type))
+            if is_pod_type == True :
+                header_file_write.write( '\n    using TypeKeyFunArg = {};'.format(var_code_type))
+            else :
+                header_file_write.write( '\n    using TypeKeyFunArg = const {} &;'.format(var_code_type))
+            header_file_write.write( '\n    TypeKeyFunArg GetKey() const {{ return {}; }}'.format(member_name))
+            header_file_write.write( '\n')
         header_file_write.write( '\n    {} {}'.format(var_code_type, member_name))
-        if dict_type_var_prefix[var_type] == 'n' :
+        if is_pod_type == True :
             header_file_write.write( ' = 0;')
         else :
             header_file_write.write( ';')
@@ -177,31 +186,6 @@ def gen_code(argv):
     # function define begin
     header_file_write.write('\n')
     header_file_write.write('\n    bool LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute);')
-    #first_var_name = ''
-    #first_member_name = ''
-    #for i in range(len(list_type)):
-    #    var_name = list_name[i]
-    #    var_type = list_type[i]
-    #    call_fun = dict_type_paser_fun[var_type]
-    #    member_name = dict_type_var_prefix[var_type] + var_name
-    #    if i == 0:
-    #        header_file_write.write('\n        if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
-    #        first_var_name = var_name
-    #        first_member_name = member_name
-    #    else :
-    #        header_file_write.write('\n        else if (std::string("{}") == pNodeAttribute->Name()) {{'.format(var_name))
-#
-    #    header_file_write.write('\n            if (false == {}(pNodeAttribute->Value(), {})) {{'.format(call_fun, member_name))
-    #    header_file_write.write('\n                LOG_ERROR("Paser error on {}:{}", {});'.format(first_var_name, '{}', first_member_name))
-    #    header_file_write.write('\n                return false;')
-    #    header_file_write.write('\n            }')
-    #    header_file_write.write('\n        }')
-    #
-    #header_file_write.write('\n        return true;')
-    #
-    ## function define end
-    #header_file_write.write('\n    }')
-
 
     header_file_write.write( "\n}};".format())
     # struct dec end

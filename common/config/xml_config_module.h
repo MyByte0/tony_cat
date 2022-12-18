@@ -15,34 +15,35 @@
 #include <ctime>
 #include <map>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 
 TONY_CAT_SPACE_BEGIN
 
-#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                             \
-public:                                                                                               \
-    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(int64_t nId) const                          \
-    {                                                                                                 \
-        auto it = m_map##_CONFIG_DATA_TYPE.find(nId);                                                 \
-        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                   \
-            return &it->second;                                                                       \
-        }                                                                                             \
-        return nullptr;                                                                               \
-    }                                                                                                 \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map()                 \
-    {                                                                                                 \
-        return &m_map##_CONFIG_DATA_TYPE;                                                             \
-    }                                                                                                 \
-    bool Load##_CONFIG_DATA_TYPE()                                                                    \
-    {                                                                                                 \
-        m_map##_CONFIG_DATA_TYPE.clear();                                                             \
-        return XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE); \
-    }                                                                                                 \
-                                                                                                      \
-private:                                                                                              \
-    std::unordered_map<int64_t, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;
+#define DEFINE_CONFIG_DATA(_CONFIG_DATA_TYPE, _FILE_PATH)                                                 \
+public:                                                                                                   \
+    const _CONFIG_DATA_TYPE* Get##_CONFIG_DATA_TYPE##ById(_CONFIG_DATA_TYPE::TypeKeyFunArg keyId) const   \
+    {                                                                                                     \
+        auto it = m_map##_CONFIG_DATA_TYPE.find(keyId);                                                   \
+        if (it != m_map##_CONFIG_DATA_TYPE.end()) {                                                       \
+            return &it->second;                                                                           \
+        }                                                                                                 \
+        return nullptr;                                                                                   \
+    }                                                                                                     \
+    std::unordered_map<_CONFIG_DATA_TYPE::TypeKey, _CONFIG_DATA_TYPE>* Mutable##_CONFIG_DATA_TYPE##Map()  \
+    {                                                                                                     \
+        return &m_map##_CONFIG_DATA_TYPE;                                                                 \
+    }                                                                                                     \
+    bool Load##_CONFIG_DATA_TYPE()                                                                        \
+    {                                                                                                     \
+        m_map##_CONFIG_DATA_TYPE.clear();                                                                 \
+        return XmlConfigModule::LoadXmlFile<_CONFIG_DATA_TYPE>(_FILE_PATH, m_map##_CONFIG_DATA_TYPE);     \
+    }                                                                                                     \
+                                                                                                          \
+private:                                                                                                  \
+    std::unordered_map<_CONFIG_DATA_TYPE::TypeKey, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;
 
 #ifdef _WIN32
 #define CONFIG_PATH_COMMON_PREFIX "../../../"
@@ -61,7 +62,7 @@ public:
     virtual void BeforeInit() override;
 
     template <typename _TConfgData>
-    static bool LoadXmlFile(const char* xmlPath, std::unordered_map<int64_t, _TConfgData>& mapData)
+    static bool LoadXmlFile(const char* xmlPath, std::unordered_map<typename _TConfgData::TypeKey, _TConfgData>& mapData)
     {
         tinyxml2::XMLDocument doc;
         tinyxml2::XMLError errorXml;
@@ -89,7 +90,7 @@ public:
                     return false;
                 }
             }
-            mapData[stConfgData.nId] = stConfgData;
+            mapData[stConfgData.GetKey()] = stConfgData;
         }
         return true;
     }

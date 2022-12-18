@@ -191,6 +191,53 @@ std::string DBProtoMessageToStringAsBlob(const google::protobuf::Message& messag
     return message.SerializeAsString();
 }
 
+std::string PbMessageKVHandle::GetMessageElementKey(const std::string& strTabName, const std::string& strCommonKeyList, 
+    google::protobuf::Message& message, const google::protobuf::Reflection* pReflection, const google::protobuf::FieldDescriptor* pFieldDescriptor)
+{
+    std::string strElementKey;
+    strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
+    auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
+    auto pMsgReflection = pMsg->GetReflection();
+    auto pMsgDescriptor = pMsg->GetDescriptor();
+    for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+        const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+        if (!pMsgFieldDescriptor) {
+            continue;
+        }
+        if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
+            continue;
+        }
+
+        AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+    }
+
+    return strElementKey;
+}
+
+std::string PbMessageKVHandle::GetMessageRepeatedElementKey(const std::string& strTabName, const std::string& strCommonKeyList, int iChildField,
+    google::protobuf::Message& message, const google::protobuf::Reflection* pReflection, const google::protobuf::FieldDescriptor* pFieldDescriptor)
+{
+    std::string strElementKey;
+    strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
+    auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
+
+    auto pMsgReflection = pMsg->GetReflection();
+    auto pMsgDescriptor = pMsg->GetDescriptor();
+    for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+        const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+        if (!pMsgFieldDescriptor) {
+            continue;
+        }
+        if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
+            continue;
+        }
+
+        AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+    }
+
+    return strElementKey;
+}
+
 int32_t PbMessageKVHandle::LoadMessageOnKV(google::protobuf::Message& message)
 {
     auto pReflection = message.GetReflection();
@@ -210,16 +257,26 @@ int32_t PbMessageKVHandle::LoadMessageOnKV(google::protobuf::Message& message)
             continue;
         }
 
-        // load db data
-
-        // get data keys
-        std::string strCommonKeyResult;
-        std::string strCommonKey;
-        strCommonKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
-        funGet(strCommonKey, strCommonKeyResult);
-
         std::vector<std::string> vecKeySet;
-        PaserList(strCommonKeyResult, vecKeySet);
+        // get data keys
+        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) > 0) {
+            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
+                std::string strElementKey = GetMessageRepeatedElementKey(strTabName, strCommonKeyList, iChildField, message, pReflection, pFieldDescriptor);
+                vecKeySet.emplace_back(std::move(strElementKey));
+            }
+        }
+        else if (!pFieldDescriptor->is_repeated() && pReflection->HasField(message, pFieldDescriptor)) {
+            std::string strElementKey = GetMessageElementKey(strTabName, strCommonKeyList, message, pReflection, pFieldDescriptor);
+            vecKeySet.emplace_back(std::move(strElementKey));
+        }
+        else {
+            // load range list keys
+            std::string strCommonKeyResult;
+            std::string strCommonKey;
+            strCommonKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
+            funGet(strCommonKey, strCommonKeyResult);
+            PaserList(strCommonKeyResult, vecKeySet);
+        }
 
         // get element data
         for (auto& fullKey : vecKeySet) {
@@ -283,23 +340,9 @@ int32_t PbMessageKVHandle::UpdateMessageOnKV(google::protobuf::Message& message)
         bool bSetKeysModify = false;
         if (pFieldDescriptor->is_repeated()) {
             for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
-                std::string strElementKey;
-                strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
+                std::string strElementKey = GetMessageRepeatedElementKey(strTabName, strCommonKeyList, iChildField, message, pReflection, pFieldDescriptor);
                 auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
 
-                auto pMsgReflection = pMsg->GetReflection();
-                auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
-                    if (!pMsgFieldDescriptor) {
-                        continue;
-                    }
-                    if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
-                        continue;
-                    }
-
-                    AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
-                }
                 if (bSetKeysModify == false) {
                     if (!setKeys.contains(strElementKey)) {
                         bSetKeysModify = true;
@@ -310,22 +353,8 @@ int32_t PbMessageKVHandle::UpdateMessageOnKV(google::protobuf::Message& message)
                 funPut(strElementKey, pMsg->SerializeAsString());
             }
         } else {
-            std::string strElementKey;
-            strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
+            std::string strElementKey = GetMessageElementKey(strTabName, strCommonKeyList, message, pReflection, pFieldDescriptor);
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
-            auto pMsgReflection = pMsg->GetReflection();
-            auto pMsgDescriptor = pMsg->GetDescriptor();
-            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
-                if (!pMsgFieldDescriptor) {
-                    continue;
-                }
-                if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
-                    continue;
-                }
-
-                AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
-            }
             if (bSetKeysModify == false) {
                 if (!setKeys.contains(strElementKey)) {
                     bSetKeysModify = true;
@@ -384,43 +413,12 @@ int32_t PbMessageKVHandle::DeleteMessageOnKV(google::protobuf::Message& message)
 
         if (pFieldDescriptor->is_repeated()) {
             for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
-                std::string strElementKey;
-                strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
-                auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
-
-                auto pMsgReflection = pMsg->GetReflection();
-                auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
-                    if (!pMsgFieldDescriptor) {
-                        continue;
-                    }
-                    if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
-                        continue;
-                    }
-
-                    AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
-                }
+                std::string strElementKey = GetMessageRepeatedElementKey(strTabName, strCommonKeyList, iChildField, message, pReflection, pFieldDescriptor);
                 setKeys.erase(strElementKey);
                 funDel(strElementKey);
             }
         } else {
-            std::string strElementKey;
-            strElementKey.append(strTabName).append(strTableSpacer).append(strCommonKeyList);
-            auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
-            auto pMsgReflection = pMsg->GetReflection();
-            auto pMsgDescriptor = pMsg->GetDescriptor();
-            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
-                if (!pMsgFieldDescriptor) {
-                    continue;
-                }
-                if (!IsDBKey(*pMsg, *pMsgFieldDescriptor)) {
-                    continue;
-                }
-
-                AppendRawData(strElementKey, DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
-            }
+            std::string strElementKey = GetMessageElementKey(strTabName, strCommonKeyList, message, pReflection, pFieldDescriptor);
             setKeys.erase(strElementKey);
             funDel(strElementKey);
         }

@@ -17,8 +17,11 @@ class XMLAttribute;
 TONY_CAT_SPACE_BEGIN
 
 struct DataBaseConfigData {
-    int64_t nId = 0;
-    std::string strDatabaseType;
+    using TypeKey = std::string;
+    using TypeKeyFunArg = const std::string &;
+    TypeKeyFunArg GetKey() const { return strId; }
+
+    std::string strId;
     std::string strAddress;
     int64_t nPort = 0;
     std::string strUser;

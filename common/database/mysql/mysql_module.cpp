@@ -24,7 +24,7 @@ void MysqlModule::BeforeInit()
 {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
-    // MysqlTest();
+    MysqlInit();
 }
 
 void MysqlModule::AfterStop()
@@ -36,12 +36,12 @@ void MysqlModule::AfterStop()
     m_loopPool.Stop();
 }
 
-// test example
-void MysqlModule::MysqlTest()
+void MysqlModule::MysqlInit()
 {
-    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(10001);
+    std::string strDBType = "mysql";
+    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(strDBType);
     if (pDataBaseConfig == nullptr) {
-        LOG_ERROR("not find db config");
+        LOG_ERROR("not find db config: {}", strDBType);
         return;
     }
 
@@ -67,8 +67,8 @@ void MysqlModule::MysqlTest()
 
         char cArg = 1;
         mysql_options(GetMysqlHandle(), MYSQL_OPT_RECONNECT, &cArg);
-        QuerySelectRows(0, std::string("select * from test.website where id < {}"), std::vector<std::string> { "1000" }, nullptr);
-        QueryModify(0, std::string("insert into test.website (id, name) values({}, '{}') on duplicate key update name='{}'"), std::vector<std::string> { "121", "ok", "ok" }, nullptr);
+        //QuerySelectRows(0, std::string("select * from test.website where id < {}"), std::vector<std::string> { "1000" }, nullptr);
+        //QueryModify(0, std::string("insert into test.website (id, name) values({}, '{}') on duplicate key update name='{}'"), std::vector<std::string> { "121", "ok", "ok" }, nullptr);
     });
 }
 
@@ -561,7 +561,7 @@ void MysqlModule::AddQueryCondition(const google::protobuf::Message& message, co
     vecArgs.emplace_back(DBProtoMessageToString(message, fieldDescriptor));
 }
 
-void MysqlModule::OnPbTest()
+void MysqlModule::OnTest()
 {
 
     //Db::KVData msgRsp;

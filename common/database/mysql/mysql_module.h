@@ -73,9 +73,9 @@ private:
     int32_t MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString, const std::vector<std::string>& vecArgs);
 
 private:
-    void MysqlTest();
+    void MysqlInit();
 
-    void OnPbTest();
+    void OnTest();
 
 private:
     XmlConfigModule* m_pXmlConfigModule = nullptr;

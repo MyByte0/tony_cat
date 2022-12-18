@@ -17,6 +17,10 @@ class XMLAttribute;
 TONY_CAT_SPACE_BEGIN
 
 struct ServerListConfigData {
+    using TypeKey = int64_t;
+    using TypeKeyFunArg = int64_t;
+    TypeKeyFunArg GetKey() const { return nId; }
+
     int64_t nId = 0;
     int32_t nServerType = 0;
     std::string strServerName;

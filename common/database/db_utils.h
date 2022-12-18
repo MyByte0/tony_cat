@@ -38,7 +38,13 @@ struct PbMessageKVHandle{
     KVGetCb funGet;
     KVPutCb funPut;
     KVDelCb funDel;
-} ;
+
+private:
+    std::string GetMessageElementKey(const std::string& strTabName, const std::string& strCommonKeyList,
+        google::protobuf::Message& message, const google::protobuf::Reflection* pReflection, const google::protobuf::FieldDescriptor* pFieldDescriptor);
+    std::string GetMessageRepeatedElementKey(const std::string& strTabName, const std::string& strCommonKeyList, int iChildField,
+        google::protobuf::Message& message, const google::protobuf::Reflection* pReflection, const google::protobuf::FieldDescriptor* pFieldDescriptor);
+};
 
 
 

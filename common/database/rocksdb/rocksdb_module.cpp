@@ -36,10 +36,10 @@ void RocksDBModule::BeforeInit()
 {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
-    int64_t nId = 10002;
-    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(nId);
+    std::string strDBType = "rocksdb";
+    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(strDBType);
     if (pDataBaseConfig == nullptr) {
-        LOG_ERROR("get DataBase Config {}", nId);
+        LOG_ERROR("get DataBase Config {}", strDBType);
         return;
     }
     std::string strPath = pDataBaseConfig->strAddress;
