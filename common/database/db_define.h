@@ -21,6 +21,10 @@ struct DbPbFieldKey {
 		mapMesssageKeys[std::string("Db.ClientCache")] = { 
             std::string("cache_type")
         };
+		mapMesssageKeys[std::string("Db.ClientLoginInfo")] = { 
+            std::string("login_tick"),
+            std::string("login_channel")
+        };
     }
 
     std::unordered_map<std::string, std::unordered_set<std::string>> mapMesssageKeys;

@@ -37,8 +37,8 @@ void DBExecModule::OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::Se
     m_pDBModule->GetLoopPool().Exec(CRC32(userId),
         [this, sessionId, head, userId, &loop, msgReq = std::move(msgReq)]() mutable {
             auto pMsgRsp = std::make_shared<Pb::SSSaveDataRsp>();
-            m_pDBModule->UpdateMessage(*msgReq.mutable_kv_data_update()->mutable_user_data());
-            m_pDBModule->DeleteMessage(*msgReq.mutable_kv_data_delete()->mutable_user_data());
+            m_pDBModule->MessageUpdate(*msgReq.mutable_kv_data_update()->mutable_user_data());
+            m_pDBModule->MessageDelete(*msgReq.mutable_kv_data_delete()->mutable_user_data());
             loop.Exec([this, sessionId, head, pMsgRsp]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
         });
 }
@@ -53,7 +53,7 @@ void DBExecModule::OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::S
             auto pMsgRsp = std::make_shared<Pb::SSQueryDataRsp>();
             auto pUserData = pMsgRsp->mutable_user_data();
             pUserData->set_user_id(userId);
-            m_pDBModule->LoadMessage(*pUserData);
+            m_pDBModule->MessageLoad(*pUserData);
             loop.Exec([this, sessionId, head, pMsgRsp]() mutable { m_pNetPbModule->SendPacket(sessionId, head, *pMsgRsp); });
             return;
         });

@@ -26,13 +26,22 @@ message ClientCache
    map<string, string> cache_items = 3;
 }
 
+// user_data key=(login_tick,login_channel)
+message ClientLoginInfo
+{
+   int64 login_tick = 1;
+   int64 login_channel = 2;
+   string device = 3;
+   string uuid = 4;
+}
+
 message UserData
 {
    string user_id = 1;
    UserBase user_base = 2;
    repeated UserCount user_counts = 3;
    repeated ClientCache client_cache = 4;
-
+   ClientLoginInfo client_login_info = 5;
 }
 
 message KVData

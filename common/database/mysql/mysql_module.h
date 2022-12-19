@@ -61,12 +61,17 @@ public:
     std::tuple<int32_t, uint64_t, uint64_t> QueryModifyInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs);
 
 public:
-    int32_t LoadMessage(google::protobuf::Message& message);
-    int32_t UpdateMessage(google::protobuf::Message& message);
-    int32_t DeleteMessage(google::protobuf::Message& message);
+    int32_t MessageLoad(google::protobuf::Message& message);
+    int32_t MessageUpdate(google::protobuf::Message& message);
+    int32_t MessageDelete(google::protobuf::Message& message);
 
 private:
-    void AddQueryCondition(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor, std::string& strQuerys, std::vector<std::string>& vecArgs);
+    const char* GetProtoSqlStringPlaceholder(const google::protobuf::FieldDescriptor& fieldDescriptor);
+
+    void AddQueryItemCondition(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor
+            , std::string& strQuerys, std::vector<std::string>& vecArgs);
+
+    void AddQueryMessageCondition(google::protobuf::Message& message, std::string& strAppendQuerys, std::vector<std::string>& vecArgs);
 
     std::string QueryStringReplace(const std::string& strQueryString, const std::vector<std::vector<char>>& vecBuff);
 

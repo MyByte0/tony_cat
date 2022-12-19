@@ -31,9 +31,9 @@ public:
     LoopPool& GetLoopPool() { return m_loopPool; }
     
 public:
-    int32_t LoadMessage(google::protobuf::Message& message);
-    int32_t UpdateMessage(google::protobuf::Message& message);
-    int32_t DeleteMessage(google::protobuf::Message& message);
+    int32_t MessageLoad(google::protobuf::Message& message);
+    int32_t MessageUpdate(google::protobuf::Message& message);
+    int32_t MessageDelete(google::protobuf::Message& message);
 
 private:
     void InitLoopsRocksDb(const std::string& strDBBasePath);

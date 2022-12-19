@@ -95,21 +95,21 @@ void RocksDBModule::InitLoopsRocksDb(const std::string& strDBBasePath)
     });
 }
 
-int32_t RocksDBModule::LoadMessage(google::protobuf::Message& message)
+int32_t RocksDBModule::MessageLoad(google::protobuf::Message& message)
 {
-    m_PbMessageKVHandle.LoadMessageOnKV(message);
+    m_PbMessageKVHandle.MessageLoadOnKV(message);
     return 0;
 }
 
-int32_t RocksDBModule::UpdateMessage(google::protobuf::Message& message)
+int32_t RocksDBModule::MessageUpdate(google::protobuf::Message& message)
 {
-    m_PbMessageKVHandle.UpdateMessageOnKV(message);
+    m_PbMessageKVHandle.MessageUpdateOnKV(message);
     return 0;
 }
 
-int32_t RocksDBModule::DeleteMessage(google::protobuf::Message& message)
+int32_t RocksDBModule::MessageDelete(google::protobuf::Message& message)
 {
-    m_PbMessageKVHandle.DeleteMessageOnKV(message);
+    m_PbMessageKVHandle.MessageDeleteOnKV(message);
     return 0;
 }
 
@@ -127,7 +127,7 @@ void RocksDBModule::Test()
         msgReq1.mutable_user_data()->add_user_counts()->set_count_type(1);
         msgReq1.mutable_user_data()->add_user_counts()->set_count_type(2);
         msgReq1.mutable_user_data()->add_user_counts()->set_count_type(3);
-        UpdateMessage(*msgReq1.mutable_user_data());
+        MessageUpdate(*msgReq1.mutable_user_data());
 
 
 
@@ -136,11 +136,11 @@ void RocksDBModule::Test()
         // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
         msgReq2.mutable_user_data()->add_user_counts()->set_count_type(1);
         msgReq2.mutable_user_data()->add_user_counts()->set_count_type(3);
-        DeleteMessage(*msgReq2.mutable_user_data());
+        MessageDelete(*msgReq2.mutable_user_data());
 
         Db::KVData msgRsp1;
         msgRsp1.mutable_user_data()->set_user_id("user_1");
-        LoadMessage(*msgRsp1.mutable_user_data());
+        MessageLoad(*msgRsp1.mutable_user_data());
         msgRsp1.Clear();
     });
 

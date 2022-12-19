@@ -31,9 +31,9 @@ struct PbMessageKVHandle{
     typedef std::function<int32_t(const std::string&, const std::string&)> KVPutCb;
     typedef std::function<int32_t(const std::string&)> KVDelCb;
 
-    int32_t LoadMessageOnKV(google::protobuf::Message& message);
-    int32_t UpdateMessageOnKV(google::protobuf::Message& message);
-    int32_t DeleteMessageOnKV(google::protobuf::Message& message);
+    int32_t MessageLoadOnKV(google::protobuf::Message& message);
+    int32_t MessageUpdateOnKV(google::protobuf::Message& message);
+    int32_t MessageDeleteOnKV(google::protobuf::Message& message);
 
     KVGetCb funGet;
     KVPutCb funPut;

@@ -238,7 +238,7 @@ std::string PbMessageKVHandle::GetMessageRepeatedElementKey(const std::string& s
     return strElementKey;
 }
 
-int32_t PbMessageKVHandle::LoadMessageOnKV(google::protobuf::Message& message)
+int32_t PbMessageKVHandle::MessageLoadOnKV(google::protobuf::Message& message)
 {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
@@ -301,7 +301,7 @@ int32_t PbMessageKVHandle::LoadMessageOnKV(google::protobuf::Message& message)
     return 0;
 }
 
-int32_t PbMessageKVHandle::UpdateMessageOnKV(google::protobuf::Message& message)
+int32_t PbMessageKVHandle::MessageUpdateOnKV(google::protobuf::Message& message)
 {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
@@ -375,7 +375,7 @@ int32_t PbMessageKVHandle::UpdateMessageOnKV(google::protobuf::Message& message)
     return 0;
 }
 
-int32_t PbMessageKVHandle::DeleteMessageOnKV(google::protobuf::Message& message)
+int32_t PbMessageKVHandle::MessageDeleteOnKV(google::protobuf::Message& message)
 {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
