@@ -10,7 +10,7 @@
 #include "common/service/service_government_module.h"
 #include "common/utility/magic_enum.h"
 #include "player_manager_module.h"
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 
 #include <csignal>

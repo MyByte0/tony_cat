@@ -1,1 +1,1 @@
-py  .\pb_gen_cpp.py ..\protocol\db_data.proto ..\common\database
+py  .\pb_gen_cpp.py ..\app\game\protoc\db_data.proto ..\common\database

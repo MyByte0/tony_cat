@@ -2,7 +2,7 @@
 #define LOGICSERVER_LOGIC_SERVER_APP_H_
 
 #include "common/module_manager.h"
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 #include <string>
 

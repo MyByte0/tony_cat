@@ -8,7 +8,7 @@
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
 #include "common/utility/crc.h"
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 #include  <cstdlib>
 

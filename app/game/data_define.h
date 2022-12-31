@@ -2,7 +2,7 @@
 #define GAME_DATA_DEFINE_H_
 
 #include "common/core_define.h"
-#include "protocol/db_data.pb.h"
+#include "protoc/db_data.pb.h"
 
 #include <memory>
 #include <string>

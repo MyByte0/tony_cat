@@ -126,19 +126,19 @@ SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build)
 
 # add logic pb files
 FILE(GLOB_RECURSE COMMON_FILES ./common/*.h ./common/*.cc ./common/*.hpp ./common/*.cpp)
-FILE(GLOB_RECURSE PROTOBUF_FILES ./protocol/*.h ./protocol/*.cc )
+FILE(GLOB_RECURSE BASE_PROTOBUF_FILES ./protocol/*.h ./protocol/*.cc )
 
 # library define
 ADD_LIBRARY(TONY_CAT
 	${COMMON_FILES}
 )
 
-ADD_LIBRARY(PROTO
-	${PROTOBUF_FILES}
+ADD_LIBRARY(BASE_PROTO
+	${BASE_PROTOBUF_FILES}
 )
 
 
 # add sub directory
 ADD_SUBDIRECTORY(
-	example
+	app
 )

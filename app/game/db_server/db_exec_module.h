@@ -6,9 +6,10 @@
 #include "common/module_manager.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
-#include "protocol/db_data.pb.h"
 #include "protocol/server_base.pb.h"
-#include "protocol/server_db.pb.h"
+
+#include "protoc/db_data.pb.h"
+#include "protoc/server_db.pb.h"
 
 #include <cassert>
 #include <cstdint>

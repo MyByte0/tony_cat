@@ -9,7 +9,7 @@
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
 #include "common/utility/magic_enum.h"
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 #include <csignal>
 

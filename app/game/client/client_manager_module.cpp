@@ -7,9 +7,9 @@
 #include "common/service/service_government_module.h"
 #include "protocol/client_base.pb.h"
 #include "protocol/server_base.pb.h"
-#include "protocol/server_db.pb.h"
+#include "protoc/server_db.pb.h"
 
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 #include <cassert>
 

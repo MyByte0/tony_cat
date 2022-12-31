@@ -8,7 +8,7 @@
 #include "common/utility/crc.h"
 #include "protocol/client_base.pb.h"
 #include "protocol/server_base.pb.h"
-#include "server_common/server_define.h"
+#include "server_define.h"
 
 TONY_CAT_SPACE_BEGIN
 

@@ -6,7 +6,6 @@
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 
-#include "protocol/db_data.pb.h"
 #include "protocol/server_base.pb.h"
 
 #include <atomic>
@@ -121,27 +120,25 @@ void RocksDBModule::Test()
 
     m_loopPool.Exec(0, [this]() mutable {
         
-        Db::KVData msgReq1;
-        msgReq1.mutable_user_data()->set_user_id("user_1");
-        // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
-        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(1);
-        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(2);
-        msgReq1.mutable_user_data()->add_user_counts()->set_count_type(3);
-        MessageUpdate(*msgReq1.mutable_user_data());
+        //Db::KVData msgReq1;
+        //msgReq1.mutable_user_data()->set_user_id("user_1");
+        //// msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
+        //msgReq1.mutable_user_data()->add_user_counts()->set_count_type(1);
+        //msgReq1.mutable_user_data()->add_user_counts()->set_count_type(2);
+        //msgReq1.mutable_user_data()->add_user_counts()->set_count_type(3);
+        //MessageUpdate(*msgReq1.mutable_user_data());
 
+        //Db::KVData msgReq2;
+        //msgReq2.mutable_user_data()->set_user_id("user_1");
+        //// msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
+        //msgReq2.mutable_user_data()->add_user_counts()->set_count_type(1);
+        //msgReq2.mutable_user_data()->add_user_counts()->set_count_type(3);
+        //MessageDelete(*msgReq2.mutable_user_data());
 
-
-        Db::KVData msgReq2;
-        msgReq2.mutable_user_data()->set_user_id("user_1");
-        // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
-        msgReq2.mutable_user_data()->add_user_counts()->set_count_type(1);
-        msgReq2.mutable_user_data()->add_user_counts()->set_count_type(3);
-        MessageDelete(*msgReq2.mutable_user_data());
-
-        Db::KVData msgRsp1;
-        msgRsp1.mutable_user_data()->set_user_id("user_1");
-        MessageLoad(*msgRsp1.mutable_user_data());
-        msgRsp1.Clear();
+        //Db::KVData msgRsp1;
+        //msgRsp1.mutable_user_data()->set_user_id("user_1");
+        //MessageLoad(*msgRsp1.mutable_user_data());
+        //msgRsp1.Clear();
     });
 
 }
