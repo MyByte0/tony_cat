@@ -2,6 +2,8 @@
 
 #include "common/log/log_module.h"
 
+#include <utility>
+
 TONY_CAT_SPACE_BEGIN
 
 Session::Session(asio::io_context& io_context, session_id_t session_id)
@@ -37,6 +39,16 @@ void Session::SetSessionReadCb(FunSessionRead&& funOnSessionRead)
     m_funSessionRead = std::move(funOnSessionRead);
 }
 
+void Session::SetSessionProtoContext(void* pProtoContext,
+    const FunSessionProtoContextClose& funSessionProtoContextClose)
+{
+    if (nullptr != m_funSessionProtoContextClose) {
+        m_funSessionProtoContextClose(m_pProtoContext);
+    }
+    m_pProtoContext = pProtoContext;
+    m_funSessionProtoContextClose = funSessionProtoContextClose;
+}
+
 Session::session_id_t Session::GetSessionId()
 {
     return m_nSessionId;
@@ -47,11 +59,29 @@ asio::ip::tcp::socket& Session::GetSocket()
     return m_socket;
 }
 
+void* Session::GetProtoContext()
+{
+    return m_pProtoContext;
+}
+
 void Session::HandleRead()
 {
     if (m_funSessionRead) [[likely]] {
-        m_funSessionRead(m_nSessionId, m_buffRead);
+        if (false == m_funSessionRead(m_nSessionId, m_buffRead)) {
+            LOG_ERROR("read packet error on seesion: {}", m_nSessionId);
+            AsyncClose();
+        }
     }
+}
+
+bool Session::WriteAppend(const std::string& data)
+{
+    return m_buffWrite.Write(data.c_str(), data.length());
+}
+
+bool Session::WriteAppend(const char* data, size_t length)
+{
+    return m_buffWrite.Write((char*)data, length);
 }
 
 bool Session::WriteData(const char* data, size_t length)
@@ -159,6 +189,9 @@ void Session::DoClose()
         }
     }
 
+    if (nullptr != m_funSessionProtoContextClose) {
+        m_funSessionProtoContextClose(m_pProtoContext);
+    }
     if (nullptr != m_funSessionClose) {
         m_funSessionClose(m_nSessionId);
     }
