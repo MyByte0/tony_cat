@@ -36,7 +36,7 @@ public:
 
     SessionPtr GetSessionById(Session::session_id_t sessionId);
 
-    DEFINE_MEMBER_UINT32(NetThreadNum);
+    DEFINE_MEMBER_UINT32_PUBLIC(NetThreadNum);
 
 private:
     void Accept(Acceptor* pAcceptor);
