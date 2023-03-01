@@ -58,6 +58,18 @@ bool ServerListConfigData::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAtt
             return false;
         }
     }
+    else if (std::string("HttpIp") == pNodeAttribute->Name()) {
+        if (false == ConfigValueToString(pNodeAttribute->Value(), strHttpIp)) {
+            LOG_ERROR("Paser error on Id:{}", nId);
+            return false;
+        }
+    }
+    else if (std::string("HttpThreadsNum") == pNodeAttribute->Name()) {
+        if (false == ConfigValueToInt32(pNodeAttribute->Value(), nHttpThreadsNum)) {
+            LOG_ERROR("Paser error on Id:{}", nId);
+            return false;
+        }
+    }
     return true;
 }
 

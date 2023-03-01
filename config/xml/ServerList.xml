@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
-	<element Id="10001" ServerType="1" ServerName="gateServer" ServerIndex="1" PublicIp="127.0.0.1 9990" ServerIp="127.0.0.1 9997" ConnectList="2" NetThreadsNum="4" />
-	<element Id="20001" ServerType="2" ServerName="logicServer" ServerIndex="1" PublicIp="" ServerIp="127.0.0.1 9998" ConnectList="1" NetThreadsNum="2" />
-	<element Id="30001" ServerType="3" ServerName="dbSercer" ServerIndex="1" PublicIp="" ServerIp="127.0.0.1 9999" ConnectList="2" NetThreadsNum="2" />
+	<element Id="10001" ServerType="1" ServerName="gateServer" ServerIndex="1" PublicIp="127.0.0.1 9990" ServerIp="127.0.0.1 9997" ConnectList="2" NetThreadsNum="4" HttpIp="127.0.0.1 10097" HttpThreadsNum="1" />
+	<element Id="20001" ServerType="2" ServerName="logicServer" ServerIndex="1" PublicIp="" ServerIp="127.0.0.1 9998" ConnectList="1" NetThreadsNum="2" HttpIp="" HttpThreadsNum="" />
+	<element Id="30001" ServerType="3" ServerName="dbSercer" ServerIndex="1" PublicIp="" ServerIp="127.0.0.1 9999" ConnectList="2" NetThreadsNum="2" HttpIp="" HttpThreadsNum="" />
 </root>

@@ -46,7 +46,7 @@ private:                                                                        
     std::unordered_map<_CONFIG_DATA_TYPE::TypeKey, _CONFIG_DATA_TYPE> m_map##_CONFIG_DATA_TYPE;
 
 #ifdef _WIN32
-#define CONFIG_PATH_COMMON_PREFIX "../../../"
+#define CONFIG_PATH_COMMON_PREFIX "../../../../"
 #elif __GNUC__
 #define CONFIG_PATH_COMMON_PREFIX "../"
 #endif
