@@ -6,6 +6,7 @@
 #include "common/loop/loop.h"
 #include "common/net/net_module.h"
 #include "common/net/net_pb_module.h"
+#include "common/net/net_http_module.h"
 #include "common/service/rpc_module.h"
 #include "common/service/service_government_module.h"
 #include "common/utility/magic_enum.h"
@@ -52,9 +53,10 @@ void GateServerApp::RegisterModule()
     REGISTER_MODULE(&m_moduleManager, XmlConfigModule);
     REGISTER_MODULE(&m_moduleManager, NetModule);
     REGISTER_MODULE(&m_moduleManager, NetPbModule);
+    REGISTER_MODULE(&m_moduleManager, NetHttpModule);
     REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
     REGISTER_MODULE(&m_moduleManager, RpcModule);
-    REGISTER_MODULE(&m_moduleManager, ClientPbModule);
+    //REGISTER_MODULE(&m_moduleManager, ClientPbModule);
 }
 
 void GateServerApp::InitModule(int32_t nServerIndex)

@@ -146,7 +146,7 @@ bool ClientPbModule::OnUserLogout(USER_ID userId, bool bKick)
         // \TODO:send kickout to old session
     }
 
-    m_pNetModule->Close(pUserInfo->userSessionId);
+    m_pNetModule->CloseInMainLoop(pUserInfo->userSessionId);
     m_mapSessionUserInfo.erase(pUserInfo->userSessionId);
     m_mapUserInfo.erase(userId);
     return true;
