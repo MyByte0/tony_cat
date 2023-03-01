@@ -87,7 +87,7 @@ public:                                          \
     }                                            \
     void Set##_NAME(const std::string_view& val) \
     {                                            \
-        m_str##_NAME = std::move(val);           \
+        m_str##_NAME = val;                      \
     }                                            \
                                                  \
 private:                                         \
