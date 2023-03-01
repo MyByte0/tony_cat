@@ -4,6 +4,7 @@
 #include "common/core_define.h"
 #include "common/module_base.h"
 
+#include <iostream>
 #include <string>
 #include <version>
 
