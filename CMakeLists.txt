@@ -113,9 +113,19 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/protocol
 					COMMAND sh pb_gen_code.sh
 					)
+	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+					COMMAND sh db_gen.sh
+					COMMAND sh cfg_gen.sh
+					OUTPUT_VARIABLE none
+					)
 elseif(MSVC)
 	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/protocol
 					COMMAND ${Protobuf_PROTOC_EXECUTABLE} *.proto --cpp_out=.
+					)
+	EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+					COMMAND .\\db_gen.bat
+					COMMAND .\\cfg_gen.bat
+					OUTPUT_VARIABLE none
 					)
 endif()
 
