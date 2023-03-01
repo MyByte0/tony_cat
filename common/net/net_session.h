@@ -11,8 +11,7 @@
 
 TONY_CAT_SPACE_BEGIN
 
-class Session
-    : public std::enable_shared_from_this<Session> {
+class Session {
 public:
     typedef int64_t session_id_t;
     friend class NetModule;
@@ -39,24 +38,13 @@ public:
 
     session_id_t GetSessionId();
     asio::ip::tcp::socket& GetSocket();
-    void HandleRead();
 
     bool WriteAppend(const std::string& data);
     bool WriteAppend(const char* data, size_t length);
-    bool WriteData(const char* data, size_t length);
-    bool WriteData(const char* dataHead, size_t lenHead, const char* data, size_t length);
-    void DoWrite();
+    bool WriteAppend(const char* dataHead, size_t lenHead, const char* data, size_t length);
 
     asio::io_context& GetSocketIocontext();
     void* GetProtoContext();
-
-private:
-    void DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnect& funFunSessionConnect = nullptr);
-    void DoRead();
-    void AsyncClose();
-
-private:
-    void DoClose();
 
     asio::io_context& m_io_context;
     asio::ip::tcp::socket m_socket;

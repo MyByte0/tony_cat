@@ -21,6 +21,7 @@ TONY_CAT_SPACE_BEGIN
 class ModuleManager;
 class NetModule;
 class ServiceGovernmentModule;
+class XmlConfigModule;
 
 class NetHttpModule : public ModuleBase {
 public:
@@ -28,7 +29,7 @@ public:
     virtual ~NetHttpModule();
 
     virtual void BeforeInit() override;
-
+    virtual void OnInit() override;
     virtual void OnUpdate() override;
 
 public:
@@ -45,7 +46,7 @@ public:
         const Session::FunSessionClose& funOnSessionClose = nullptr);
     bool ReadData(Session::session_id_t sessionId, SessionBuffer& buf);
     bool WriteData(Session::session_id_t sessionId, Http::Reply& respond);
-    bool ReadPbPacket(Session::session_id_t sessionId, Http::Request& req);
+    bool ReadHttpPacket(Session::session_id_t sessionId, Http::Request& req);
 
     typedef std::function<
         void(Session::session_id_t sessionId, Http::Request& req)>
@@ -91,6 +92,7 @@ protected:
 protected:
     NetModule* m_pNetModule = nullptr;
     ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
+    XmlConfigModule* m_pXmlConfigModule = nullptr;
 
 private:
     static NetHttpModule* m_pNetHttpModule;

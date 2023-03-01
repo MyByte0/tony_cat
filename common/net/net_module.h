@@ -9,6 +9,7 @@
 #include "common/net/net_session.h"
 #include "common/var_define.h"
 
+#include <atomic>
 #include <unordered_map>
 
 TONY_CAT_SPACE_BEGIN
@@ -32,25 +33,41 @@ public:
         const Session::FunSessionRead& funOnSessionRead,
         const Session::FunSessionConnect& funOnSessionConnect = nullptr,
         const Session::FunSessionClose& funOnSessionClose = nullptr);
-    void Close(Session::session_id_t session_id);
+    void CloseInMainLoop(Session::session_id_t session_id);
 
-    SessionPtr GetSessionById(Session::session_id_t sessionId);
+    // for write session in main loop
+    SessionPtr GetSessionInMainLoop(Session::session_id_t sessionId);
+    // for read session in net loop
+    SessionPtr GetSessionInNetLoop(Session::session_id_t sessionId);
+
+    bool SessionSend(SessionPtr pSession) {
+        return DoSessionWrite(pSession);
+    }
 
     DEFINE_MEMBER_UINT32_PUBLIC(NetThreadNum);
 
 private:
     void Accept(Acceptor* pAcceptor);
     Session::session_id_t CreateSessionId();
-    void OnCloseSession(Session::session_id_t sessionId);
+    void RemoveInSessionMap(Session::session_id_t sessionId);
     bool OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff);
 
 private:
+    void HandleSessionRead(SessionPtr pSession);
+    void DoSessionConnect(SessionPtr pSession, asio::ip::tcp::endpoint& address, const Session::FunSessionConnect& funFunSessionConnect = nullptr);
+    void DoSessionRead(SessionPtr pSession);
+    bool DoSessionWrite(SessionPtr pSession);
+    void DoSessionAsyncClose(SessionPtr pSession);
+    void DoSessionCloseInNetLoop(SessionPtr pSession);
+
+private:
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
+    static THREAD_LOCAL_VAR std::unordered_map<Session::session_id_t, SessionPtr> t_mapSessionInNetLoop;
 
     Loop m_loopAccpet;
     std::vector<Acceptor*> m_vecAcceptors;
 
-    Session::session_id_t m_nextSessionId = 0;
+    std::atomic<Session::session_id_t> m_nextSessionId = 0;
     LoopPool m_poolSessionContext;
 };
 

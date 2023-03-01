@@ -52,8 +52,9 @@ void ServiceGovernmentModule::InitConfig()
         if (stServerListConfigData.nServerType == GetServerType() && stServerListConfigData.nServerIndex == GetServerId()) {
             AddressToIpPort(stServerListConfigData.strPublicIp, m_strPublicIp, m_nPublicPort);
             AddressToIpPort(stServerListConfigData.strServerIp, m_strServerIp, m_nServerPort);
-            MutableServerInfo()->strServerIp = m_strServerIp;
-            MutableServerInfo()->nPort = m_nServerPort;
+            MutableMineServerInfo()->nServerConfigId = stServerListConfigData.nId;
+            MutableMineServerInfo()->strServerIp = m_strServerIp;
+            MutableMineServerInfo()->nPort = m_nServerPort;
             vecDestServers = stServerListConfigData.vecConnectList;
             m_pNetModule->SetNetThreadNum(stServerListConfigData.nNetThreadsNum);
             LOG_INFO("Server Public Ip{}, port:{}, Address Ip{}, port:{}, netThreadNum:{}.",
@@ -66,6 +67,7 @@ void ServiceGovernmentModule::InitConfig()
         auto& stServerListConfigData = elemMap.second;
 
         ServerInstanceInfo stServerInstanceInfo;
+        stServerInstanceInfo.nServerConfigId = stServerListConfigData.nId;
         stServerInstanceInfo.nServerType = stServerListConfigData.nServerType;
         stServerInstanceInfo.nServerIndex = stServerListConfigData.nServerIndex;
         AddressToIpPort(stServerListConfigData.strServerIp, stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
@@ -93,11 +95,11 @@ void ServiceGovernmentModule::InitConfig()
 
 void ServiceGovernmentModule::InitListen()
 {
-    if (GetServerInfo().strServerIp.empty() || GetServerInfo().nPort == 0) {
+    if (GetMineServerInfo().strServerIp.empty() || GetMineServerInfo().nPort == 0) {
         LOG_ERROR("Get App Address Empty");
         return;
     }
-    m_pNetPbModule->Listen(GetServerInfo().strServerIp, GetServerInfo().nPort);
+    m_pNetPbModule->Listen(GetMineServerInfo().strServerIp, GetMineServerInfo().nPort);
 }
 
 void ServiceGovernmentModule::InitConnect()
@@ -207,7 +209,7 @@ CoroutineTask<void> ServiceGovernmentModule::OnHeartbeat(ServerInstanceInfo stSe
 
     if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
         LOG_ERROR("server heartbeat request timeout");
-        m_pNetModule->Close(nSessionId);
+        m_pNetModule->CloseInMainLoop(nSessionId);
         OnDisconnect(nSessionId, stServerInstanceInfo);
         co_return;
     }

@@ -38,6 +38,7 @@ public:
     };
 
     struct ServerInstanceInfo {
+        int64_t nServerConfigId = 0;
         int32_t nServerType = 0;
         int32_t nServerIndex = 0;
         Session::session_id_t nSessionId = 0;
@@ -56,7 +57,7 @@ public:
     DEFINE_MEMBER_INT32_PUBLIC(ServerPort);
     DEFINE_MEMBER_STR_PUBLIC(PublicIp);
     DEFINE_MEMBER_INT32_PUBLIC(PublicPort);
-    DEFINE_MEMBER_VAR_PUBLIC(ServerInstanceInfo, ServerInfo);
+    DEFINE_MEMBER_VAR_PUBLIC(ServerInstanceInfo, MineServerInfo);
 
 public:
     void SetServerInstance(const std::string& strName, int32_t nServerType, uint32_t nServerId) {
@@ -86,7 +87,7 @@ private:
 
     CoroutineTask<void> OnHeartbeat(ServerInstanceInfo stServerInstanceInfo);
 
-private:
+public:
     static bool AddressToIpPort(const std::string& strAddress, std::string& strIp, int32_t& nPort);
 
 private:

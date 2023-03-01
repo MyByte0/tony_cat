@@ -95,7 +95,7 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf)
 
 bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType, const char* data, size_t length)
 {
-    auto pSession = m_pNetModule->GetSessionById(sessionId);
+    auto pSession = m_pNetModule->GetSessionInMainLoop(sessionId);
     if (nullptr == pSession) {
         LOG_ERROR("send data error on sessionId:{}, msgId:{}", sessionId, msgType);
         return false;
@@ -116,13 +116,14 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType, c
         *((uint32_t*)head + 2) = SwapUint32(msgType);
     }
 
-    return pSession->WriteData((const char*)head, sizeof(head), data, length);
+    pSession->WriteAppend((const char*)head, sizeof(head), data, length);
+    return m_pNetModule->SessionSend(pSession);
 }
 
 bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     const char* dataHead, size_t lengthHead, const char* dataBody, size_t lengthBody)
 {
-    auto pSession = m_pNetModule->GetSessionById(sessionId);
+    auto pSession = m_pNetModule->GetSessionInMainLoop(sessionId);
     if (nullptr == pSession) {
         LOG_ERROR("send data error on sessionId:{}, msgId:{}", sessionId, msgType);
         return false;
@@ -147,7 +148,8 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     }
 
     memcpy((uint32_t*)head + 3, dataHead, lengthHead);
-    return pSession->WriteData((const char*)head, sizeof(head) + lengthHead, dataBody, lengthBody);
+    pSession->WriteAppend((const char*)head, sizeof(head) + lengthHead, dataBody, lengthBody);
+    return m_pNetModule->SessionSend(pSession);
 }
 
 void NetPbModule::RegisterPacketHandle(uint32_t msgType, FuncPacketHandleType func)

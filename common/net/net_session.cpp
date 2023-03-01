@@ -42,6 +42,7 @@ void Session::SetSessionReadCb(FunSessionRead&& funOnSessionRead)
 void Session::SetSessionProtoContext(void* pProtoContext,
     const FunSessionProtoContextClose& funSessionProtoContextClose)
 {
+    assert(m_funSessionProtoContextClose == nullptr);
     if (nullptr != m_funSessionProtoContextClose) {
         m_funSessionProtoContextClose(m_pProtoContext);
     }
@@ -64,16 +65,6 @@ void* Session::GetProtoContext()
     return m_pProtoContext;
 }
 
-void Session::HandleRead()
-{
-    if (m_funSessionRead) [[likely]] {
-        if (false == m_funSessionRead(m_nSessionId, m_buffRead)) {
-            LOG_ERROR("read packet error on seesion: {}", m_nSessionId);
-            AsyncClose();
-        }
-    }
-}
-
 bool Session::WriteAppend(const std::string& data)
 {
     return m_buffWrite.Write(data.c_str(), data.length());
@@ -84,15 +75,7 @@ bool Session::WriteAppend(const char* data, size_t length)
     return m_buffWrite.Write((char*)data, length);
 }
 
-bool Session::WriteData(const char* data, size_t length)
-{
-    m_buffWrite.Write((char*)data, length);
-
-    DoWrite();
-    return true;
-}
-
-bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, size_t length)
+bool Session::WriteAppend(const char* dataHead, size_t lenHead, const char* data, size_t length)
 {
     if (lenHead + length > m_buffWrite.MaxWritableSize()) [[unlikely]] {
         return false;
@@ -101,100 +84,12 @@ bool Session::WriteData(const char* dataHead, size_t lenHead, const char* data, 
     m_buffWrite.Write((char*)dataHead, lenHead);
     m_buffWrite.Write((char*)data, length);
 
-    DoWrite();
     return true;
 }
 
 asio::io_context& Session::GetSocketIocontext()
 {
     return m_io_context;
-}
-
-void Session::DoConnect(asio::ip::tcp::endpoint& address, const FunSessionConnect& funFunSessionConnect /* = nullptr*/)
-{
-    auto self(shared_from_this());
-    GetSocket().async_connect(address,
-        [self, funFunSessionConnect](std::error_code ec) {
-            if (!ec) {
-                if (nullptr != funFunSessionConnect) {
-                    funFunSessionConnect(self->m_nSessionId, true);
-                }
-                self->DoRead();
-            } else {
-                if (nullptr != funFunSessionConnect) {
-                    funFunSessionConnect(self->m_nSessionId, false);
-                }
-                self->DoClose();
-            }
-        });
-}
-
-void Session::DoRead()
-{
-    auto self(shared_from_this());
-    GetSocket().async_read_some(
-        asio::buffer(m_buffRead.GetWriteData(),
-            m_buffRead.CurrentWritableSize()),
-        [this, self](std::error_code ec, std::size_t length) {
-            if (!ec) {
-                m_buffRead.FillData(length);
-                HandleRead();
-
-                self->DoRead();
-            } else {
-                self->DoClose();
-            }
-        });
-}
-
-void Session::DoWrite()
-{
-    auto self(shared_from_this());
-    GetSocket().async_write_some(
-        asio::buffer(m_buffWrite.GetReadData(), m_buffWrite.GetReadableSize()),
-        [this, self](std::error_code ec, std::size_t length) {
-            if (!ec) {
-                m_buffWrite.RemoveData(length);
-                if (m_buffWrite.GetReadableSize() > 0) {
-                    self->DoWrite();
-                }
-            } else {
-                self->DoClose();
-            }
-        });
-}
-
-void Session::AsyncClose()
-{
-    auto self(shared_from_this());
-    GetSocketIocontext().post(
-        [this, self]() {
-            self->DoClose();
-        });
-}
-
-void Session::DoClose()
-{
-    if (GetSocket().is_open()) {
-        try {
-            GetSocket().shutdown(asio::socket_base::shutdown_both);
-        } catch (...) {
-            LOG_ERROR("shutdown fail on sessionId:{}", m_nSessionId);
-        }
-
-        try {
-            GetSocket().close();
-        } catch (...) {
-            LOG_ERROR("close fail on sessionId:{}", m_nSessionId);
-        }
-    }
-
-    if (nullptr != m_funSessionProtoContextClose) {
-        m_funSessionProtoContextClose(m_pProtoContext);
-    }
-    if (nullptr != m_funSessionClose) {
-        m_funSessionClose(m_nSessionId);
-    }
 }
 
 TONY_CAT_SPACE_END

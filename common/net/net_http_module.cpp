@@ -1,5 +1,6 @@
 #include "net_http_module.h"
 
+#include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
@@ -31,9 +32,21 @@ void NetHttpModule::BeforeInit()
 {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
+    m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
     assert(NetHttpModule::m_pNetHttpModule == nullptr);
     NetHttpModule::m_pNetHttpModule = this;
+}
+
+void NetHttpModule::OnInit() {
+    auto nId = m_pServiceGovernmentModule->GetMineServerInfo().nServerConfigId;
+    auto pServerListConfig = m_pXmlConfigModule->GetServerListConfigDataById(nId);
+    if (pServerListConfig) {
+        std::string strIp;
+        int32_t nPort;
+        m_pServiceGovernmentModule->AddressToIpPort(pServerListConfig->strHttpIp, strIp, nPort);
+        Listen(strIp, nPort);
+    }
 }
 
 void NetHttpModule::OnUpdate()
@@ -64,7 +77,7 @@ Session::session_id_t NetHttpModule::Connect(const std::string& strAddress, uint
 
 bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf)
 {
-    auto pSession = m_pNetModule->GetSessionById(sessionId);
+    auto pSession = m_pNetModule->GetSessionInNetLoop(sessionId);
     if (nullptr == pSession) {
         LOG_ERROR("send data error on sessionId:{}", sessionId);
         return false;
@@ -74,7 +87,10 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
     if (nullptr == pContext) {
         pContext = new Http::RequestParser();
         pSession->SetSessionProtoContext(pContext,
-            [](auto pProtoContext) { delete reinterpret_cast<Http::RequestParser*>(pProtoContext); });
+            [this](auto pProtoContext) {
+                m_pModuleManager->GetMainLoop().Exec([this, pProtoContext]() { delete reinterpret_cast<Http::RequestParser*>(pProtoContext); });
+            
+            });
     }
     auto readBuff = buf.GetReadData();
     auto readSize = buf.GetReadableSize();
@@ -84,8 +100,9 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
             readBuff, readSize);
 
         if (result == Http::RequestParser::bad) {
-            auto reply = Http::Reply::BadReply(Http::Reply::bad_request);
+            auto reply = Http::Reply::BadReply(Http::Reply::HttpStatusCode::bad_request);
             WriteData(sessionId, reply);
+            m_pNetModule->SessionSend(pSession);
             return false;
         }
 
@@ -94,9 +111,8 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
             {
                 std::lock_guard<SpinLock> lockGuard(m_lockMsgFunction);
                 m_vecMsgFunction.emplace_back(
-                    [this, sessionId, result = std::move(result)]() mutable{ ReadPbPacket(sessionId, result); });
+                    [this, sessionId, result = std::move(result)]() mutable { ReadHttpPacket(sessionId, result); });
             }
-            buf.RemoveData(read_len);
             pContext->Reset();
         }
 
@@ -108,23 +124,22 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
 
 bool NetHttpModule::WriteData(Session::session_id_t sessionId, Http::Reply& respond)
 {
-    auto pSession = m_pNetModule->GetSessionById(sessionId);
+    auto pSession = m_pNetModule->GetSessionInMainLoop(sessionId);
     if (nullptr == pSession) {
         LOG_ERROR("send data error on sessionId:{}", sessionId);
         return false;
     }
 
-    pSession->WriteAppend(Http::Reply::ToErrorBody(respond.status));
-    for (std::size_t i = 0; i < respond.headers.size(); ++i) {
-        Http::Header& header = respond.headers[i];
-        pSession->WriteAppend(header.name);
+    pSession->WriteAppend(Http::Reply::ToErrorHead(respond.statusCode));
+    for (auto& [name, value] : respond.headers) {
+        pSession->WriteAppend(name);
         pSession->WriteAppend(s_name_value_separator);
-        pSession->WriteAppend(header.value);
+        pSession->WriteAppend(value);
         pSession->WriteAppend(s_crlf);
     }
     pSession->WriteAppend(s_crlf);
     pSession->WriteAppend(respond.content);
-    pSession->DoWrite();
+    m_pNetModule->SessionSend(pSession);
     return true;
 }
 
@@ -141,9 +156,9 @@ void NetHttpModule::SetDefaultPacketHandle(FuncHttpHandleType func)
     m_funDefaultPacketHandle = func;
 }
 
-bool NetHttpModule::ReadPbPacket(Session::session_id_t sessionId, Http::Request& req)
+bool NetHttpModule::ReadHttpPacket(Session::session_id_t sessionId, Http::Request& req)
 {
-    if (auto itMapPackethandle = m_mapPackethandle.find(req.uri); itMapPackethandle != m_mapPackethandle.end()) {
+    if (auto itMapPackethandle = m_mapPackethandle.find(req.path); itMapPackethandle != m_mapPackethandle.end()) {
         auto& funcCb = itMapPackethandle->second;
         funcCb(sessionId, req);
         return true;
@@ -154,6 +169,11 @@ bool NetHttpModule::ReadPbPacket(Session::session_id_t sessionId, Http::Request&
         return true;
     }
 
+    Http::Reply replyError;
+    replyError.statusCode = Http::Reply::HttpStatusCode::not_found;
+    LOG_WARN("send not found to sessionID: {}", sessionId);
+    WriteData(sessionId, replyError);
+    m_pNetModule->CloseInMainLoop(sessionId);
     return false;
 }
 
