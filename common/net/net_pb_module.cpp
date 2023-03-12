@@ -1,5 +1,6 @@
 #include "net_pb_module.h"
 
+#include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
@@ -28,9 +29,26 @@ void NetPbModule::BeforeInit()
 {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
+    m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
+    m_workLoop = std::make_shared<LoopPool>();
     assert(NetPbModule::m_pNetPbModule == nullptr);
     NetPbModule::m_pNetPbModule = this;
+}
+
+void NetPbModule::OnInit()
+{
+    auto nId = m_pServiceGovernmentModule->GetMineServerInfo().nServerConfigId;
+    auto pServerListConfig = m_pXmlConfigModule->GetServerListConfigDataById(nId);
+    if (pServerListConfig) {
+        m_workLoop->Start(pServerListConfig->nNetThreadsNum);
+    }
+    Listen(m_pServiceGovernmentModule->GetPublicIp(), m_pServiceGovernmentModule->GetPublicPort());
+}
+
+void NetPbModule::AfterStop()
+{
+    m_workLoop->Stop();
 }
 
 void NetPbModule::OnUpdate()
@@ -46,7 +64,9 @@ void NetPbModule::OnUpdate()
 
 void NetPbModule::Listen(const std::string& strAddress, uint16_t addressPort)
 {
-    m_pNetModule->Listen(strAddress, addressPort, std::bind(&NetPbModule::ReadData, this, std::placeholders::_1, std::placeholders::_2));
+    AcceptorPtr pAcceper = std::make_shared<Acceptor>();
+    pAcceper->Init(m_workLoop, m_pNetModule->GetDefaultListenLoop(), strAddress, addressPort, std::bind(&NetPbModule::ReadData, this, std::placeholders::_1, std::placeholders::_2));
+    m_pNetModule->Listen(pAcceper);
 }
 
 Session::session_id_t NetPbModule::Connect(const std::string& strAddress, uint16_t addressPort,

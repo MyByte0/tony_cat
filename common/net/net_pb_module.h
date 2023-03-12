@@ -4,6 +4,7 @@
 #include "common/core_define.h"
 #include "common/log/log_module.h"
 #include "common/loop/loop_coroutine.h"
+#include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
 #include "common/net/net_session.h"
@@ -21,6 +22,7 @@ TONY_CAT_SPACE_BEGIN
 class ModuleManager;
 class NetModule;
 class ServiceGovernmentModule;
+class XmlConfigModule;
 
 // NetPacket:
 // || 4 bytes packetLen(PbPacket Len) || 4 bytes checkCode(for PbPacket) || 4 bytes msgType || PbPacket ||
@@ -33,7 +35,8 @@ public:
     virtual ~NetPbModule();
 
     virtual void BeforeInit() override;
-
+    virtual void OnInit() override;
+    virtual void AfterStop() override;
     virtual void OnUpdate() override;
 
 public:
@@ -272,6 +275,7 @@ private:
 protected:
     std::unordered_map<uint32_t, FuncPacketHandleType> m_mapPackethandle;
     FuncPacketHandleType m_funDefaultPacketHandle;
+    LoopPoolPtr m_workLoop = nullptr;
 
     SpinLock m_lockMsgFunction;
     std::vector<std::function<void()>> m_vecMsgFunction;
@@ -279,6 +283,7 @@ protected:
 protected:
     NetModule* m_pNetModule = nullptr;
     ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
+    XmlConfigModule* m_pXmlConfigModule = nullptr;
 
 private:
     static NetPbModule* m_pNetPbModule;

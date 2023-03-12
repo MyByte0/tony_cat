@@ -19,33 +19,32 @@ NetModule::~NetModule()
 
 void NetModule::BeforeInit()
 {
-    m_loopAccpet.Start();
 }
 
 void NetModule::OnInit()
 {
-    size_t netThreadNum = GetNetThreadNum();
-    SetNetThreadNum(static_cast<uint32_t>(netThreadNum));
-    m_poolSessionContext.Start(netThreadNum);
+    if (m_defaultListenLoop != nullptr) {
+        m_defaultListenLoop->Start();
+    }
 }
 
-void NetModule::AfterStop()
+void NetModule::OnStop()
 {
     for (auto& elemMapSession : m_mapSession) {
         DoSessionAsyncClose(elemMapSession.second);
     }
 
-    m_poolSessionContext.Broadcast([]() {
-        t_mapSessionInNetLoop.clear();
-    });
-
-    m_poolSessionContext.Stop();
-
-    for (auto pAcceptor : m_vecAcceptors) {
-        delete pAcceptor;
+    for (auto pAccepter : m_vecAcceptors)
+    {
+        pAccepter->GetWorkLoop()->Broadcast([]() {
+            t_mapSessionInNetLoop.clear();
+        });
     }
+
     m_vecAcceptors.clear();
-    m_loopAccpet.Stop();
+    if (m_defaultListenLoop) {
+        m_defaultListenLoop->Stop();
+    }
 }
 
 Session::session_id_t NetModule::CreateSessionId()
@@ -68,25 +67,28 @@ SessionPtr NetModule::GetSessionInNetLoop(Session::session_id_t sessionId)
 {
     if (auto itMapSession = t_mapSessionInNetLoop.find(sessionId); itMapSession != t_mapSessionInNetLoop.end())
     {
+        assert(&Loop::GetCurrentThreadLoop() == &itMapSession->second->GetLoop());
         return itMapSession->second;
     }
 
     return nullptr;
 }
 
-void NetModule::RemoveInSessionMap(Session::session_id_t sessionId)
+void NetModule::RemoveMapSession(Session::session_id_t sessionId)
 {
     m_pModuleManager->GetMainLoop().Exec(
         [this, sessionId]() {
             LOG_TRACE("close net connect, session_id:{}", sessionId);
-            m_mapSession.erase(sessionId);
-
-            auto& context = m_poolSessionContext.GetIoContext(sessionId);
-            context.post([sessionId]() { t_mapSessionInNetLoop.erase(sessionId); });
+            auto pSession = GetSessionInMainLoop(sessionId);
+            if (pSession != nullptr) {
+                m_mapSession.erase(sessionId);
+                auto& loop = pSession->GetLoop();
+                loop.Exec([sessionId]() { t_mapSessionInNetLoop.erase(sessionId); });
+            }
         });
 }
 
-bool NetModule::OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff)
+bool NetModule::OnReadSession(AcceptorPtr pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff)
 {
     auto pSession = GetSessionInNetLoop(sessionId);
     if (nullptr == pSession) {
@@ -98,32 +100,33 @@ bool NetModule::OnReadSession(Acceptor* pAcceptor, Session::session_id_t session
         LOG_INFO("read data disconnect, sessionId:{}", sessionId);
         DoSessionAsyncClose(pSession);
     }
+
+    pSession->GetLoop().Cancel(pSession->m_timerSessionAlive);
+    pSession->m_timerSessionAlive = nullptr;
+    pSession->m_timerSessionAlive = pSession->GetLoop().ExecAfter(kDefaultTimeoutMillseconds, [this, sessionId]() { this->DoTimerSessionReadTimeout(sessionId); });
     return true;
 }
 
-void NetModule::Listen(const std::string& strAddress, uint16_t addressPort, const FunNetRead& funNetRead)
+void NetModule::Listen(AcceptorPtr pAcceptor)
 {
-    Acceptor* pAcceptor = new Acceptor();
-    pAcceptor->Reset(
-        m_loopAccpet.GetIoContext(),
-        strAddress, addressPort, funNetRead);
     m_vecAcceptors.emplace_back(pAcceptor);
-
-    m_loopAccpet.Exec([this, pAcceptor]() { this->Accept(pAcceptor); });
+    pAcceptor->GetListenLoop()->Exec([this, pAcceptor]() { this->Accept(pAcceptor); });
 }
 
-void NetModule::Accept(Acceptor* pAcceptor)
+void NetModule::Accept(AcceptorPtr pAcceptor)
 {
     auto session_id = CreateSessionId();
-    auto& context = m_poolSessionContext.GetIoContext(session_id);
+    auto session_loop = pAcceptor->GetWorkLoop()->GetLoop(session_id);
+    assert(session_loop != nullptr);
 
-    auto pSession = std::make_shared<Session>(context, session_id);
+    auto pSession = std::make_shared<Session>(*session_loop, session_id);
+    pSession->m_timerSessionAlive = session_loop->ExecAfter(kDefaultTimeoutMillseconds, [this, session_id]() { this->DoTimerSessionReadTimeout(session_id); });
     pSession->SetSessionReadCb(std::bind(&NetModule::OnReadSession, this, pAcceptor, std::placeholders::_1, std::placeholders::_2));
     pAcceptor->OnAccept(*pSession,
         [this, pAcceptor, pSession](std::error_code ec) {
             if (!ec) {
                 pSession->AcceptInitialize();
-                pSession->GetSocketIocontext().post([this, pSession] {
+                pSession->GetLoop().Exec([this, pSession] {
                     t_mapSessionInNetLoop.emplace(pSession->GetSessionId(), pSession);
 
                     m_pModuleManager->GetMainLoop().Exec([this, pSession]() {
@@ -150,10 +153,9 @@ Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16
     auto endpoints = asio::ip::tcp::endpoint(asio::ip::make_address(strAddressIP),
         addressPort);
     auto session_id = CreateSessionId();
-    auto& context = m_poolSessionContext.GetIoContext(session_id);
-
     auto& loop = Loop::GetCurrentThreadLoop();
-    auto pSession = std::make_shared<Session>(context, session_id);
+
+    auto pSession = std::make_shared<Session>(loop, session_id);
     pSession->SetSessionReadCb(funOnSessionRead);
     // ensure call CloseCb in current loop
     pSession->SetSessionCloseCb([this, funOnSessionClose, &loop](auto nSessionId) {
@@ -164,7 +166,7 @@ Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16
         });
     });
 
-    pSession->GetSocketIocontext().post([this, pSession, &loop, endpoints, funOnSessionConnect(std::move(funOnSessionConnect))] () mutable{
+    pSession->GetLoop().Exec([this, pSession, &loop, endpoints, funOnSessionConnect(std::move(funOnSessionConnect))] () mutable{
         t_mapSessionInNetLoop.emplace(pSession->GetSessionId(), pSession);
 
         m_pModuleManager->GetMainLoop().Exec([this, pSession, &loop, endpoints, funOnSessionConnect(std::move(funOnSessionConnect))] () mutable {
@@ -175,7 +177,7 @@ Session::session_id_t NetModule::Connect(const std::string& strAddressIP, uint16
                     loop.Exec([this, funOnSessionConnect, nSessionId, bSuccess]() {
                         funOnSessionConnect(nSessionId, bSuccess);
                         if (!bSuccess) {
-                            this->RemoveInSessionMap(nSessionId);
+                            this->RemoveMapSession(nSessionId);
                         }
                     });
                 });
@@ -261,7 +263,7 @@ bool NetModule::DoSessionWrite(SessionPtr pSession)
 
 void NetModule::DoSessionAsyncClose(SessionPtr pSession)
 {
-    pSession->GetSocketIocontext().post(
+    pSession->GetLoop().Exec(
         [this, pSession]() {
             DoSessionCloseInNetLoop(pSession);
         });
@@ -285,7 +287,7 @@ void NetModule::DoSessionCloseInNetLoop(SessionPtr pSession)
 
     LOG_TRACE("close session on sessionId:{}", pSession->GetSessionId());
     if (nullptr != pSession->m_funSessionProtoContextClose) {
-        pSession->m_funSessionProtoContextClose(pSession->m_pProtoContext);
+        pSession->m_funSessionProtoContextClose(pSession->m_pSessionContext);
         pSession->m_funSessionProtoContextClose = nullptr;
     }
     if (nullptr != pSession->m_funSessionClose) {
@@ -293,7 +295,19 @@ void NetModule::DoSessionCloseInNetLoop(SessionPtr pSession)
         pSession->m_funSessionClose = nullptr;
     }
 
-    RemoveInSessionMap(pSession->m_nSessionId);
+    RemoveMapSession(pSession->m_nSessionId);
+}
+
+void NetModule::DoTimerSessionReadTimeout(Session::session_id_t sessionId)
+{
+    LOG_INFO("close timeout session on sessionId:{}", sessionId);
+
+    auto pSession = GetSessionInNetLoop(sessionId);
+    if (!pSession) {
+        LOG_WARN("not find session: {}", sessionId);
+        return;
+    }
+    DoSessionAsyncClose(pSession);
 }
 
 TONY_CAT_SPACE_END

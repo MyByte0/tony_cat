@@ -6,9 +6,9 @@
 
 TONY_CAT_SPACE_BEGIN
 
-Session::Session(asio::io_context& io_context, session_id_t session_id)
-    : m_io_context(io_context)
-    , m_socket(io_context)
+Session::Session(Loop& loop, session_id_t session_id)
+    : m_loopIO(loop)
+    , m_socket(loop.GetIoContext())
     , m_nSessionId(session_id)
 {
 }
@@ -44,9 +44,9 @@ void Session::SetSessionProtoContext(void* pProtoContext,
 {
     assert(m_funSessionProtoContextClose == nullptr);
     if (nullptr != m_funSessionProtoContextClose) {
-        m_funSessionProtoContextClose(m_pProtoContext);
+        m_funSessionProtoContextClose(m_pSessionContext);
     }
-    m_pProtoContext = pProtoContext;
+    m_pSessionContext = pProtoContext;
     m_funSessionProtoContextClose = funSessionProtoContextClose;
 }
 
@@ -60,9 +60,9 @@ asio::ip::tcp::socket& Session::GetSocket()
     return m_socket;
 }
 
-void* Session::GetProtoContext()
+void* Session::GetSessionContext()
 {
-    return m_pProtoContext;
+    return m_pSessionContext;
 }
 
 bool Session::WriteAppend(const std::string& data)
@@ -87,9 +87,9 @@ bool Session::WriteAppend(const char* dataHead, size_t lenHead, const char* data
     return true;
 }
 
-asio::io_context& Session::GetSocketIocontext()
+Loop& Session::GetLoop()
 {
-    return m_io_context;
+    return m_loopIO;
 }
 
 TONY_CAT_SPACE_END

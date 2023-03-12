@@ -3,6 +3,7 @@
 
 #include "common/core_define.h"
 #include "common/net/net_buffer.h"
+#include "common/loop/loop.h"
 
 #include <cstdint>
 #include <memory>
@@ -22,7 +23,7 @@ public:
     typedef std::function<void(void* protoContext)> FunSessionProtoContextClose;
 
 public:
-    Session(asio::io_context& io_context, session_id_t session_id);
+    Session(Loop& io_context, session_id_t session_id);
     ~Session();
 
     void AcceptInitialize();
@@ -43,10 +44,10 @@ public:
     bool WriteAppend(const char* data, size_t length);
     bool WriteAppend(const char* dataHead, size_t lenHead, const char* data, size_t length);
 
-    asio::io_context& GetSocketIocontext();
-    void* GetProtoContext();
+    Loop& GetLoop();
+    void* GetSessionContext();
 
-    asio::io_context& m_io_context;
+    Loop& m_loopIO;
     asio::ip::tcp::socket m_socket;
 
     SessionBuffer m_buffRead;
@@ -56,7 +57,9 @@ public:
     FunSessionClose m_funSessionClose;
     FunSessionRead m_funSessionRead;
 
-    void* m_pProtoContext = nullptr;
+    Loop::TimerHandle m_timerSessionAlive = nullptr;
+
+    void* m_pSessionContext = nullptr;
     FunSessionProtoContextClose m_funSessionProtoContextClose;
 };
 

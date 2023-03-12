@@ -23,12 +23,24 @@ public:
 
     virtual void BeforeInit() override;
     virtual void OnInit() override;
-    virtual void AfterStop() override;
+    virtual void OnStop() override;
 
 public:
     typedef std::function<bool(Session::session_id_t, SessionBuffer&)> FunNetRead;
 
-    void Listen(const std::string& strAddress, uint16_t addressPort, const FunNetRead& funNetRead);
+    enum int32_t {
+        kDefaultTimeoutMillseconds = 3 * 60 * 1000,
+    };
+
+    LoopPtr GetDefaultListenLoop() {
+        if (m_defaultListenLoop == nullptr) {
+            m_defaultListenLoop = std::make_shared<Loop>();
+            m_defaultListenLoop->Start();
+        }
+        return m_defaultListenLoop;
+    }
+
+    void Listen(AcceptorPtr pAcceptor);
     Session::session_id_t Connect(const std::string& strAddress, uint16_t addressPort,
         const Session::FunSessionRead& funOnSessionRead,
         const Session::FunSessionConnect& funOnSessionConnect = nullptr,
@@ -44,13 +56,11 @@ public:
         return DoSessionWrite(pSession);
     }
 
-    DEFINE_MEMBER_UINT32_PUBLIC(NetThreadNum);
-
 private:
-    void Accept(Acceptor* pAcceptor);
+    void Accept(AcceptorPtr pAcceptor);
     Session::session_id_t CreateSessionId();
-    void RemoveInSessionMap(Session::session_id_t sessionId);
-    bool OnReadSession(Acceptor* pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff);
+    void RemoveMapSession(Session::session_id_t sessionId);
+    bool OnReadSession(AcceptorPtr pAcceptor, Session::session_id_t sessionId, SessionBuffer& buff);
 
 private:
     void HandleSessionRead(SessionPtr pSession);
@@ -60,15 +70,16 @@ private:
     void DoSessionAsyncClose(SessionPtr pSession);
     void DoSessionCloseInNetLoop(SessionPtr pSession);
 
+    void DoTimerSessionReadTimeout(Session::session_id_t sessionId);
+
 private:
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
     static THREAD_LOCAL_VAR std::unordered_map<Session::session_id_t, SessionPtr> t_mapSessionInNetLoop;
 
-    Loop m_loopAccpet;
-    std::vector<Acceptor*> m_vecAcceptors;
+    LoopPtr m_defaultListenLoop = nullptr;
+    std::vector<AcceptorPtr> m_vecAcceptors;
 
     std::atomic<Session::session_id_t> m_nextSessionId = 0;
-    LoopPool m_poolSessionContext;
 };
 
 TONY_CAT_SPACE_END
