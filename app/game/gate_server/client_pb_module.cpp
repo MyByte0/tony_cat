@@ -30,7 +30,6 @@ void ClientPbModule::BeforeInit()
 void ClientPbModule::OnInit()
 {
     this->NetPbModule::OnInit();
-    Listen(m_pServiceGovernmentModule->GetPublicIp(), m_pServiceGovernmentModule->GetPublicPort());
 
     this->RegisterHandle(this, &ClientPbModule::OnHandleCSPlayerLoginReq);
     this->SetDefaultPacketHandle(std::bind(&ClientPbModule::OnClientMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
