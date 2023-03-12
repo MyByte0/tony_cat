@@ -65,6 +65,8 @@ private:
     void InitThreadlocalLoop();
 };
 
+typedef std::shared_ptr<Loop> LoopPtr;
+
 TONY_CAT_SPACE_END
 
 #endif // COMMON_LOOP_LOOP_H_
