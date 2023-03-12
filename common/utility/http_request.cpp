@@ -177,7 +177,11 @@ bool RequestParser::OnDone()
 std::tuple<RequestParser::ResultType, std::size_t> RequestParser::Parse(
     const char* data, std::size_t length)
 {
-    std::string_view request(data, length);
+    if (m_readLength >= k_http_max_size) {
+        return std::make_tuple(ResultType::bad, length);
+    }
+    std::size_t readableLength = std::min(length, k_http_max_size-m_readLength);
+    std::string_view request(data, readableLength);
     // Split the request into lines
     size_t pos = 0;
     while (!OnDone() && !OnReadBody() && (pos = request.find("\r\n")) != std::string_view::npos) {
@@ -203,17 +207,20 @@ std::tuple<RequestParser::ResultType, std::size_t> RequestParser::Parse(
         auto next_start = ParseBody(request);
         // need read remain data
         if (next_start >= request.length()) {
-            return std::make_tuple(ResultType::indeterminate, length);
+            m_readLength += readableLength;
+            return std::make_tuple(ResultType::indeterminate, readableLength);
         }
         request = request.substr(next_start);
     }
 
     if (OnDone()) {
-        return std::make_tuple(ResultType::good, length - request.length());
+        m_readLength += readableLength - request.length();
+        return std::make_tuple(ResultType::good, readableLength - request.length());
     }
 
     m_readingLine.append(request);
-    return std::make_tuple(ResultType::indeterminate, length);
+    m_readLength += readableLength;
+    return std::make_tuple(ResultType::indeterminate, readableLength);
 }
 
 }

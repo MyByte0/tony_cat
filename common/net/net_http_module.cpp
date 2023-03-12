@@ -34,6 +34,7 @@ void NetHttpModule::BeforeInit()
     m_pServiceGovernmentModule = FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
+    m_workLoop = std::make_shared<LoopPool>();
     assert(NetHttpModule::m_pNetHttpModule == nullptr);
     NetHttpModule::m_pNetHttpModule = this;
 }
@@ -42,11 +43,17 @@ void NetHttpModule::OnInit() {
     auto nId = m_pServiceGovernmentModule->GetMineServerInfo().nServerConfigId;
     auto pServerListConfig = m_pXmlConfigModule->GetServerListConfigDataById(nId);
     if (pServerListConfig) {
+        m_workLoop->Start(pServerListConfig->nHttpThreadsNum);
         std::string strIp;
         int32_t nPort;
         m_pServiceGovernmentModule->AddressToIpPort(pServerListConfig->strHttpIp, strIp, nPort);
         Listen(strIp, nPort);
     }
+}
+
+void NetHttpModule::AfterStop()
+{
+    m_workLoop->Stop();
 }
 
 void NetHttpModule::OnUpdate()
@@ -62,8 +69,10 @@ void NetHttpModule::OnUpdate()
 
 void NetHttpModule::Listen(const std::string& strAddress, uint16_t addressPort)
 {
-    m_pNetModule->Listen(strAddress, addressPort,
+    AcceptorPtr pAcceper = std::make_shared<Acceptor>();
+    pAcceper->Init(m_workLoop, m_pNetModule->GetDefaultListenLoop(), strAddress, addressPort,
         std::bind(&NetHttpModule::ReadData, this, std::placeholders::_1, std::placeholders::_2));
+    m_pNetModule->Listen(pAcceper);
 }
 
 Session::session_id_t NetHttpModule::Connect(const std::string& strAddress, uint16_t addressPort,
@@ -83,7 +92,7 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
         return false;
     }
 
-    auto pContext = reinterpret_cast<Http::RequestParser*>(pSession->GetProtoContext());
+    auto pContext = reinterpret_cast<Http::RequestParser*>(pSession->GetSessionContext());
     if (nullptr == pContext) {
         pContext = new Http::RequestParser();
         pSession->SetSessionProtoContext(pContext,
@@ -99,14 +108,14 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId, SessionBuffer& buf
         auto [result, read_len] = pContext->Parse(
             readBuff, readSize);
 
-        if (result == Http::RequestParser::bad) {
+        if (result == Http::RequestParser::ResultType::bad) {
             auto reply = Http::Reply::BadReply(Http::Reply::HttpStatusCode::bad_request);
             WriteData(sessionId, reply);
             m_pNetModule->SessionSend(pSession);
             return false;
         }
 
-        if (result == Http::RequestParser::good) {
+        if (result == Http::RequestParser::ResultType::good) {
             auto&& result = pContext->FetchResult();
             {
                 std::lock_guard<SpinLock> lockGuard(m_lockMsgFunction);

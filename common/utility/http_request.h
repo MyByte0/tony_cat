@@ -126,15 +126,20 @@ struct Reply {
 
 struct RequestParser {
 private:
-    enum class PaserState {
+    enum PaserState {
         method_uri_version,
         http_header,
         http_context,
         end
     };
+
+    enum : int32_t {
+        k_http_max_size = 1 * 1024 * 1024,   // default 1MB max
+    };
     PaserState m_state = PaserState::method_uri_version;
     Request m_req;
     size_t m_contentLength = 0;
+    size_t m_readLength = 0;
     std::string m_readingLine;
 
     size_t ParseBody(std::string_view data);
@@ -143,7 +148,7 @@ private:
     bool OnDone();
 
 public:
-    enum ResultType {
+    enum class ResultType {
         good,
         bad,
         indeterminate
@@ -165,6 +170,7 @@ public:
         m_state = PaserState::method_uri_version;
         m_req.Reset();
         m_contentLength = 0;
+        m_readLength = 0;
         m_readingLine.clear();
     }
 };

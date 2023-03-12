@@ -4,6 +4,7 @@
 #include "common/core_define.h"
 #include "common/log/log_module.h"
 #include "common/loop/loop_coroutine.h"
+#include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
 #include "common/net/net_session.h"
@@ -30,6 +31,7 @@ public:
 
     virtual void BeforeInit() override;
     virtual void OnInit() override;
+    virtual void AfterStop() override;
     virtual void OnUpdate() override;
 
 public:
@@ -85,6 +87,7 @@ private:
 protected:
     std::unordered_map<std::string, FuncHttpHandleType> m_mapPackethandle;
     FuncHttpHandleType m_funDefaultPacketHandle;
+    LoopPoolPtr m_workLoop = nullptr;
 
     SpinLock m_lockMsgFunction;
     std::vector<std::function<void()>> m_vecMsgFunction;
