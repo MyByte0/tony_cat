@@ -56,7 +56,6 @@ void ServiceGovernmentModule::InitConfig()
             MutableMineServerInfo()->strServerIp = m_strServerIp;
             MutableMineServerInfo()->nPort = m_nServerPort;
             vecDestServers = stServerListConfigData.vecConnectList;
-            m_pNetModule->SetNetThreadNum(stServerListConfigData.nNetThreadsNum);
             LOG_INFO("Server Public Ip{}, port:{}, Address Ip{}, port:{}, netThreadNum:{}.",
                 m_strPublicIp, m_nPublicPort, m_strServerIp, m_nServerPort, stServerListConfigData.nNetThreadsNum);
             break;

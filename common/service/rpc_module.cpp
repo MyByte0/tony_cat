@@ -28,7 +28,7 @@ void RpcModule::BeforeInit()
     RpcModule::m_pRpcModule = this;
 }
 
-void RpcModule::AfterStop()
+void RpcModule::OnStop()
 {
     for (auto& elemMapRpcContext : m_mapRpcContextDeleter) {
         auto msgId = elemMapRpcContext.first;

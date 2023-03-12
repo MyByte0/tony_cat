@@ -25,7 +25,7 @@ public:
     virtual ~RpcModule();
 
     virtual void BeforeInit() override;
-    virtual void AfterStop() override;
+    virtual void OnStop() override;
 
 private:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
