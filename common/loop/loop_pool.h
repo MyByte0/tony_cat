@@ -4,6 +4,8 @@
 #include "common/core_define.h"
 #include "common/loop/loop.h"
 
+#include <memory>
+
 #include <asio.hpp>
 
 TONY_CAT_SPACE_BEGIN
@@ -11,6 +13,8 @@ TONY_CAT_SPACE_BEGIN
 class LoopPool {
 public:
     LoopPool();
+    LoopPool(LoopPool&&) = default;
+    LoopPool(const LoopPool&) = delete;
     ~LoopPool();
 
 public:
@@ -24,13 +28,13 @@ public:
     void Broadcast(const Loop::FunctionRun& func);
 
     asio::io_context& GetIoContext(std::size_t index);
-
-private:
     Loop* GetLoop(std::size_t index);
 
 private:
     std::vector<Loop> m_vecLoops;
 };
+
+typedef std::shared_ptr<LoopPool> LoopPoolPtr;
 
 TONY_CAT_SPACE_END
 
