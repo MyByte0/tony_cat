@@ -72,7 +72,8 @@ def gen_code(argv):
     cpp_gen_path = argv[2]
     dict_types_mod = {}
     if len(cpp_gen_path) > 0:
-        if cpp_gen_path[-1] != '\\' and cpp_gen_path[-1] != '/':
+        cpp_gen_path.replace('\\', '/')
+        if cpp_gen_path[-1] != '/':
             cpp_gen_path = cpp_gen_path + '/'
 
     for i in range(len(argv)):

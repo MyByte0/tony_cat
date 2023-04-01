@@ -38,7 +38,8 @@ def gen_code(argv):
     filename = argv[1]
     cpp_gen_path = argv[2]
     if len(cpp_gen_path) > 0:
-        if cpp_gen_path[-1] != '\\' and cpp_gen_path[-1] != '/':
+        cpp_gen_path.replace('\\', '/')
+        if cpp_gen_path[-1] != '/':
             cpp_gen_path = cpp_gen_path + '/'
 
     data_metas = paser_pb.LoadPbFile(filename)
@@ -46,15 +47,15 @@ def gen_code(argv):
     header_file_name = "{}.h".format('db_define')
     header_file_write = open("{}{}".format(cpp_gen_path, header_file_name), "w")
 
-    header_file_write.write('\n#ifndef DB_DEFINE_H_')
-    header_file_write.write('\n#define DB_DEFINE_H_')
-    header_file_write.write('\n')
-    header_file_write.write('\n#include "common/core_define.h"')
+    header_file_write.write('\n#ifndef COMMON_DATABASE_DB_DEFINE_H_')
+    header_file_write.write('\n#define COMMON_DATABASE_DB_DEFINE_H_')
     header_file_write.write('\n')
     header_file_write.write('\n#include <string>')
     header_file_write.write('\n#include <unordered_map>')
     header_file_write.write('\n#include <unordered_set>')
     header_file_write.write('\n#include <vector>')
+    header_file_write.write('\n')
+    header_file_write.write('\n#include "common/core_define.h"')
     header_file_write.write('\n')
     header_file_write.write('\nTONY_CAT_SPACE_BEGIN')
     header_file_write.write('\n')
@@ -76,7 +77,7 @@ def gen_code(argv):
                     msg_name = "{}.{}".format(meta.namespace, meta.name)
                 else:
                     msg_name = meta.name
-                header_file_write.write('\n		mapMesssageKeys[std::string("{}")] = {{ '.format(msg_name))
+                header_file_write.write('\n        mapMesssageKeys[std::string("{}")] = {{'.format(msg_name))
                 for index, key_name in enumerate(keys):
                     field = meta.GetPbMetaFieldByName(key_name)
                     if None == field:
@@ -95,12 +96,13 @@ def gen_code(argv):
 
     header_file_write.write('\n    }')
     header_file_write.write('\n')
-    header_file_write.write('\n    std::unordered_map<std::string, std::unordered_set<std::string>> mapMesssageKeys;')
+    header_file_write.write('\n    std::unordered_map<std::string, std::unordered_set<std::string>>')
+    header_file_write.write('\n        mapMesssageKeys;')
     header_file_write.write('\n};')
     header_file_write.write('\n')
     header_file_write.write('\nTONY_CAT_SPACE_END')
     header_file_write.write('\n')
-    header_file_write.write('\n#endif // DB_DEFINE_H_')
+    header_file_write.write('\n#endif // COMMON_DATABASE_DB_DEFINE_H_')
     header_file_write.write('\n')
 
 def main(argv):
