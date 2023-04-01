@@ -1,21 +1,21 @@
-#ifndef DB_SERVER_DB_EXEC_MODULE_H_
-#define DB_SERVER_DB_EXEC_MODULE_H_
+#ifndef APP_GAME_DB_SERVER_DB_EXEC_MODULE_H_
+#define APP_GAME_DB_SERVER_DB_EXEC_MODULE_H_
+
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "common/core_define.h"
 #include "common/module_base.h"
 #include "common/module_manager.h"
 #include "common/net/net_pb_module.h"
 #include "common/net/net_session.h"
-#include "protocol/server_base.pb.h"
-
 #include "protoc/db_data.pb.h"
 #include "protoc/server_db.pb.h"
-
-#include <cassert>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <unordered_map>
+#include "protocol/server_base.pb.h"
 
 #ifdef USE_MYSQL
 #include "common/database/mysql/mysql_module.h"
@@ -37,19 +37,18 @@ typedef tony_cat::RocksDBModule DBModule;
 
 #endif
 
-
 TONY_CAT_SPACE_BEGIN
 
 class NetModule;
 class ServiceGovernmentModule;
 
 class DBExecModule : public ModuleBase {
-public:
+ public:
     explicit DBExecModule(ModuleManager* pModuleManager);
     ~DBExecModule();
-    virtual void BeforeInit() override;
+    void BeforeInit() override;
 
-public:
+ public:
     typedef std::string USER_ID;
 
     struct GateUserInfo {
@@ -59,16 +58,18 @@ public:
 
     typedef std::shared_ptr<GateUserInfo> GateUserInfoPtr;
 
-private:
-    void OnHandleSSSaveDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq);
-    void OnHandleSSQueryDataReq(Session::session_id_t sessionId, Pb::ServerHead& head, Pb::SSQueryDataReq& msgReq);
+ private:
+    void OnHandleSSSaveDataReq(Session::session_id_t sessionId,
+                               Pb::ServerHead& head, Pb::SSSaveDataReq& msgReq);
+    void OnHandleSSQueryDataReq(Session::session_id_t sessionId,
+                                Pb::ServerHead& head,
+                                Pb::SSQueryDataReq& msgReq);
 
-private:
+ private:
     NetPbModule* m_pNetPbModule = nullptr;
     DBModule* m_pDBModule = nullptr;
-
 };
 
 TONY_CAT_SPACE_END
 
-#endif // DB_SERVER_DB_EXEC_MODULE_H_
+#endif  // APP_GAME_DB_SERVER_DB_EXEC_MODULE_H_

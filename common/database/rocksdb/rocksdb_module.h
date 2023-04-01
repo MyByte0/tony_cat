@@ -1,69 +1,70 @@
-#ifndef COMMON_SERVICE_IMPL_ROCKSDB_MODULE_H_
-#define COMMON_SERVICE_IMPL_ROCKSDB_MODULE_H_
+#ifndef COMMON_DATABASE_ROCKSDB_ROCKSDB_MODULE_H_
+#define COMMON_DATABASE_ROCKSDB_ROCKSDB_MODULE_H_
 
 #ifdef USE_ROCKSDB
+
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/message.h>
+#include <rocksdb/db.h>
+
+#include <string>
 
 #include "common/core_define.h"
 #include "common/database/db_utils.h"
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/message.h>
-#include <rocksdb/db.h>
-
 TONY_CAT_SPACE_BEGIN
 
 class XmlConfigModule;
 
-
 class RocksDBModule : public ModuleBase {
-public:
+ public:
     explicit RocksDBModule(ModuleManager* pModuleManager);
     virtual ~RocksDBModule();
 
-    virtual void BeforeInit() override;
-    virtual void AfterStop() override;
+    void BeforeInit() override;
+    void AfterStop() override;
 
-public:
+ public:
     rocksdb::DB* GetThreadRocksDB();
 
     LoopPool& GetLoopPool() { return m_loopPool; }
-    
-public:
+
+ public:
     int32_t MessageLoad(google::protobuf::Message& message);
     int32_t MessageUpdate(google::protobuf::Message& message);
     int32_t MessageDelete(google::protobuf::Message& message);
 
-private:
+ private:
     void InitLoopsRocksDb(const std::string& strDBBasePath);
 
     bool CheckDBBaseData(const std::string& strDBBasePath);
 
     void RemapDBData();
 
-private:
+ private:
     void Test();
 
-private:
+ private:
     PbMessageKVHandle m_PbMessageKVHandle;
     std::string m_strDBInstanceName;
     LoopPool m_loopPool;
     static THREAD_LOCAL_POD_VAR void* t_pRocksDB;
 
-private:
+ private:
     XmlConfigModule* m_pXmlConfigModule = nullptr;
 };
 
 TONY_CAT_SPACE_END
 
-#else 
+#else
 
 TONY_CAT_SPACE_BEGIN
 
-class RocksDBModule { };
+class RocksDBModule {};
 
 TONY_CAT_SPACE_END
 #endif
 
-#endif // COMMON_SERVICE_IMPL_ROCKSDB_MODULE_H_
+#endif  // COMMON_DATABASE_ROCKSDB_ROCKSDB_MODULE_H_

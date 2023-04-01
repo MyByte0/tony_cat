@@ -1,2 +1,4 @@
 Language: Cpp
-BasedOnStyle: WebKit
+BasedOnStyle: Google
+IndentWidth: 4
+AccessModifierOffset: -4

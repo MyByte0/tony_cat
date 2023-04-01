@@ -1,15 +1,15 @@
-#ifndef CLIENT_CLIENT_TEST_APP_H_
-#define CLIENT_CLIENT_TEST_APP_H_
-
-#include "common/module_manager.h"
-#include "server_define.h"
+#ifndef APP_GAME_CLIENT_CLIENT_TEST_APP_H_
+#define APP_GAME_CLIENT_CLIENT_TEST_APP_H_
 
 #include <string>
+
+#include "common/module_manager.h"
+#include "game/server_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
 class ClientTestApp {
-public:
+ public:
     ClientTestApp();
     ~ClientTestApp() = default;
 
@@ -17,18 +17,18 @@ public:
     void RegisterSignal();
     void Start(int32_t nServerIndex);
 
-private:
+ private:
     void RegisterModule();
 
     void InitModule(int32_t nServerIndex);
     void Run();
     void DestoryModule();
 
-private:
+ private:
     static ModuleManager m_moduleManager;
     std::string m_name;
 };
 
 TONY_CAT_SPACE_END
 
-#endif // CLIENT_CLIENT_TEST_APP_H_
+#endif  // APP_GAME_CLIENT_CLIENT_TEST_APP_H_

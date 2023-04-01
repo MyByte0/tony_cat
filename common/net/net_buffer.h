@@ -1,15 +1,15 @@
 #ifndef COMMON_NET_NET_BUFFER_H_
 #define COMMON_NET_NET_BUFFER_H_
 
-#include "common/core_define.h"
-
 #include <cstdint>
 #include <vector>
+
+#include "common/core_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
 struct SessionBuffer {
-private:
+ private:
     struct BufferContext {
         std::vector<char> vecData;
         size_t nReadPos = 0;
@@ -18,13 +18,13 @@ private:
     size_t nMaxBuffSize;
     BufferContext bufContext;
 
-public:
+ public:
     enum {
         k_init_buffer_size_div_number = 16,
-        k_default_max_buffer_size = 8 * 1024 * 4096, // 8MB
+        k_default_max_buffer_size = 8 * 1024 * 4096,  // 8MB
     };
 
-    SessionBuffer(size_t maxBuffSize = k_default_max_buffer_size);
+    explicit SessionBuffer(size_t maxBuffSize = k_default_max_buffer_size);
     ~SessionBuffer();
 
     bool Empty();
@@ -40,10 +40,10 @@ public:
     size_t MaxWritableSize();
     bool Shrink();
 
-private:
+ private:
     void ReorganizeData();
 };
 
 TONY_CAT_SPACE_END
 
-#endif // COMMON_NET_NET_BUFFER_H_
+#endif  // COMMON_NET_NET_BUFFER_H_

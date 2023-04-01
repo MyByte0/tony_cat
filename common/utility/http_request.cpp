@@ -1,5 +1,6 @@
 #include "http_request.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <ranges>
 
@@ -7,15 +8,13 @@ TONY_CAT_SPACE_BEGIN
 
 namespace Http {
 
-Reply Reply::BadReply(HttpStatusCode status)
-{
+Reply Reply::BadReply(HttpStatusCode status) {
     Reply ret;
     ret.statusCode = status;
     return ret;
 }
 
-std::string Reply::ToErrorHead(Reply::HttpStatusCode status)
-{
+std::string Reply::ToErrorHead(Reply::HttpStatusCode status) {
     switch (status) {
     case Reply::HttpStatusCode::ok:
         return "HTTP/1.1 200 OK\r\n";
@@ -54,18 +53,15 @@ std::string Reply::ToErrorHead(Reply::HttpStatusCode status)
     }
 }
 
-static bool IsChar(int c)
-{
+static bool IsChar(int c) {
     return c >= 0 && c <= 127;
 }
 
-static bool IsCtl(int c)
-{
+static bool IsCtl(int c) {
     return (c >= 0 && c <= 31) || (c == 127);
 }
 
-static bool IsTspecial(int c)
-{
+static bool IsTspecial(int c) {
     switch (c) {
     case '(':
     case ')':
@@ -92,30 +88,26 @@ static bool IsTspecial(int c)
     }
 }
 
-static bool IsDigit(int c)
-{
+static bool IsDigit(int c) {
     return c >= '0' && c <= '9';
 }
 
 // return still need reading data lenth
-size_t RequestParser::ParseBody(std::string_view data)
-{
+size_t RequestParser::ParseBody(std::string_view data) {
     auto needReadCount = m_contentLength - m_req.content.length();
     if (data.length() >= needReadCount) {
         m_req.content.append(data.substr(0, needReadCount));
         m_state = PaserState::end;
         return 0;
     }
-   
+
     m_req.content.append(data);
     return needReadCount - data.size();
 }
 
-bool RequestParser::ParseLine(std::string_view line)
-{
+bool RequestParser::ParseLine(std::string_view line) {
     switch (m_state) {
         case PaserState::method_uri_version: {
-            size_t i_word = 0;
             size_t pos = 0;
             // get method
             pos = line.find(" ");
@@ -136,11 +128,11 @@ bool RequestParser::ParseLine(std::string_view line)
         }
         case PaserState::http_header: {
             if (line.empty()) {
-                if (auto it = m_req.headers.find("Content-Length"); it != m_req.headers.end()) {
+                if (auto it = m_req.headers.find("Content-Length");
+                    it != m_req.headers.end()) {
                     m_contentLength = ::atoll(it->second.c_str());
                     m_state = PaserState::http_context;
-                }
-                else {
+                } else {
                     m_state = PaserState::end;
                 }
                 break;
@@ -164,13 +156,11 @@ bool RequestParser::ParseLine(std::string_view line)
         return true;
 }
 
-bool RequestParser::OnReadBody()
-{
+bool RequestParser::OnReadBody() {
     return m_state == PaserState::http_context;
 }
 
-bool RequestParser::OnDone()
-{
+bool RequestParser::OnDone() {
     return m_state == PaserState::end;
 }
 
@@ -184,7 +174,8 @@ std::tuple<RequestParser::ResultType, std::size_t> RequestParser::Parse(
     std::string_view request(data, readableLength);
     // Split the request into lines
     size_t pos = 0;
-    while (!OnDone() && !OnReadBody() && (pos = request.find("\r\n")) != std::string_view::npos) {
+    while (!OnDone() && !OnReadBody()
+        && (pos = request.find("\r\n")) != std::string_view::npos) {
         std::string_view line;
         if (!m_readingLine.empty()) {
             // only call on the first loop
@@ -193,7 +184,7 @@ std::tuple<RequestParser::ResultType, std::size_t> RequestParser::Parse(
         } else {
             line = request.substr(0, pos);
         }
-        
+
         if (ParseLine(line) == false) {
             return std::make_tuple(ResultType::bad, pos);
         }
@@ -215,7 +206,8 @@ std::tuple<RequestParser::ResultType, std::size_t> RequestParser::Parse(
 
     if (OnDone()) {
         m_readLength += readableLength - request.length();
-        return std::make_tuple(ResultType::good, readableLength - request.length());
+        return std::make_tuple(ResultType::good,
+            readableLength - request.length());
     }
 
     m_readingLine.append(request);

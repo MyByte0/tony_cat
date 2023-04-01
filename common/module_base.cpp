@@ -3,10 +3,8 @@
 TONY_CAT_SPACE_BEGIN
 
 ModuleBase::ModuleBase(ModuleManager* pModuleManager)
-    : m_pModuleManager(pModuleManager)
-{
-}
+    : m_pModuleManager(pModuleManager) {}
 
-ModuleBase::~ModuleBase() { }
+ModuleBase::~ModuleBase() {}
 
 TONY_CAT_SPACE_END

@@ -6,8 +6,8 @@
 #define _PLACEHOLDER_COMB(x, y) x##y
 #define _PLACEHOLDER(x, y) _PLACEHOLDER_COMB(x, y)
 
-#define _  _PLACEHOLDER(_PlaceholderVar, __COUNTER__)
+#define _ _PLACEHOLDER(_PlaceholderVar, __COUNTER__)
 
 #endif
 
-#endif // COMMON_UTILITY_ANONYMOUS_VAR_H_
+#endif  // COMMON_UTILITY_ANONYMOUS_VAR_H_

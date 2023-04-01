@@ -1,18 +1,16 @@
 #include "xml_config_module.h"
+
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 
 TONY_CAT_SPACE_BEGIN
 
 XmlConfigModule::XmlConfigModule(ModuleManager* pModuleManager)
-    : ModuleBase(pModuleManager)
-{
-}
+    : ModuleBase(pModuleManager) {}
 
-XmlConfigModule::~XmlConfigModule() { }
+XmlConfigModule::~XmlConfigModule() {}
 
-void XmlConfigModule::BeforeInit()
-{
+void XmlConfigModule::BeforeInit() {
     if (false == LoadServerListConfigData()) {
         LOG_ERROR("LoadServerListConfigData false.");
         return;
@@ -23,8 +21,8 @@ void XmlConfigModule::BeforeInit()
     }
 }
 
-const tinyxml2::XMLElement* XmlConfigModule::FirstSiblingElement(tinyxml2::XMLDocument& doc)
-{
+const tinyxml2::XMLElement* XmlConfigModule::FirstSiblingElement(
+    tinyxml2::XMLDocument& doc) {
     tinyxml2::XMLElement* root = doc.RootElement();
     if (nullptr == root) {
         return nullptr;
@@ -32,17 +30,18 @@ const tinyxml2::XMLElement* XmlConfigModule::FirstSiblingElement(tinyxml2::XMLDo
     return root->FirstChildElement("element");
 }
 
-const tinyxml2::XMLElement* XmlConfigModule::NextSiblingElement(const tinyxml2::XMLElement& elementNode)
-{
+const tinyxml2::XMLElement* XmlConfigModule::NextSiblingElement(
+    const tinyxml2::XMLElement& elementNode) {
     return elementNode.NextSiblingElement();
 }
 
-const tinyxml2::XMLAttribute* XmlConfigModule::FirstAttribute(const tinyxml2::XMLElement& elementNode)
-{
+const tinyxml2::XMLAttribute* XmlConfigModule::FirstAttribute(
+    const tinyxml2::XMLElement& elementNode) {
     return elementNode.FirstAttribute();
 }
 
-const tinyxml2::XMLAttribute* XmlConfigModule::NextAttribute(const tinyxml2::XMLAttribute& elementAttribute) {
+const tinyxml2::XMLAttribute* XmlConfigModule::NextAttribute(
+    const tinyxml2::XMLAttribute& elementAttribute) {
     return elementAttribute.Next();
 }
 

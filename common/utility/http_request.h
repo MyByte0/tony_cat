@@ -1,33 +1,22 @@
-#ifndef COMMON_HTTP_REQUEST_H_
-#define COMMON_HTTP_REQUEST_H_
-
-#include "common/core_define.h"
+#ifndef COMMON_UTILITY_HTTP_REQUEST_H_
+#define COMMON_UTILITY_HTTP_REQUEST_H_
 
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include "common/core_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
 namespace Http {
 
 struct Request {
-    enum class Method {
-        kInvalid,
-        kGet,
-        kPost,
-        kHead,
-        kPut,
-        kDelete
-    };
-    enum class Version {
-        kUnknown,
-        kHttp10,
-        kHttp11,
-        kHttp20
-    };
+    enum class Method { kInvalid, kGet, kPost, kHead, kPut, kDelete };
+    enum class Version { kUnknown, kHttp10, kHttp11, kHttp20 };
 
     Method method = Method::kInvalid;
     Version version = Version::kUnknown;
@@ -36,8 +25,7 @@ struct Request {
     std::unordered_map<std::string, std::string> headers;
     std::string content;
 
-    void Reset()
-    {
+    void Reset() {
         method = Method::kInvalid;
         version = Version::kUnknown;
         path.clear();
@@ -46,47 +34,37 @@ struct Request {
         content.clear();
     }
 
-    void LoadPathAndQuery(std::string_view word)
-    {
+    void LoadPathAndQuery(std::string_view word) {
         size_t pos_query = word.find("?");
         if (pos_query != std::string_view::npos) {
             path = word.substr(0, pos_query);
             query = word.substr(pos_query + 1);
-        }
-        else {
+        } else {
             path = word;
         }
     }
 
-    static Version StringToVersion(std::string_view data)
-    {
+    static Version StringToVersion(std::string_view data) {
         if (data == "HTTP/1.1") {
             return Version::kHttp11;
-        }
-        else if (data == "HTTP/1.0") {
+        } else if (data == "HTTP/1.0") {
             return Version::kHttp10;
-        }
-        else if (data == "HTTP/2.0") {
+        } else if (data == "HTTP/2.0") {
             return Version::kHttp20;
         }
         return Version::kUnknown;
     }
 
-    static Method StringToMethod(std::string_view data)
-    {
+    static Method StringToMethod(std::string_view data) {
         if (data == "GET") {
             return Method::kGet;
-        }
-        else if (data == "POST") {
+        } else if (data == "POST") {
             return Method::kPost;
-        }
-        else if (data == "HEAD") {
+        } else if (data == "HEAD") {
             return Method::kHead;
-        }
-        else if (data == "PUT") {
+        } else if (data == "PUT") {
             return Method::kPut;
-        }
-        else if (data == "DELETE") {
+        } else if (data == "DELETE") {
             return Method::kDelete;
         }
         return Method::kInvalid;
@@ -125,16 +103,11 @@ struct Reply {
 };
 
 struct RequestParser {
-private:
-    enum PaserState {
-        method_uri_version,
-        http_header,
-        http_context,
-        end
-    };
+ private:
+    enum PaserState { method_uri_version, http_header, http_context, end };
 
     enum : int32_t {
-        k_http_max_size = 1 * 1024 * 1024,   // default 1MB max
+        k_http_max_size = 1 * 1024 * 1024,  // default 1MB max
     };
     PaserState m_state = PaserState::method_uri_version;
     Request m_req;
@@ -147,26 +120,15 @@ private:
     bool OnReadBody();
     bool OnDone();
 
-public:
-    enum class ResultType {
-        good,
-        bad,
-        indeterminate
-    };
+ public:
+    enum class ResultType { good, bad, indeterminate };
 
-    std::tuple<ResultType, std::size_t> Parse(
-        const char* data, std::size_t length);
+    std::tuple<ResultType, std::size_t> Parse(const char* data,
+                                              std::size_t length);
 
-    Request& GetResult()
-    {
-        return m_req;
-    }
-    Request&& FetchResult()
-    {
-        return std::move(m_req);
-    }
-    void Reset()
-    {
+    Request& GetResult() { return m_req; }
+    Request&& FetchResult() { return std::move(m_req); }
+    void Reset() {
         m_state = PaserState::method_uri_version;
         m_req.Reset();
         m_contentLength = 0;
@@ -175,8 +137,8 @@ public:
     }
 };
 
-}
+}  // namespace Http
 
 TONY_CAT_SPACE_END
 
-#endif // COMMON_HTTP_REQUEST_H_
+#endif  // COMMON_UTILITY_HTTP_REQUEST_H_

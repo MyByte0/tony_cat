@@ -18,15 +18,15 @@ class io_context;
 TONY_CAT_SPACE_BEGIN
 
 class Loop {
-public:
+ public:
     Loop();
     Loop(Loop&&) = default;
     Loop(const Loop&) = delete;
     ~Loop();
 
-    Loop& operator = (const Loop&) = delete;
+    Loop& operator=(const Loop&) = delete;
 
-public:
+ public:
     void Start();
     void Stop();
     void RunInThread();
@@ -44,22 +44,22 @@ public:
 
     asio::io_context& GetIoContext();
 
-public:
+ public:
     static Loop& GetCurrentThreadLoop();
 
-private:
+ private:
     void ExecEveryHelper(TimerHandle timerHandle, uint32_t millSeconds,
-        FunctionRun&& func);
+                         FunctionRun&& func);
 
-private:
+ private:
     asio::io_context* m_pIoContext = nullptr;
     std::thread* m_pthread = nullptr;
     bool m_bRunning = false;
 
-private:
+ private:
     static THREAD_LOCAL_POD_VAR void* t_runingLoop;
 
-private:
+ private:
     friend class ModuleManager;
 
     void InitThreadlocalLoop();
@@ -69,4 +69,4 @@ typedef std::shared_ptr<Loop> LoopPtr;
 
 TONY_CAT_SPACE_END
 
-#endif // COMMON_LOOP_LOOP_H_
+#endif  // COMMON_LOOP_LOOP_H_

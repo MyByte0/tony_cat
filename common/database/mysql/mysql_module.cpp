@@ -14,32 +14,26 @@ TONY_CAT_SPACE_BEGIN
 THREAD_LOCAL_POD_VAR void* MysqlModule::t_pMysql = nullptr;
 
 MysqlModule::MysqlModule(ModuleManager* pModuleManager)
-    : ModuleBase(pModuleManager)
-{
-}
+    : ModuleBase(pModuleManager) {}
 
-MysqlModule::~MysqlModule() { }
+MysqlModule::~MysqlModule() {}
 
-void MysqlModule::BeforeInit()
-{
+void MysqlModule::BeforeInit() {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
 
     MysqlInit();
 }
 
-void MysqlModule::AfterStop()
-{
-    m_loopPool.Broadcast([this]() {
-        mysql_close(GetMysqlHandle());
-    });
+void MysqlModule::AfterStop() {
+    m_loopPool.Broadcast([this]() { mysql_close(GetMysqlHandle()); });
 
     m_loopPool.Stop();
 }
 
-void MysqlModule::MysqlInit()
-{
+void MysqlModule::MysqlInit() {
     std::string strDBType = "mysql";
-    auto pDataBaseConfig = m_pXmlConfigModule->GetDataBaseConfigDataById(strDBType);
+    auto pDataBaseConfig =
+        m_pXmlConfigModule->GetDataBaseConfigDataById(strDBType);
     if (pDataBaseConfig == nullptr) {
         LOG_ERROR("not find db config: {}", strDBType);
         return;
@@ -59,28 +53,36 @@ void MysqlModule::MysqlInit()
         }
 
         if (mysql_real_connect(GetMysqlHandle(), strIP.c_str(), strUser.c_str(),
-                strPassword.c_str(), nullptr, 0, nullptr, 0)
-            == nullptr) {
-            LOG_ERROR("mysql connect error:{} {}", mysql_errno(GetMysqlHandle()), mysql_error(GetMysqlHandle()));
+                               strPassword.c_str(), nullptr, 0, nullptr,
+                               0) == nullptr) {
+            LOG_ERROR("mysql connect error:{} {}",
+                      mysql_errno(GetMysqlHandle()),
+                      mysql_error(GetMysqlHandle()));
             return;
         }
 
         char cArg = 1;
         mysql_options(GetMysqlHandle(), MYSQL_OPT_RECONNECT, &cArg);
-        //for example:
-        //QuerySelectRows(0, std::string("select * from test.website where id < {}"), std::vector<std::string> { "1000" }, nullptr);
-        //QueryModify(0, std::string("insert into test.website (id, name) values({}, '{}') on duplicate key update name='{}'"), std::vector<std::string> { "121", "ok", "ok" }, nullptr);
+        // for example:
+        // QuerySelectRows(0, std::string("select * from test.website where id <
+        // {}"), std::vector<std::string> { "1000" }, nullptr); QueryModify(0,
+        // std::string("insert into test.website (id, name) values({}, '{}') on
+        // duplicate key update name='{}'"), std::vector<std::string> { "121",
+        // "ok", "ok" }, nullptr);
     });
 }
 
-int32_t MysqlModule::QueryModify(uint32_t nIndex, const std::string& strQueryString, const std::vector<std::string>& vecArgs,
-    MysqlModifyCb&& cb)
-{
+int32_t MysqlModule::QueryModify(uint32_t nIndex,
+                                 const std::string& strQueryString,
+                                 const std::vector<std::string>& vecArgs,
+                                 MysqlModifyCb&& cb) {
     auto& loop = Loop::GetCurrentThreadLoop();
-    m_loopPool.Exec(nIndex, [this, strQueryString, vecArgs, &loop, cb = std::move(cb)]() {
+    m_loopPool.Exec(nIndex, [this, strQueryString, vecArgs, &loop,
+                             cb = std::move(cb)]() {
         auto pMysqlHandle = GetMysqlHandle();
         assert(nullptr != pMysqlHandle);
-        auto [nError, nAffectRows, nInsertId] = QueryModifyInCurrentThread(strQueryString, vecArgs);
+        auto [nError, nAffectRows, nInsertId] =
+            QueryModifyInCurrentThread(strQueryString, vecArgs);
 
         if (cb != nullptr) {
             loop.Exec([cb = std::move(cb), nError, nAffectRows, nInsertId]() {
@@ -92,16 +94,21 @@ int32_t MysqlModule::QueryModify(uint32_t nIndex, const std::string& strQueryStr
     return 0;
 }
 
-int32_t MysqlModule::QuerySelectRows(uint32_t nIndex, const std::string& strQueryString, const std::vector<std::string>& vecArgs,
-    MysqlSelectCb&& cb)
-{
+int32_t MysqlModule::QuerySelectRows(uint32_t nIndex,
+                                     const std::string& strQueryString,
+                                     const std::vector<std::string>& vecArgs,
+                                     MysqlSelectCb&& cb) {
     auto& loop = Loop::GetCurrentThreadLoop();
-    m_loopPool.Exec(nIndex,
-        [this, strQueryString, vecArgs, &loop, cb = std::move(cb)]() {
-            auto [nError, mapResult] = QuerySelectRowsInCurrentThread(strQueryString, vecArgs);
+    m_loopPool.Exec(
+        nIndex, [this, strQueryString, vecArgs, &loop, cb = std::move(cb)]() {
+            auto [nError, mapResult] =
+                QuerySelectRowsInCurrentThread(strQueryString, vecArgs);
 
             if (cb != nullptr) {
-                loop.Exec([cb = std::move(cb), nError, mapResult = std::move(mapResult)]() mutable { cb(nError, mapResult); });
+                loop.Exec([cb = std::move(cb), nError,
+                           mapResult = std::move(mapResult)]() mutable {
+                    cb(nError, mapResult);
+                });
             }
             return;
         });
@@ -109,8 +116,9 @@ int32_t MysqlModule::QuerySelectRows(uint32_t nIndex, const std::string& strQuer
     return 0;
 }
 
-std::string MysqlModule::QueryStringReplace(const std::string& strQueryString, const std::vector<std::vector<char>>& vecBuff)
-{
+std::string MysqlModule::QueryStringReplace(
+    const std::string& strQueryString,
+    const std::vector<std::vector<char>>& vecBuff) {
     if (vecBuff.empty() == 0) {
         return strQueryString;
     }
@@ -123,7 +131,8 @@ std::string MysqlModule::QueryStringReplace(const std::string& strQueryString, c
         if (strQueryString[i] == '{' && strQueryString[i + 1] == '}') {
             ++i;
             strResult.append(strQueryString, nLastRead, i - 1 - nLastRead);
-            strResult.append(vecBuff[iReplace].data(), vecBuff[iReplace].size());
+            strResult.append(vecBuff[iReplace].data(),
+                             vecBuff[iReplace].size());
             nLastRead = i + 1;
             if (++iReplace >= vecBuff.size()) {
                 break;
@@ -135,8 +144,9 @@ std::string MysqlModule::QueryStringReplace(const std::string& strQueryString, c
     return strResult;
 }
 
-int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString, const std::vector<std::string>& vecArgs)
-{
+int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle,
+                                const std::string& strQueryString,
+                                const std::vector<std::string>& vecArgs) {
     assert(nullptr != pMysqlHandle);
     assert(GetMysqlHandle() == pMysqlHandle);
     if (vecArgs.size() >= kArgNumMax) {
@@ -155,22 +165,29 @@ int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQuery
             LOG_ERROR("query arg:{} aueryString:{}", strArg, strQueryString);
             return Pb::SSMessageCode::ss_msg_arg_length_overflow;
         }
-        
-        auto nBuffLen = mysql_real_escape_string(pMysqlHandle, elemBuff.data(), strArg.c_str(), static_cast<unsigned long>(strArg.length()));
+
+        auto nBuffLen = mysql_real_escape_string(
+            pMysqlHandle, elemBuff.data(), strArg.c_str(),
+            static_cast<unsigned long>(strArg.length()));
         elemBuff.resize(nBuffLen);
     }
 
-    if (std::string strQuery = QueryStringReplace(strQueryString, vecBuff); mysql_real_query(pMysqlHandle, strQuery.c_str(), static_cast<unsigned long>(strQuery.length()))) {
-        LOG_ERROR("query test:{}, {}, aueryString:{}", mysql_errno(pMysqlHandle), mysql_error(pMysqlHandle), strQuery);
+    if (std::string strQuery = QueryStringReplace(strQueryString, vecBuff);
+        mysql_real_query(pMysqlHandle, strQuery.c_str(),
+                         static_cast<unsigned long>(strQuery.length()))) {
+        LOG_ERROR("query test:{}, {}, aueryString:{}",
+                  mysql_errno(pMysqlHandle), mysql_error(pMysqlHandle),
+                  strQuery);
         return Pb::SSMessageCode::ss_msg_error_sql;
     }
 
     return Pb::SSMessageCode::ss_msg_success;
 }
 
-std::tuple<int32_t, MysqlModule::MysqlSelectResultMap> MysqlModule::QuerySelectRowsInCurrentThread(
-    const std::string& strQueryString, const std::vector<std::string>& vecArgs)
-{
+std::tuple<int32_t, MysqlModule::MysqlSelectResultMap>
+MysqlModule::QuerySelectRowsInCurrentThread(
+    const std::string& strQueryString,
+    const std::vector<std::string>& vecArgs) {
     int32_t nError = 0;
     MysqlSelectResultMap mapResult;
     auto pMysqlHandle = GetMysqlHandle();
@@ -204,11 +221,12 @@ std::tuple<int32_t, MysqlModule::MysqlSelectResultMap> MysqlModule::QuerySelectR
         }
     } while (false);
 
-    return { nError, mapResult };
+    return {nError, mapResult};
 }
 
-std::tuple<int32_t, uint64_t, uint64_t> MysqlModule::QueryModifyInCurrentThread(const std::string& strQueryString, const std::vector<std::string>& vecArgs)
-{
+std::tuple<int32_t, uint64_t, uint64_t> MysqlModule::QueryModifyInCurrentThread(
+    const std::string& strQueryString,
+    const std::vector<std::string>& vecArgs) {
     auto pMysqlHandle = GetMysqlHandle();
     assert(nullptr != pMysqlHandle);
     int32_t nError = 0;
@@ -224,11 +242,10 @@ std::tuple<int32_t, uint64_t, uint64_t> MysqlModule::QueryModifyInCurrentThread(
         nInsertId = mysql_insert_id(pMysqlHandle);
     } while (false);
 
-    return { nError, nAffectRows, nInsertId };
+    return {nError, nAffectRows, nInsertId};
 }
 
-int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
-{
+int32_t MysqlModule::MessageLoad(google::protobuf::Message& message) {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 
@@ -236,32 +253,40 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
     std::string strQueryCommonKey;
     // loop tables
     for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
+        const google::protobuf::FieldDescriptor* pFieldDescriptor =
+            pDescriptor->field(iField);
         if (!pFieldDescriptor) {
             continue;
         }
         auto strTabName = pFieldDescriptor->name();
         // add common key
         if (IsDBCommonKeyType(pFieldDescriptor->cpp_type())) {
-            AddQueryItemCondition(message, *pFieldDescriptor, strQueryCommonKey, vecCommonArgs);
+            AddQueryItemCondition(message, *pFieldDescriptor, strQueryCommonKey,
+                                  vecCommonArgs);
             continue;
         }
 
-        std::vector<std::string> vecTableArgs(vecCommonArgs.begin(), vecCommonArgs.end());
+        std::vector<std::string> vecTableArgs(vecCommonArgs.begin(),
+                                              vecCommonArgs.end());
         std::string strQueryInFields;
         std::string strQueryInItems;
-        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) > 0) {
+        if (pFieldDescriptor->is_repeated() &&
+            pReflection->FieldSize(message, pFieldDescriptor) > 0) {
             // (strQueryInFields) IN (strQueryInItems)
             // (field1, field2) IN (('a','c'), ('b','d'));
 
             // fill strQueryInFields
             auto pSubDescriptor = pFieldDescriptor->message_type();
-            for (int iSubField = 0; iSubField < pSubDescriptor->field_count(); ++iSubField) {
-                const google::protobuf::FieldDescriptor* pSubFieldDescriptor = pSubDescriptor->field(iSubField);
+            for (int iSubField = 0; iSubField < pSubDescriptor->field_count();
+                 ++iSubField) {
+                const google::protobuf::FieldDescriptor* pSubFieldDescriptor =
+                    pSubDescriptor->field(iSubField);
                 if (!pSubFieldDescriptor) {
                     continue;
                 }
-                if (!IsDBKey(pReflection->GetRepeatedMessage(message, pFieldDescriptor, 0), *pSubFieldDescriptor)) {
+                if (!IsDBKey(pReflection->GetRepeatedMessage(
+                                 message, pFieldDescriptor, 0),
+                             *pSubFieldDescriptor)) {
                     continue;
                 }
                 if (iSubField > 0) {
@@ -271,8 +296,12 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
             }
 
             // fill strQueryInItems
-            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
-                auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
+            for (int iChildField = 0;
+                 iChildField <
+                 pReflection->FieldSize(message, pFieldDescriptor);
+                 ++iChildField) {
+                auto pMsg = &(pReflection->GetRepeatedMessage(
+                    message, pFieldDescriptor, iChildField));
                 auto pMsgDescriptor = pMsg->GetDescriptor();
                 if (pMsgDescriptor->field_count() <= 0) {
                     continue;
@@ -282,8 +311,10 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
                     strQueryInItems.append(",");
                 }
                 strQueryInItems.append("(");
-                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+                for (int iMsgField = 0;
+                     iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                    const google::protobuf::FieldDescriptor*
+                        pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
@@ -294,12 +325,15 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
                     if (iMsgField != 0) {
                         strQueryInItems.append(",");
                     }
-                    strQueryInItems.append(GetProtoSqlStringPlaceholder(*pMsgFieldDescriptor));
-                    vecTableArgs.emplace_back(DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+                    strQueryInItems.append(
+                        GetProtoSqlStringPlaceholder(*pMsgFieldDescriptor));
+                    vecTableArgs.emplace_back(
+                        DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
                 }
                 strQueryInItems.append(")");
             }
-        } else if (!pFieldDescriptor->is_repeated() && pReflection->HasField(message, pFieldDescriptor)) {
+        } else if (!pFieldDescriptor->is_repeated() &&
+                   pReflection->HasField(message, pFieldDescriptor)) {
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
             AddQueryMessageCondition(*pMsg, strQueryCommonKey, vecTableArgs);
         }
@@ -307,8 +341,10 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
         // load db data
         std::string strQueryString = "SELECT ";
         auto pSubDescriptor = pFieldDescriptor->message_type();
-        for (int iSubField = 0; iSubField < pSubDescriptor->field_count(); ++iSubField) {
-            const google::protobuf::FieldDescriptor* pSubFieldDescriptor = pSubDescriptor->field(iSubField);
+        for (int iSubField = 0; iSubField < pSubDescriptor->field_count();
+             ++iSubField) {
+            const google::protobuf::FieldDescriptor* pSubFieldDescriptor =
+                pSubDescriptor->field(iSubField);
             if (!pSubFieldDescriptor) {
                 continue;
             }
@@ -329,10 +365,15 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
             strQueryString.append(strQueryCommonKey);
         }
         if (!strQueryInItems.empty()) {
-            strQueryString.append(" AND (").append(strQueryInFields).append(") IN (").append(strQueryInItems).append(")");
+            strQueryString.append(" AND (")
+                .append(strQueryInFields)
+                .append(") IN (")
+                .append(strQueryInItems)
+                .append(")");
         }
 
-        auto [nError, mapResult] = QuerySelectRowsInCurrentThread(strQueryString, vecTableArgs);
+        auto [nError, mapResult] =
+            QuerySelectRowsInCurrentThread(strQueryString, vecTableArgs);
         if (nError != 0) {
             LOG_ERROR("load data error:{}, {}", nError, strTabName);
             return nError;
@@ -342,7 +383,8 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
         if (!mapResult.empty()) {
             std::size_t nResultSize = mapResult.begin()->second.size();
             for (std::size_t iResult = 0; iResult < nResultSize; ++iResult) {
-                if (pFieldDescriptor->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
+                if (pFieldDescriptor->cpp_type() !=
+                    google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
                     continue;
                 }
 
@@ -350,20 +392,27 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
                 if (pFieldDescriptor->is_repeated()) {
                     pMsg = pReflection->AddMessage(&message, pFieldDescriptor);
                 } else {
-                    pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
+                    pMsg =
+                        pReflection->MutableMessage(&message, pFieldDescriptor);
                 }
 
                 auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iSubField = 0; iSubField < pMsgDescriptor->field_count(); ++iSubField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iSubField);
+                for (int iSubField = 0;
+                     iSubField < pMsgDescriptor->field_count(); ++iSubField) {
+                    const google::protobuf::FieldDescriptor*
+                        pMsgFieldDescriptor = pMsgDescriptor->field(iSubField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
 
                     if (pMsgFieldDescriptor->is_repeated()) {
-                        DBStringToProtoMessageAsBlob(*pMsg, *pMsgFieldDescriptor, mapResult[pMsgFieldDescriptor->name()][iResult]);
+                        DBStringToProtoMessageAsBlob(
+                            *pMsg, *pMsgFieldDescriptor,
+                            mapResult[pMsgFieldDescriptor->name()][iResult]);
                     } else {
-                        DBStringToProtoMessage(*pMsg, *pMsgFieldDescriptor, mapResult[pMsgFieldDescriptor->name()][iResult]);
+                        DBStringToProtoMessage(
+                            *pMsg, *pMsgFieldDescriptor,
+                            mapResult[pMsgFieldDescriptor->name()][iResult]);
                     }
                 }
             }
@@ -373,8 +422,7 @@ int32_t MysqlModule::MessageLoad(google::protobuf::Message& message)
     return 0;
 }
 
-int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
-{
+int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message) {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 
@@ -383,7 +431,8 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
     std::vector<std::string> vecFieldParamCharCommon;
     // loop tables
     for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
+        const google::protobuf::FieldDescriptor* pFieldDescriptor =
+            pDescriptor->field(iField);
         if (!pFieldDescriptor) {
             continue;
         }
@@ -392,24 +441,32 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
         // handle common keys
         if (IsDBCommonKeyType(pFieldDescriptor->cpp_type())) {
             vecFieldNameCommon.emplace_back(pFieldDescriptor->name());
-            vecCommonKeyArgs.emplace_back(DBProtoMessageToString(message, *pFieldDescriptor));
-            vecFieldParamCharCommon.emplace_back(GetProtoSqlStringPlaceholder(*pFieldDescriptor));
+            vecCommonKeyArgs.emplace_back(
+                DBProtoMessageToString(message, *pFieldDescriptor));
+            vecFieldParamCharCommon.emplace_back(
+                GetProtoSqlStringPlaceholder(*pFieldDescriptor));
             continue;
         }
 
-        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
+        if (pFieldDescriptor->is_repeated() &&
+            pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
             continue;
         }
-        if (!pFieldDescriptor->is_repeated() && !pReflection->HasField(message, pFieldDescriptor)) {
+        if (!pFieldDescriptor->is_repeated() &&
+            !pReflection->HasField(message, pFieldDescriptor)) {
             continue;
         }
 
-        std::vector<std::string> vecCurFieldName(vecFieldNameCommon.begin(), vecFieldNameCommon.end());
-        std::vector<std::string> vecCurFieldParamCharCommon(vecFieldParamCharCommon.begin(), vecFieldParamCharCommon.end());
+        std::vector<std::string> vecCurFieldName(vecFieldNameCommon.begin(),
+                                                 vecFieldNameCommon.end());
+        std::vector<std::string> vecCurFieldParamCharCommon(
+            vecFieldParamCharCommon.begin(), vecFieldParamCharCommon.end());
         std::vector<std::string> vecCurFieldDataNames;
         auto pSubDescriptor = pFieldDescriptor->message_type();
-        for (int iSubField = 0; iSubField < pSubDescriptor->field_count(); ++iSubField) {
-            const google::protobuf::FieldDescriptor* pSubFieldDescriptor = pSubDescriptor->field(iSubField);
+        for (int iSubField = 0; iSubField < pSubDescriptor->field_count();
+             ++iSubField) {
+            const google::protobuf::FieldDescriptor* pSubFieldDescriptor =
+                pSubDescriptor->field(iSubField);
             if (!pSubFieldDescriptor) {
                 continue;
             }
@@ -417,11 +474,13 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
                 vecCurFieldDataNames.emplace_back(pSubFieldDescriptor->name());
             }
             vecCurFieldName.emplace_back(pSubFieldDescriptor->name());
-            vecCurFieldParamCharCommon.emplace_back(GetProtoSqlStringPlaceholder(*pSubFieldDescriptor));
+            vecCurFieldParamCharCommon.emplace_back(
+                GetProtoSqlStringPlaceholder(*pSubFieldDescriptor));
         }
 
-        // example: QueryModify(0, std::string("insert into test (id, name) values({}, '{}')
-        // on duplicate key update name=values(name)"), std::vector<std::string> { "121", "ok" }, nullptr);
+        // example: QueryModify(0, std::string("insert into test (id, name)
+        // values({}, '{}') on duplicate key update name=values(name)"),
+        // std::vector<std::string> { "121", "ok" }, nullptr);
 
         // load db data
         std::vector<std::string> vecTableArgs;
@@ -429,7 +488,8 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
         strQueryString.append(strTabName);
         strQueryString.append(" (");
 
-        for (size_t iFieldName = 0; iFieldName < vecCurFieldName.size(); ++iFieldName) {
+        for (size_t iFieldName = 0; iFieldName < vecCurFieldName.size();
+             ++iFieldName) {
             if (iFieldName != 0) {
                 strQueryString.append(", ");
             }
@@ -439,7 +499,8 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
         strQueryString.append(" VALUES");
         std::string strValuesElem;
         strValuesElem.append("(");
-        for (size_t iFieldName = 0; iFieldName < vecCurFieldParamCharCommon.size(); ++iFieldName) {
+        for (size_t iFieldName = 0;
+             iFieldName < vecCurFieldParamCharCommon.size(); ++iFieldName) {
             if (iFieldName != 0) {
                 strValuesElem.append(", ");
             }
@@ -447,18 +508,27 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
         }
         strValuesElem.append(" )");
         if (pFieldDescriptor->is_repeated()) {
-            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
-                auto pMsg = &(pReflection->GetRepeatedMessage(message, pFieldDescriptor, iChildField));
+            for (int iChildField = 0;
+                 iChildField <
+                 pReflection->FieldSize(message, pFieldDescriptor);
+                 ++iChildField) {
+                auto pMsg = &(pReflection->GetRepeatedMessage(
+                    message, pFieldDescriptor, iChildField));
 
-                vecTableArgs.insert(vecTableArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
+                vecTableArgs.insert(vecTableArgs.end(),
+                                    vecCommonKeyArgs.begin(),
+                                    vecCommonKeyArgs.end());
                 auto pMsgDescriptor = pMsg->GetDescriptor();
-                for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                    const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+                for (int iMsgField = 0;
+                     iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
+                    const google::protobuf::FieldDescriptor*
+                        pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
                     if (!pMsgFieldDescriptor) {
                         continue;
                     }
 
-                    vecTableArgs.emplace_back(DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+                    vecTableArgs.emplace_back(
+                        DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
                 }
 
                 if (iChildField != 0) {
@@ -469,9 +539,12 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
         } else {
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
             auto pMsgDescriptor = pMsg->GetDescriptor();
-            vecTableArgs.insert(vecTableArgs.end(), vecCommonKeyArgs.begin(), vecCommonKeyArgs.end());
-            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+            vecTableArgs.insert(vecTableArgs.end(), vecCommonKeyArgs.begin(),
+                                vecCommonKeyArgs.end());
+            for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count();
+                 ++iMsgField) {
+                const google::protobuf::FieldDescriptor* pMsgFieldDescriptor =
+                    pMsgDescriptor->field(iMsgField);
                 if (!pMsgFieldDescriptor) {
                     continue;
                 }
@@ -479,20 +552,26 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
                     continue;
                 }
 
-                vecTableArgs.emplace_back(DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
+                vecTableArgs.emplace_back(
+                    DBProtoMessageToString(*pMsg, *pMsgFieldDescriptor));
             }
             strQueryString.append(strValuesElem);
         }
 
         strQueryString.append(" ON DUPLICATE KEY UPDATE ");
-        for (size_t iFieldName = 0; iFieldName < vecCurFieldDataNames.size(); ++iFieldName) {
+        for (size_t iFieldName = 0; iFieldName < vecCurFieldDataNames.size();
+             ++iFieldName) {
             if (iFieldName != 0) {
                 strQueryString.append(", ");
             }
-            strQueryString.append(vecCurFieldDataNames[iFieldName]).append("=values(").append(vecCurFieldDataNames[iFieldName]).append(")");
+            strQueryString.append(vecCurFieldDataNames[iFieldName])
+                .append("=values(")
+                .append(vecCurFieldDataNames[iFieldName])
+                .append(")");
         }
 
-        auto [nError, nAffectRows, nInsertId] = QueryModifyInCurrentThread(strQueryString, vecTableArgs);
+        auto [nError, nAffectRows, nInsertId] =
+            QueryModifyInCurrentThread(strQueryString, vecTableArgs);
         if (nError != 0) {
             LOG_ERROR("modify data error:{}, {}", nError, strTabName);
             return nError;
@@ -502,8 +581,7 @@ int32_t MysqlModule::MessageUpdate(google::protobuf::Message& message)
     return 0;
 }
 
-int32_t MysqlModule::MessageDelete(google::protobuf::Message& message)
-{
+int32_t MysqlModule::MessageDelete(google::protobuf::Message& message) {
     auto pReflection = message.GetReflection();
     auto pDescriptor = message.GetDescriptor();
 
@@ -511,27 +589,33 @@ int32_t MysqlModule::MessageDelete(google::protobuf::Message& message)
     std::string strQueryCommonKey;
     // loop tables
     for (int iField = 0; iField < pDescriptor->field_count(); ++iField) {
-        const google::protobuf::FieldDescriptor* pFieldDescriptor = pDescriptor->field(iField);
+        const google::protobuf::FieldDescriptor* pFieldDescriptor =
+            pDescriptor->field(iField);
         if (!pFieldDescriptor) {
             continue;
         }
 
         // handle common keys
         if (IsDBCommonKeyType(pFieldDescriptor->cpp_type())) {
-            AddQueryItemCondition(message, *pFieldDescriptor, strQueryCommonKey, vecKeyCommonArgs);
+            AddQueryItemCondition(message, *pFieldDescriptor, strQueryCommonKey,
+                                  vecKeyCommonArgs);
             continue;
         }
 
-        if (pFieldDescriptor->is_repeated() && pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
+        if (pFieldDescriptor->is_repeated() &&
+            pReflection->FieldSize(message, pFieldDescriptor) <= 0) {
             continue;
         }
-        if (!pFieldDescriptor->is_repeated() && !pReflection->HasField(message, pFieldDescriptor)) {
+        if (!pFieldDescriptor->is_repeated() &&
+            !pReflection->HasField(message, pFieldDescriptor)) {
             continue;
         }
-        // QueryModify(0, std::string("delete from test.website where name='{}'"), std::vector<std::string> { "ok" }, nullptr);
-        // load db data
+        // QueryModify(0, std::string("delete from test.website where
+        // name='{}'"), std::vector<std::string> { "ok" }, nullptr); load db
+        // data
         auto strTabName = pFieldDescriptor->name();
-        std::vector<std::string> vecArgs(vecKeyCommonArgs.begin(), vecKeyCommonArgs.end());
+        std::vector<std::string> vecArgs(vecKeyCommonArgs.begin(),
+                                         vecKeyCommonArgs.end());
         std::string strQueryString = "DELETE FROM ";
         strQueryString.append(strTabName);
         strQueryString.append(" WHERE ");
@@ -540,21 +624,32 @@ int32_t MysqlModule::MessageDelete(google::protobuf::Message& message)
 
         if (pFieldDescriptor->is_repeated()) {
             std::vector<std::string> vecRepeatedQueryString;
-            for (int iChildField = 0; iChildField < pReflection->FieldSize(message, pFieldDescriptor); ++iChildField) {
-                auto pMsg = pReflection->MutableRepeatedMessage(&message, pFieldDescriptor, iChildField);
+            for (int iChildField = 0;
+                 iChildField <
+                 pReflection->FieldSize(message, pFieldDescriptor);
+                 ++iChildField) {
+                auto pMsg = pReflection->MutableRepeatedMessage(
+                    &message, pFieldDescriptor, iChildField);
                 std::string strRepeatedQueryString;
                 std::vector<std::string> elemRepeatedArgs;
 
-                AddQueryMessageCondition(*pMsg, strRepeatedQueryString, elemRepeatedArgs);
-                vecRepeatedQueryString.emplace_back(std::move(strRepeatedQueryString));
-                vecArgs.insert(vecArgs.end(), elemRepeatedArgs.begin(), elemRepeatedArgs.end());
+                AddQueryMessageCondition(*pMsg, strRepeatedQueryString,
+                                         elemRepeatedArgs);
+                vecRepeatedQueryString.emplace_back(
+                    std::move(strRepeatedQueryString));
+                vecArgs.insert(vecArgs.end(), elemRepeatedArgs.begin(),
+                               elemRepeatedArgs.end());
             }
 
-            for (size_t iRepeatedQuery = 0; iRepeatedQuery < vecRepeatedQueryString.size(); ++iRepeatedQuery) {
+            for (size_t iRepeatedQuery = 0;
+                 iRepeatedQuery < vecRepeatedQueryString.size();
+                 ++iRepeatedQuery) {
                 if (iRepeatedQuery != 0) {
                     strQueryConditionAppend.append(" OR");
                 }
-                strQueryConditionAppend.append(" (").append(vecRepeatedQueryString[iRepeatedQuery]).append(")");
+                strQueryConditionAppend.append(" (")
+                    .append(vecRepeatedQueryString[iRepeatedQuery])
+                    .append(")");
             }
         } else {
             auto pMsg = pReflection->MutableMessage(&message, pFieldDescriptor);
@@ -565,7 +660,8 @@ int32_t MysqlModule::MessageDelete(google::protobuf::Message& message)
             strQueryString.append(" AND").append(strQueryConditionAppend);
         }
 
-        auto [nError, nAffectRows, nInsertId] = QueryModifyInCurrentThread(strQueryString, vecArgs);
+        auto [nError, nAffectRows, nInsertId] =
+            QueryModifyInCurrentThread(strQueryString, vecArgs);
         if (nError != 0) {
             LOG_ERROR("load data error:{}, {}", nError, strTabName);
             return nError;
@@ -575,30 +671,38 @@ int32_t MysqlModule::MessageDelete(google::protobuf::Message& message)
     return 0;
 }
 
-const char* MysqlModule::GetProtoSqlStringPlaceholder(const google::protobuf::FieldDescriptor& fieldDescriptor)
-{
-    if (fieldDescriptor.cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_STRING) {
+const char* MysqlModule::GetProtoSqlStringPlaceholder(
+    const google::protobuf::FieldDescriptor& fieldDescriptor) {
+    if (fieldDescriptor.cpp_type() ==
+        google::protobuf::FieldDescriptor::CPPTYPE_STRING) {
         return "'{}'";
     } else {
         return "{}";
     }
 }
 
-void MysqlModule::AddQueryItemCondition(const google::protobuf::Message& message, const google::protobuf::FieldDescriptor& fieldDescriptor
-        , std::string& strQuerys, std::vector<std::string>& vecArgs)
-{
+void MysqlModule::AddQueryItemCondition(
+    const google::protobuf::Message& message,
+    const google::protobuf::FieldDescriptor& fieldDescriptor,
+    std::string& strQuerys, std::vector<std::string>& vecArgs) {
     if (!vecArgs.empty()) {
         strQuerys.append(" AND ");
     }
-    strQuerys.append(" ").append(fieldDescriptor.name()).append(" = ").append(GetProtoSqlStringPlaceholder(fieldDescriptor));
+    strQuerys.append(" ")
+        .append(fieldDescriptor.name())
+        .append(" = ")
+        .append(GetProtoSqlStringPlaceholder(fieldDescriptor));
     vecArgs.emplace_back(DBProtoMessageToString(message, fieldDescriptor));
 }
 
-void MysqlModule::AddQueryMessageCondition(google::protobuf::Message& message, std::string& strAppendQuerys, std::vector<std::string>& vecArgs)
-{
+void MysqlModule::AddQueryMessageCondition(google::protobuf::Message& message,
+                                           std::string& strAppendQuerys,
+                                           std::vector<std::string>& vecArgs) {
     auto pMsgDescriptor = message.GetDescriptor();
-    for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count(); ++iMsgField) {
-        const google::protobuf::FieldDescriptor* pMsgFieldDescriptor = pMsgDescriptor->field(iMsgField);
+    for (int iMsgField = 0; iMsgField < pMsgDescriptor->field_count();
+         ++iMsgField) {
+        const google::protobuf::FieldDescriptor* pMsgFieldDescriptor =
+            pMsgDescriptor->field(iMsgField);
         if (!pMsgFieldDescriptor) {
             continue;
         }
@@ -606,17 +710,15 @@ void MysqlModule::AddQueryMessageCondition(google::protobuf::Message& message, s
             continue;
         }
 
-        AddQueryItemCondition(message, *pMsgFieldDescriptor, strAppendQuerys, vecArgs);
+        AddQueryItemCondition(message, *pMsgFieldDescriptor, strAppendQuerys,
+                              vecArgs);
     }
 }
 
-
-void MysqlModule::OnTest()
-{
-
-    //Db::KVData msgRsp;
-    //msgRsp.set_user_id("user_1");
-    //MessageLoad(*pUserData);
+void MysqlModule::OnTest() {
+    // Db::KVData msgRsp;
+    // msgRsp.set_user_id("user_1");
+    // MessageLoad(*pUserData);
 
     Db::KVData msgReq;
     msgReq.mutable_user_data()->set_user_id("user_1");

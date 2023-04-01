@@ -1,11 +1,11 @@
 #include "net_buffer.h"
 
+#include <algorithm>
 #include <cstring>
 
 TONY_CAT_SPACE_BEGIN
 
-SessionBuffer::SessionBuffer(size_t maxBuffSize)
-{
+SessionBuffer::SessionBuffer(size_t maxBuffSize) {
     nMaxBuffSize = maxBuffSize;
     size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
     bufContext.vecData.resize(nDefaultBuffSize, 0);
@@ -13,30 +13,26 @@ SessionBuffer::SessionBuffer(size_t maxBuffSize)
     bufContext.nWritePos = 0;
 }
 
-SessionBuffer::~SessionBuffer() {};
+SessionBuffer::~SessionBuffer() {}
 
-bool SessionBuffer::Empty()
-{
+bool SessionBuffer::Empty() {
     return bufContext.nReadPos == bufContext.nWritePos;
 }
 
-bool SessionBuffer::Full()
-{
-    return bufContext.nWritePos - bufContext.nReadPos == bufContext.vecData.size();
+bool SessionBuffer::Full() {
+    return bufContext.nWritePos - bufContext.nReadPos ==
+           bufContext.vecData.size();
 }
 
-const char* SessionBuffer::GetReadData()
-{
+const char* SessionBuffer::GetReadData() {
     return &bufContext.vecData[bufContext.nReadPos];
 }
 
-size_t SessionBuffer::GetReadableSize()
-{
+size_t SessionBuffer::GetReadableSize() {
     return bufContext.nWritePos - bufContext.nReadPos;
 }
 
-void SessionBuffer::RemoveData(size_t len)
-{
+void SessionBuffer::RemoveData(size_t len) {
     if (len > GetReadableSize()) [[unlikely]] {
         len = GetReadableSize();
     }
@@ -47,8 +43,7 @@ void SessionBuffer::RemoveData(size_t len)
     }
 }
 
-bool SessionBuffer::FillData(size_t len)
-{
+bool SessionBuffer::FillData(size_t len) {
     if (len > MaxWritableSize()) [[unlikely]] {
         return false;
     }
@@ -69,13 +64,11 @@ bool SessionBuffer::FillData(size_t len)
     return true;
 }
 
-char* SessionBuffer::GetWriteData()
-{
+char* SessionBuffer::GetWriteData() {
     return &bufContext.vecData[bufContext.nWritePos];
 }
 
-bool SessionBuffer::Write(const char* data, size_t len)
-{
+bool SessionBuffer::Write(const char* data, size_t len) {
     if (false == FillData(len)) {
         return false;
     }
@@ -85,27 +78,24 @@ bool SessionBuffer::Write(const char* data, size_t len)
     return true;
 }
 
-size_t SessionBuffer::CurrentWritableSize()
-{
+size_t SessionBuffer::CurrentWritableSize() {
     return bufContext.vecData.size() - bufContext.nWritePos;
 }
 
-size_t SessionBuffer::MaxWritableSize()
-{
+size_t SessionBuffer::MaxWritableSize() {
     return nMaxBuffSize - GetReadableSize();
 }
 
-void SessionBuffer::ReorganizeData()
-{
+void SessionBuffer::ReorganizeData() {
     if (bufContext.nReadPos > 0) {
-        std::memmove(bufContext.vecData.data(), GetReadData(), GetReadableSize());
+        std::memmove(bufContext.vecData.data(), GetReadData(),
+                     GetReadableSize());
         bufContext.nWritePos -= bufContext.nReadPos;
         bufContext.nReadPos = 0;
     }
 }
 
-bool SessionBuffer::Shrink()
-{
+bool SessionBuffer::Shrink() {
     size_t nDefaultBuffSize = nMaxBuffSize / k_init_buffer_size_div_number;
     if (GetReadableSize() >= nDefaultBuffSize) {
         return false;

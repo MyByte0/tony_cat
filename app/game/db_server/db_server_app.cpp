@@ -1,5 +1,7 @@
 #include "db_server_app.h"
 
+#include <csignal>
+
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/net/net_module.h"
@@ -9,24 +11,15 @@
 #include "common/utility/magic_enum.h"
 #include "db_server/db_exec_module.h"
 
-#include <csignal>
-
 TONY_CAT_SPACE_BEGIN
 
 ModuleManager DBServerApp::m_moduleManager = ModuleManager();
 
-DBServerApp::DBServerApp()
-{
-    m_name = typeid(*this).name();
-};
+DBServerApp::DBServerApp() { m_name = typeid(*this).name(); }
 
-void DBServerApp::SignalHandle(int sig)
-{
-    m_moduleManager.Stop();
-}
+void DBServerApp::SignalHandle(int sig) { m_moduleManager.Stop(); }
 
-void DBServerApp::RegisterSignal()
-{
+void DBServerApp::RegisterSignal() {
     std::signal(SIGABRT, &DBServerApp::SignalHandle);
     std::signal(SIGFPE, &DBServerApp::SignalHandle);
     std::signal(SIGILL, &DBServerApp::SignalHandle);
@@ -35,8 +28,7 @@ void DBServerApp::RegisterSignal()
     std::signal(SIGTERM, &DBServerApp::SignalHandle);
 }
 
-void DBServerApp::Start(int32_t nServerIndex)
-{
+void DBServerApp::Start(int32_t nServerIndex) {
     RegisterSignal();
     RegisterModule();
     InitModule(nServerIndex);
@@ -44,8 +36,7 @@ void DBServerApp::Start(int32_t nServerIndex)
     DestoryModule();
 }
 
-void DBServerApp::RegisterModule()
-{
+void DBServerApp::RegisterModule() {
     REGISTER_MODULE(&m_moduleManager, LogModule);
     REGISTER_MODULE(&m_moduleManager, XmlConfigModule);
     REGISTER_MODULE(&m_moduleManager, NetModule);
@@ -57,24 +48,20 @@ void DBServerApp::RegisterModule()
     REGISTER_MODULE(&m_moduleManager, DBExecModule);
 }
 
-void DBServerApp::InitModule(int32_t nServerIndex)
-{
-    auto pServiceGovernmentModule = FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
-    pServiceGovernmentModule->SetServerInstance(magic_enum::enum_name(ServerType::eTypeDBServer), ServerType::eTypeDBServer, nServerIndex);
+void DBServerApp::InitModule(int32_t nServerIndex) {
+    auto pServiceGovernmentModule =
+        FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
+    pServiceGovernmentModule->SetServerInstance(
+        magic_enum::enum_name(ServerType::eTypeDBServer),
+        ServerType::eTypeDBServer, nServerIndex);
 
     m_moduleManager.Init();
 
     LOG_INFO("init server {}", m_name);
 }
 
-void DBServerApp::Run()
-{
-    m_moduleManager.Run();
-}
+void DBServerApp::Run() { m_moduleManager.Run(); }
 
-void DBServerApp::DestoryModule()
-{
-    m_moduleManager.Stop();
-}
+void DBServerApp::DestoryModule() { m_moduleManager.Stop(); }
 
 TONY_CAT_SPACE_END

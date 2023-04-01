@@ -1,19 +1,19 @@
 #ifndef COMMON_NET_NET_SESSION_H_
 #define COMMON_NET_NET_SESSION_H_
 
-#include "common/core_define.h"
-#include "common/net/net_buffer.h"
-#include "common/loop/loop.h"
-
+#include <asio.hpp>
 #include <cstdint>
 #include <memory>
+#include <string>
 
-#include <asio.hpp>
+#include "common/core_define.h"
+#include "common/loop/loop.h"
+#include "common/net/net_buffer.h"
 
 TONY_CAT_SPACE_BEGIN
 
 class Session {
-public:
+ public:
     typedef int64_t session_id_t;
     friend class NetModule;
 
@@ -22,7 +22,7 @@ public:
     typedef std::function<bool(session_id_t, SessionBuffer&)> FunSessionRead;
     typedef std::function<void(void* protoContext)> FunSessionProtoContextClose;
 
-public:
+ public:
     Session(Loop& io_context, session_id_t session_id);
     ~Session();
 
@@ -34,7 +34,8 @@ public:
     void SetSessionReadCb(const FunSessionRead& funOnSessionRead);
     void SetSessionReadCb(FunSessionRead&& funOnSessionRead);
 
-    void SetSessionProtoContext(void* pProtoContext,
+    void SetSessionProtoContext(
+        void* pProtoContext,
         const FunSessionProtoContextClose& funSessionProtoContextClose);
 
     session_id_t GetSessionId();
@@ -42,7 +43,8 @@ public:
 
     bool WriteAppend(const std::string& data);
     bool WriteAppend(const char* data, size_t length);
-    bool WriteAppend(const char* dataHead, size_t lenHead, const char* data, size_t length);
+    bool WriteAppend(const char* dataHead, size_t lenHead, const char* data,
+                     size_t length);
 
     Loop& GetLoop();
     void* GetSessionContext();
@@ -67,4 +69,4 @@ typedef std::shared_ptr<Session> SessionPtr;
 
 TONY_CAT_SPACE_END
 
-#endif // COMMON_NET_NET_SESSION_H_
+#endif  // COMMON_NET_NET_SESSION_H_
