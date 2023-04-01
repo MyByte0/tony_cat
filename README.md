@@ -1,6 +1,6 @@
 # tony_cat  
   
-It is a multi-platform server frame base on c++20.  
+It is a multi-platform server frame on c++20.  
 using libasio, glog, libformat, optional on libmysql/rocksdb.  
  
   
@@ -8,9 +8,14 @@ The linux environment on docker hub
 debian os for developing:  
 https://hub.docker.com/repository/docker/mybyte0/tony_cat  
 for examlpe:  
-docker pull mybyte0/tony_cat:v0.2  
-docker run -it --cap-add sys_ptrace -v /mnt/hgfs/proj/:/data/proj image_id /bin/bash  
-  
+```  
+docker build . -f Dockerfile -t mybyte0/tony_cat:v0.3  or  docker pull mybyte0/tony_cat:v0.3  
+```  
+
+```  
+docker run -it --cap-add sys_ptrace -v /mnt/hgfs/proj:/data/proj tony_cat:v0.3 /bin/bash  
+```  
+
 For Windows use vcpkg  
   
 vcpkg install asio:x64-windows   
