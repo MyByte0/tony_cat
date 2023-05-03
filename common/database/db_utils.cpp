@@ -326,13 +326,39 @@ int32_t PbMessageKVHandle::MessageLoadOnKV(google::protobuf::Message& message) {
             vecKeySet.emplace_back(std::move(strElementKey));
         } else {
             // load range list keys
-            std::string strCommonKeyResult;
             std::string strCommonKey;
             strCommonKey.append(strTabName)
                 .append(strTableSpacer)
                 .append(strCommonKeyList);
-            funGet(strCommonKey, strCommonKeyResult);
-            PaserList(strCommonKeyResult, vecKeySet);
+
+            if (funRang == nullptr) {
+                std::string strCommonKeyResult;
+                funGet(strCommonKey, strCommonKeyResult);
+                PaserList(strCommonKeyResult, vecKeySet);
+            } else {
+                std::vector<std::pair<std::string, std::string>> vecRangeResult;
+
+                auto keyBegin = strCommonKey;
+                auto keyEnd = strCommonKey;
+                keyEnd.append(1, 0xff);
+                funRang(strCommonKey, "", vecRangeResult);
+                for (auto& [elemKey , elemValue]: vecRangeResult) {
+                    if (pFieldDescriptor->cpp_type() !=
+                        google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
+                        continue;
+                    }
+
+                    google::protobuf::Message* pMsg = nullptr;
+                    if (pFieldDescriptor->is_repeated()) {
+                        pMsg =
+                            pReflection->AddMessage(&message, pFieldDescriptor);
+                    } else {
+                        pMsg = pReflection->MutableMessage(&message,
+                                                           pFieldDescriptor);
+                    }
+                    pMsg->ParseFromString(elemValue);
+                }
+            }
         }
 
         // get element data
@@ -390,16 +416,20 @@ int32_t PbMessageKVHandle::MessageUpdateOnKV(
             continue;
         }
 
-        // get data keys
-        std::string strCommonKeyResult;
         std::string strCommonKey;
-        strCommonKey.append(strTabName)
-            .append(strTableSpacer)
-            .append(strCommonKeyList);
-        funGet(strCommonKey, strCommonKeyResult);
-
         std::unordered_set<std::string> setKeys;
-        PaserList(strCommonKeyResult, setKeys);
+        if (funRang == nullptr) {
+            // get data keys
+            std::string strCommonKeyResult;
+
+            strCommonKey.append(strTabName)
+                .append(strTableSpacer)
+                .append(strCommonKeyList);
+            funGet(strCommonKey, strCommonKeyResult);
+
+            PaserList(strCommonKeyResult, setKeys);          
+        }
+
 
         bool bSetKeysModify = false;
         if (pFieldDescriptor->is_repeated()) {
@@ -477,15 +507,20 @@ int32_t PbMessageKVHandle::MessageDeleteOnKV(
         }
 
         // get data keys
-        std::string strCommonKeyResult;
         std::string strCommonKey;
-        strCommonKey.append(strTabName)
-            .append(strTableSpacer)
-            .append(strCommonKeyList);
-        funGet(strCommonKey, strCommonKeyResult);
-
         std::unordered_set<std::string> setKeys;
-        PaserList(strCommonKeyResult, setKeys);
+
+        if (funRang == nullptr) {
+            std::string strCommonKeyResult;
+
+            strCommonKey.append(strTabName)
+                .append(strTableSpacer)
+                .append(strCommonKeyList);
+            funGet(strCommonKey, strCommonKeyResult);
+
+            PaserList(strCommonKeyResult, setKeys);
+        }
+
 
         if (pFieldDescriptor->is_repeated()) {
             for (int iChildField = 0;
