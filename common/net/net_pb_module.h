@@ -28,7 +28,7 @@ class ServiceGovernmentModule;
 class XmlConfigModule;
 
 // NetPacket:
-// || 4 bytes packetLen(PbPacket Len) || 4 bytes checkCode(for PbPacket) || 4
+// || 4 bytes checkCode(for PbPacket) || 4 bytes packetLen(PbPacket Len) || 4
 // bytes msgType || PbPacket || the PbPacket in NetPacket:
 // || 4 bytes PbPacketHead Len || PbPacketHead || PbPacketBody ||
 

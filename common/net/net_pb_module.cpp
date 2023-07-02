@@ -82,12 +82,12 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId,
         uint32_t checkCode = 0, msgType = 0;
         size_t packetLen = 0;
         if constexpr (std::endian::native == std::endian::big) {
-            packetLen = *(uint32_t*)readBuff;
-            checkCode = *((uint32_t*)readBuff + 1);
+            checkCode = *(uint32_t*)readBuff;
+            packetLen = *((uint32_t*)readBuff + 1);
             msgType = *((uint32_t*)readBuff + 2);
         } else {
-            packetLen = SwapUint32(*(uint32_t*)readBuff);
-            checkCode = SwapUint32(*((uint32_t*)readBuff + 1));
+            checkCode = SwapUint32(*(uint32_t*)readBuff);
+            packetLen = SwapUint32(*((uint32_t*)readBuff + 1));
             msgType = SwapUint32(*((uint32_t*)readBuff + 2));
         }
 
@@ -95,7 +95,8 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId,
             break;
         }
 
-        uint32_t remoteCheck = CheckCode(readBuff + kHeadLen, packetLen);
+        uint32_t remoteCheck = CheckCode(readBuff + sizeof(checkCode),
+                    packetLen + kHeadLen - sizeof(checkCode));
         if (checkCode != remoteCheck) {
             LOG_ERROR(
                 "check code error, remote code: {}, remote data check: {}",
@@ -126,16 +127,15 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
         return false;
     }
 
-    uint32_t checkCode = CheckCode(data, length);
     uint8_t head[kHeadLen];
     if constexpr (std::endian::native == std::endian::big) {
-        *(uint32_t*)head = (uint32_t)length;
-        *((uint32_t*)head + 1) = checkCode;
+        *((uint32_t*)head + 1) = (uint32_t)length;
         *((uint32_t*)head + 2) = msgType;
+        *(uint32_t*)head = CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t), data, length);
     } else {
-        *(uint32_t*)head = SwapUint32((uint32_t)length);
-        *((uint32_t*)head + 1) = SwapUint32(checkCode);
+        *((uint32_t*)head + 1) = SwapUint32((uint32_t)length);
         *((uint32_t*)head + 2) = SwapUint32(msgType);
+        *(uint32_t*)head = SwapUint32(CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t), data, length));
     }
 
     pSession->WriteAppend((const char*)head, sizeof(head), data, length);
@@ -159,18 +159,17 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     }
 
     uint8_t head[kHeadLen + kPacketHeadMaxLen];
-    uint32_t checkCode = CheckCode(dataHead, lengthHead, dataBody, lengthBody);
+    memcpy((uint32_t*)head + 3, dataHead, lengthHead);
     if constexpr (std::endian::native == std::endian::big) {
-        *(uint32_t*)head = (uint32_t)(lengthHead + lengthBody);
-        *((uint32_t*)head + 1) = checkCode;
+        *((uint32_t*)head + 1) = (uint32_t)(lengthHead + lengthBody);
         *((uint32_t*)head + 2) = msgType;
+        *(uint32_t*)head = CheckCode((uint32_t*)head + 1, lengthHead + kHeadLen - sizeof(uint32_t), dataBody, lengthBody);
     } else {
-        *(uint32_t*)head = SwapUint32((uint32_t)(lengthHead + lengthBody));
-        *((uint32_t*)head + 1) = SwapUint32(checkCode);
+        *((uint32_t*)head + 1) = SwapUint32((uint32_t)(lengthHead + lengthBody));
         *((uint32_t*)head + 2) = SwapUint32(msgType);
+        *(uint32_t*)head = SwapUint32(CheckCode((uint32_t*)head + 1, lengthHead + kHeadLen - sizeof(uint32_t), dataBody, lengthBody));
     }
 
-    memcpy((uint32_t*)head + 3, dataHead, lengthHead);
     pSession->WriteAppend((const char*)head, sizeof(head) + lengthHead,
                           dataBody, lengthBody);
     return m_pNetModule->SessionSend(pSession);
