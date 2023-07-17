@@ -6,9 +6,9 @@
 TONY_CAT_SPACE_BEGIN
 
 enum ServerType {
-    eTypeGateServer = 1,
-    eTypeLogicServer = 2,
-    eTypeDBServer = 3,
+    GateServer = 1,
+    LogicServer = 2,
+    DBServer = 3,
 };
 
 TONY_CAT_SPACE_END

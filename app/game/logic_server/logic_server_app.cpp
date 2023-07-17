@@ -54,8 +54,8 @@ void LogicServerApp::InitModule(int32_t nServerIndex) {
     auto pServiceGovernmentModule =
         FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerInstance(
-        magic_enum::enum_name(ServerType::eTypeLogicServer),
-        ServerType::eTypeLogicServer, nServerIndex);
+        magic_enum::enum_name(ServerType::LogicServer),
+        ServerType::LogicServer, nServerIndex);
 
     m_moduleManager.Init();
 

@@ -18,14 +18,15 @@ typedef std::string USER_ID;
 
 class UserCount {
  public:
-typedef std::shared_ptr<Db::UserCount> UserCountElem;
-typedef std::map<int32_t, UserCountElem> CountSubtypeMap;
+typedef std::shared_ptr<const Db::UserCount> ConstUserCountPtr;
+typedef std::shared_ptr<Db::UserCount> UserCountPtr;
+typedef std::map<int32_t, UserCountPtr> CountSubtypeMap;
 typedef std::map<int32_t, CountSubtypeMap> CountTypeMap;
 
 typedef std::unordered_map<int32_t, bool> CountSubtypeFlags;
 typedef std::unordered_map<int32_t, CountSubtypeFlags> CountTypeFlags;
 
-    const UserCountElem* GetData(int32_t count_type, int32_t count_subtype) const {
+    const ConstUserCountPtr GetData(int32_t count_type, int32_t count_subtype) const {
         auto itCountTypeMap = m_data.find(count_type);
         if (itCountTypeMap == m_data.end()) {
             return nullptr;
@@ -37,10 +38,10 @@ typedef std::unordered_map<int32_t, CountSubtypeFlags> CountTypeFlags;
             return nullptr;
         }
 
-        return &itCountSubtypeMap->second;
+        return itCountSubtypeMap->second;
     }
 
-    UserCountElem& MutableData(int32_t count_type, int32_t count_subtype) {
+    UserCountPtr MutableData(int32_t count_type, int32_t count_subtype) {
         return m_data[count_type][count_subtype];
     }
 
@@ -85,9 +86,25 @@ typedef std::unordered_map<int32_t, CountSubtypeFlags> CountTypeFlags;
 
 class UserBase {
  public:
-typedef std::shared_ptr<Db::UserBase> UserBaseElem;
+typedef std::shared_ptr<const Db::UserBase> ConstUserBasePtr;
+typedef std::shared_ptr<Db::UserBase> UserBasePtr;
+    ConstUserBasePtr GetData() const {
+        return m_data;
+    }
+
+    UserBasePtr& MutableData() {
+        return m_data;
+    }
+
  private:
-    UserBaseElem m_data;
+    void ToModifyData(Db::KVData& saveData, Db::KVData& delData) {
+        if (m_flags == true) {
+            *saveData.mutable_user_data()->mutable_user_base() = *m_data;
+        }
+    }
+
+ private:
+    UserBasePtr m_data;
     bool m_flags;
 };
 

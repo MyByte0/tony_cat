@@ -47,15 +47,15 @@ void GateServerApp::RegisterModule() {
     REGISTER_MODULE(&m_moduleManager, NetHttpModule);
     REGISTER_MODULE(&m_moduleManager, ServiceGovernmentModule);
     REGISTER_MODULE(&m_moduleManager, RpcModule);
-    // REGISTER_MODULE(&m_moduleManager, ClientPbModule);
+    REGISTER_MODULE(&m_moduleManager, ClientPbModule);
 }
 
 void GateServerApp::InitModule(int32_t nServerIndex) {
     auto pServiceGovernmentModule =
         FIND_MODULE(&m_moduleManager, ServiceGovernmentModule);
     pServiceGovernmentModule->SetServerInstance(
-        magic_enum::enum_name(ServerType::eTypeGateServer),
-        ServerType::eTypeGateServer, nServerIndex);
+        magic_enum::enum_name(ServerType::GateServer),
+        ServerType::GateServer, nServerIndex);
 
     m_moduleManager.Init();
 

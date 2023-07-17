@@ -56,7 +56,7 @@ void PlayerManagerModule::OnHandleCSPlayerLoginReq(Session::session_id_t session
     Pb::SSQueryDataReq queryDataReq;
     queryDataReq.set_user_id(head.user_id());
     auto querySessionId = m_pServiceGovernmentModule->GetServerSessionIdByKey(
-        ServerType::eTypeDBServer, head.user_id());
+        ServerType::DBServer, head.user_id());
     // respond msg data
     return m_pRpcModule->RpcRequest(querySessionId, head, queryDataReq,
         [=, this]
