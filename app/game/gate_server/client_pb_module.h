@@ -56,8 +56,6 @@ class ClientPbModule : public NetPbModule {
         Session::session_id_t clientSessionId);
 
  private:
-    NetPbModule* m_pNetPbModule = nullptr;
-    ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
     RpcModule* m_pRpcModule = nullptr;
 
  private:

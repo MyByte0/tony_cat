@@ -1,5 +1,6 @@
 #include "client_pb_module.h"
 
+#include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
@@ -20,21 +21,25 @@ ClientPbModule::~ClientPbModule() {}
 
 void ClientPbModule::BeforeInit() {
     m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
-    m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
-    m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
     m_pServiceGovernmentModule =
         FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
+    m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
+
+    m_workLoop = std::make_shared<LoopPool>();
+    m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
 }
 
 void ClientPbModule::OnInit() {
-    this->NetPbModule::OnInit();
+    NetPbModule::OnInit();
+    Listen(m_pServiceGovernmentModule->GetPublicIp(),
+           m_pServiceGovernmentModule->GetPublicPort());
 
     this->RegisterHandle(this, &ClientPbModule::OnHandleCSPlayerLoginReq);
     this->SetDefaultPacketHandle(std::bind(
         &ClientPbModule::OnClientMessage, this, std::placeholders::_1,
         std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
-    m_pNetPbModule->SetDefaultPacketHandle(std::bind(
+    SetDefaultPacketHandle(std::bind(
         &ClientPbModule::OnServerMessage, this, std::placeholders::_1,
         std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 }
@@ -61,7 +66,7 @@ void ClientPbModule::OnClientMessage(Session::session_id_t clientSessionId,
     Pb::ServerHead serverHead;
     serverHead.set_user_id(pUserInfo->userId);
     SendPacket(m_pServiceGovernmentModule->GetServerSessionId(
-                   ServerType::eTypeLogicServer, 1),
+                   ServerType::LogicServer, 1),
                msgType, serverHead, pData, pbPacketBodyLen);
 }
 
@@ -97,7 +102,7 @@ void ClientPbModule::OnHandleCSPlayerLoginReq(
 
     USER_ID userId = playerLoginReq.user_name();
     auto sessionServer = m_pServiceGovernmentModule->GetServerSessionIdByKey(
-        ServerType::eTypeLogicServer, userId);
+        ServerType::LogicServer, userId);
     Pb::ServerHead headServer;
     headServer.set_user_id(userId);
     m_pRpcModule->RpcRequest(

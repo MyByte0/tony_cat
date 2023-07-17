@@ -22,6 +22,7 @@ ClientManagerModule::~ClientManagerModule() {}
 
 void ClientManagerModule::BeforeInit() {
     m_pRpcModule = FIND_MODULE(m_pModuleManager, RpcModule);
+    m_pNetModule = FIND_MODULE(m_pModuleManager, NetModule);
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
     m_pServiceGovernmentModule =
         FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
@@ -45,7 +46,7 @@ CoroutineTask<void> ClientManagerModule::StartTestClient() {
     co_await AwaitableExecAfter(nWaitMillSecond);
 
     nWaitMillSecond = 1000;
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 1000000; ++i) {
         LOG_TRACE("start login client");
 
         if (auto nResult = co_await CreateNewClient(); nResult != 0) {
@@ -61,7 +62,7 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
     // connect to gate server
     auto pServerInstanceInfo =
         m_pServiceGovernmentModule->GetServerInstanceInfo(
-            ServerType::eTypeGateServer, 1);
+            ServerType::GateServer, 1);
     if (nullptr == pServerInstanceInfo) {
         LOG_ERROR("not find gate info");
         co_return 1;
@@ -96,6 +97,7 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
     auto [nSessionIdRsp, headRsp, msgRsp] =
         co_await RpcModule::AwaitableRpcFetch(Pb::CSPlayerLoginRsp, nSessionId,
                                               head, req);
+    m_pNetModule->CloseInMainLoop(nSessionId);
     if (headRsp.error_code() != 0) {
         LOG_ERROR("login failed, client:{}", strAccount);
         co_return headRsp.error_code();

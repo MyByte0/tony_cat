@@ -24,6 +24,9 @@ DBExecModule::~DBExecModule() {}
 void DBExecModule::BeforeInit() {
     m_pNetPbModule = FIND_MODULE(m_pModuleManager, NetPbModule);
     m_pDBModule = FIND_MODULE(m_pModuleManager, DBModule);
+
+    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSSaveDataReq);
+    m_pNetPbModule->RegisterHandle(this, &DBExecModule::OnHandleSSQueryDataReq);
 }
 
 void DBExecModule::OnHandleSSSaveDataReq(Session::session_id_t sessionId,

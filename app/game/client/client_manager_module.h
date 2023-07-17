@@ -18,6 +18,7 @@
 TONY_CAT_SPACE_BEGIN
 
 class RpcModule;
+class NetModule;
 class NetPbModule;
 class ServiceGovernmentModule;
 
@@ -49,6 +50,7 @@ class ClientManagerModule : public ModuleBase {
 
  private:
     RpcModule* m_pRpcModule = nullptr;
+    NetModule* m_pNetModule = nullptr;
     NetPbModule* m_pNetPbModule = nullptr;
     ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
 };
