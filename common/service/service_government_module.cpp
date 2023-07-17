@@ -125,15 +125,14 @@ void ServiceGovernmentModule::InitConnect() {
         auto& mapServerInstanceInfo = elemMapServerConnectList.second;
         for (auto& elemMapServerInstanceInfo : mapServerInstanceInfo) {
             auto& stServerInstanceInfo = elemMapServerInstanceInfo.second;
-            stServerInstanceInfo.nSessionId =
-                ConnectServerInstance(stServerInstanceInfo);
+            ConnectServerInstance(stServerInstanceInfo);
         }
     }
 }
 
-Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(
+void ServiceGovernmentModule::ConnectServerInstance(
     const ServerInstanceInfo& stServerInstanceInfo) {
-    auto sessionId = m_pNetPbModule->Connect(
+    m_pNetPbModule->Connect(
         stServerInstanceInfo.strServerIp, (uint16_t)stServerInstanceInfo.nPort,
         std::bind(&ServiceGovernmentModule::OnConnectSucess, this,
                   std::placeholders::_1, stServerInstanceInfo,
@@ -141,11 +140,11 @@ Session::session_id_t ServiceGovernmentModule::ConnectServerInstance(
         std::bind(&ServiceGovernmentModule::OnDisconnect, this,
                   std::placeholders::_1, stServerInstanceInfo));
     LOG_INFO(
-        "server connect, SessionId:{}, dest server type:{}, index:{}, ip:{} {}",
-        sessionId, stServerInstanceInfo.nServerType,
+        "server connect, dest server type:{}, index:{}, ip:{} {}",
+        stServerInstanceInfo.nServerType,
         stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp,
         stServerInstanceInfo.nPort);
-    return sessionId;
+    return;
 }
 
 void ServiceGovernmentModule::OnConnectSucess(
@@ -212,7 +211,6 @@ void ServiceGovernmentModule::OnDisconnect(
                 auto pServerInstanceInfo =
                     GetServerInstanceInfo(stServerInstanceInfo.nServerType,
                                           stServerInstanceInfo.nServerIndex);
-                pServerInstanceInfo->nSessionId =
                     ConnectServerInstance(*pServerInstanceInfo);
             });
 }

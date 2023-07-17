@@ -147,58 +147,63 @@ void NetModule::Accept(AcceptorPtr pAcceptor) {
     });
 }
 
-Session::session_id_t NetModule::Connect(
+void NetModule::Connect(
     const std::string& strAddressIP, uint16_t addressPort,
     const Session::FunSessionRead& funOnSessionRead,
     const Session::FunSessionConnect& funOnSessionConnect /* = nullptr*/,
     const Session::FunSessionClose& funOnSessionClose /* = nullptr*/) {
     auto endpoints = asio::ip::tcp::endpoint(
         asio::ip::make_address(strAddressIP), addressPort);
-    auto session_id = CreateSessionId();
-    auto& loop = Loop::GetCurrentThreadLoop();
+    auto& loopRun = Loop::GetCurrentThreadLoop();
 
-    auto pSession = std::make_shared<Session>(loop, session_id);
+    auto pSession = std::make_shared<Session>(loopRun, Session::session_id_t(0));
     pSession->SetSessionReadCb(funOnSessionRead);
     // ensure call CloseCb in current loop
     pSession->SetSessionCloseCb(
-        [this, funOnSessionClose, &loop](auto nSessionId) {
-            loop.Exec([this, funOnSessionClose, nSessionId]() {
+        [this, funOnSessionClose, &loopRun](auto nSessionId) {
+            loopRun.Exec([this, funOnSessionClose, nSessionId]() {
                 if (nullptr != funOnSessionClose) {
                     funOnSessionClose(nSessionId);
+                }
+
+                auto pSession = GetSessionInMainLoop(nSessionId);
+                if (pSession != nullptr) {
+                    pSession->GetLoop().Exec([nSessionId] () {
+                        t_mapSessionInNetLoop.erase(nSessionId);
+                    });
+                    // maybe need erase after t_mapSessionInNetLoop
+                    m_mapSession.erase(nSessionId);
                 }
             });
         });
 
-    pSession->GetLoop().Exec([this, pSession, &loop, endpoints,
-                              funOnSessionConnect(
-                                  std::move(funOnSessionConnect))]() mutable {
-        t_mapSessionInNetLoop.emplace(pSession->GetSessionId(), pSession);
+    m_pModuleManager->GetMainLoop().Exec(
+        [this, pSession, &loopRun, endpoints,
+         funOnSessionConnect(std::move(funOnSessionConnect))] () mutable {
+            // ensure call ConnectCb in current loop
+            DoSessionConnect(
+                pSession, endpoints,
+                [this, pSession, endpoints, funOnSessionConnect, &loopRun]
+                (auto nSessionId, auto bSuccess) mutable {
+                    if (bSuccess) {
+                        pSession->SetSessionId(CreateSessionId());
+                        pSession->GetLoop().Exec(
+                            [this, pSession, &loopRun, endpoints, bSuccess, nSessionId, funOnSessionConnect(std::move(funOnSessionConnect))]
+                            () mutable {
+                                t_mapSessionInNetLoop.emplace(pSession->GetSessionId(), pSession);
+                                m_pModuleManager->GetMainLoop().Exec([this, funOnSessionConnect(std::move(funOnSessionConnect)), pSession, bSuccess]() {
+                                    m_mapSession.emplace(pSession->GetSessionId(), pSession);
 
-        m_pModuleManager->GetMainLoop().Exec(
-            [this, pSession, &loop, endpoints,
-             funOnSessionConnect(std::move(funOnSessionConnect))] () mutable {
-                m_mapSession.emplace(pSession->GetSessionId(), pSession);
-                // ensure call ConnectCb in current loop
-                if (nullptr != funOnSessionConnect) {
-                    DoSessionConnect(
-                        pSession, endpoints,
-                        [this, funOnSessionConnect, &loop](
-                            auto nSessionId, auto bSuccess) mutable {
-                            loop.Exec([this, funOnSessionConnect, nSessionId,
-                                       bSuccess]() {
-                                funOnSessionConnect(nSessionId, bSuccess);
-                                if (!bSuccess) {
-                                    this->RemoveMapSession(nSessionId);
-                                }
+                                    if (nullptr != funOnSessionConnect) {
+                                        funOnSessionConnect(pSession->GetSessionId(), bSuccess);
+                                    }
+                                });
                             });
-                        });
-                } else {
-                    DoSessionConnect(pSession, endpoints, nullptr);
-                }
+                    } else {
+                        DoSessionConnect(pSession, endpoints, nullptr);
+                    }
             });
-    });
-
-    return session_id;
+        });
 }
 
 void NetModule::CloseInMainLoop(Session::session_id_t session_id) {

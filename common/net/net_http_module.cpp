@@ -76,11 +76,11 @@ void NetHttpModule::Listen(const std::string& strAddress,
     m_pNetModule->Listen(pAcceper);
 }
 
-Session::session_id_t NetHttpModule::Connect(
+void NetHttpModule::Connect(
     const std::string& strAddress, uint16_t addressPort,
     const Session::FunSessionConnect& funOnSessionConnect /* = nullptr*/,
     const Session::FunSessionClose& funOnSessionClose /* = nullptr*/) {
-    return m_pNetModule->Connect(
+    m_pNetModule->Connect(
         strAddress, addressPort,
         std::bind(&NetHttpModule::ReadData, this, std::placeholders::_1,
                   std::placeholders::_2),

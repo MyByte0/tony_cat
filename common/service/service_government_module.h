@@ -89,7 +89,7 @@ class ServiceGovernmentModule : public ModuleBase {
                                 Pb::SSHeartbeatReq& heartbeat);
 
  private:
-    Session::session_id_t ConnectServerInstance(
+    void ConnectServerInstance(
         const ServerInstanceInfo& stServerInstanceInfo);
     void OnConnectSucess(Session::session_id_t nSessionId,
                          const ServerInstanceInfo& stServerInstanceInfo,

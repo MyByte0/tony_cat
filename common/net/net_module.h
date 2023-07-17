@@ -45,7 +45,7 @@ class NetModule : public ModuleBase {
     }
 
     void Listen(AcceptorPtr pAcceptor);
-    Session::session_id_t Connect(
+    void Connect(
         const std::string& strAddress, uint16_t addressPort,
         const Session::FunSessionRead& funOnSessionRead,
         const Session::FunSessionConnect& funOnSessionConnect = nullptr,
@@ -79,6 +79,7 @@ class NetModule : public ModuleBase {
     void DoTimerSessionReadTimeout(Session::session_id_t sessionId);
 
  private:
+    // sessions for main loop manager
     std::unordered_map<Session::session_id_t, SessionPtr> m_mapSession;
     static THREAD_LOCAL_VAR
         std::unordered_map<Session::session_id_t, SessionPtr>

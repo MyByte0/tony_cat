@@ -49,6 +49,10 @@ class Session {
     Loop& GetLoop();
     void* GetSessionContext();
 
+private:
+    void SetSessionId(Session::session_id_t nSessionId);
+
+private:
     Loop& m_loopIO;
     asio::ip::tcp::socket m_socket;
 

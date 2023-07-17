@@ -44,7 +44,7 @@ class NetHttpModule : public ModuleBase {
     };
 
     void Listen(const std::string& strAddress, uint16_t addressPort);
-    Session::session_id_t Connect(
+    void Connect(
         const std::string& strAddress, uint16_t addressPort,
         const Session::FunSessionConnect& funOnSessionConnect = nullptr,
         const Session::FunSessionClose& funOnSessionClose = nullptr);

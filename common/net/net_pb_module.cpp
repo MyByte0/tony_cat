@@ -38,8 +38,9 @@ void NetPbModule::OnInit() {
     if (pServerListConfig) {
         m_workLoop->Start(pServerListConfig->nNetThreadsNum);
     }
-    Listen(m_pServiceGovernmentModule->GetPublicIp(),
-           m_pServiceGovernmentModule->GetPublicPort());
+    // call by service grov now
+    // Listen(m_pServiceGovernmentModule->GetServerIp(),
+    //        m_pServiceGovernmentModule->GetServerPort());
 }
 
 void NetPbModule::AfterStop() { m_workLoop->Stop(); }
@@ -64,7 +65,7 @@ void NetPbModule::Listen(const std::string& strAddress, uint16_t addressPort) {
     m_pNetModule->Listen(pAcceper);
 }
 
-Session::session_id_t NetPbModule::Connect(
+void NetPbModule::Connect(
     const std::string& strAddress, uint16_t addressPort,
     const Session::FunSessionConnect& funOnSessionConnect /* = nullptr*/,
     const Session::FunSessionClose& funOnSessionClose /* = nullptr*/) {

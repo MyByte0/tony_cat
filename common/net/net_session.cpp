@@ -41,6 +41,11 @@ void Session::SetSessionProtoContext(
     m_funSessionProtoContextClose = funSessionProtoContextClose;
 }
 
+void Session::SetSessionId(Session::session_id_t nSessionId) {
+    assert(m_nSessionId == 0);
+    m_nSessionId = nSessionId;
+}
+
 Session::session_id_t Session::GetSessionId() { return m_nSessionId; }
 
 asio::ip::tcp::socket& Session::GetSocket() { return m_socket; }
