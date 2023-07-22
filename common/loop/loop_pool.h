@@ -11,13 +11,13 @@
 TONY_CAT_SPACE_BEGIN
 
 class LoopPool {
- public:
+public:
     LoopPool();
     LoopPool(LoopPool&&) = default;
     LoopPool(const LoopPool&) = delete;
     ~LoopPool();
 
- public:
+public:
     void Start(std::size_t workerNum);
     void Stop();
 
@@ -27,10 +27,15 @@ class LoopPool {
     void Broadcast(Loop::FunctionRun&& func);
     void Broadcast(const Loop::FunctionRun& func);
 
+    void BroadcastAndDone(Loop::FunctionRun&& funcDo,
+                          Loop::FunctionRun&& funcFinish);
+
     asio::io_context& GetIoContext(std::size_t index);
     Loop* GetLoop(std::size_t index);
 
- private:
+    static uint64_t GetIndexInLoopPool();
+
+private:
     std::vector<Loop> m_vecLoops;
 };
 

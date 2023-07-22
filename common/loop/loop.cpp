@@ -1,15 +1,14 @@
 #include "loop.h"
 
+#include <asio.hpp>
 #include <cassert>
-
 #include <thread>
 #include <utility>
-
-#include <asio.hpp>
 
 TONY_CAT_SPACE_BEGIN
 
 THREAD_LOCAL_POD_VAR void* Loop::t_runingLoop = nullptr;
+THREAD_LOCAL_POD_VAR uint64_t Loop::t_indexInLoop = 0;
 
 Loop::Loop() : m_pIoContext(new asio::io_context()) {}
 
@@ -43,6 +42,15 @@ void Loop::Start() {
 
     m_pthread = new std::thread([this]() { RunInThread(); });
     m_bRunning = true;
+}
+
+void Loop::StartWith(std::function<void()>&& func) {
+    if (true == m_bRunning) {
+        return;
+    }
+
+    Start();
+    Exec(std::move(func));
 }
 
 void Loop::Stop() {

@@ -10,8 +10,10 @@ LoopPool::~LoopPool() { Stop(); }
 
 void LoopPool::Start(std::size_t workerNum) {
     m_vecLoops.resize(workerNum);
-    std::for_each(m_vecLoops.begin(), m_vecLoops.end(),
-                  [](Loop& loop) { loop.Start(); });
+    for (uint64_t iVecLoops = 0; iVecLoops < m_vecLoops.size(); ++iVecLoops) {
+        m_vecLoops[iVecLoops].StartWith(
+            [iVecLoops]() { Loop::t_indexInLoop = iVecLoops; });
+    }
 }
 
 void LoopPool::Stop() {
@@ -19,6 +21,8 @@ void LoopPool::Stop() {
                   [](Loop& loop) { loop.Stop(); });
     m_vecLoops.clear();
 }
+
+uint64_t LoopPool::GetIndexInLoopPool() { return Loop::t_indexInLoop; }
 
 void LoopPool::Exec(std::size_t index, Loop::FunctionRun&& func) {
     if (auto pLoop = GetLoop(index); pLoop != nullptr) [[likely]] {
@@ -35,15 +39,35 @@ void LoopPool::Exec(std::size_t index, const Loop::FunctionRun& func) {
 }
 
 void LoopPool::Broadcast(Loop::FunctionRun&& func) {
+    auto pFunDo = std::make_shared<Loop::FunctionRun>(std::move(func));
     std::for_each(m_vecLoops.begin(), m_vecLoops.end(),
-                  [func = std::move(func)](Loop& loop) mutable {
-                      loop.Exec(std::move(func));
+                  [pFunDo](Loop& loop) mutable {
+                      loop.Exec([pFunDo]() { (*pFunDo)(); });
                   });
 }
 
 void LoopPool::Broadcast(const Loop::FunctionRun& func) {
     std::for_each(m_vecLoops.begin(), m_vecLoops.end(),
                   [func](Loop& loop) { loop.Exec(func); });
+}
+
+void LoopPool::BroadcastAndDone(Loop::FunctionRun&& funcDo,
+                                Loop::FunctionRun&& funcFinish) {
+    auto& curLoop = Loop::GetCurrentThreadLoop();
+    auto pFinishCount = std::make_shared<std::atomic<uint64_t>>(0);
+    auto nFinishSize = m_vecLoops.size();
+    auto pFinishDo = std::make_shared<Loop::FunctionRun>(std::move(funcFinish));
+    auto pFunDo = std::make_shared<Loop::FunctionRun>(std::move(funcDo));
+    for (std::size_t iVecLoops = 0; iVecLoops < nFinishSize; ++iVecLoops) {
+        m_vecLoops[iVecLoops].Exec(
+            [pFunDo, pFinishDo, &curLoop, pFinishCount, nFinishSize]() {
+                (*pFunDo)();
+                auto nCurCount = ++(*pFinishCount);
+                if (nCurCount == nFinishSize) {
+                    curLoop.Exec([pFinishDo]() { (*pFinishDo)(); });
+                }
+            });
+    }
 }
 
 asio::io_context& LoopPool::GetIoContext(std::size_t index) {
