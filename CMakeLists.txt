@@ -17,6 +17,8 @@ ADD_DEFINITIONS("-DPROJ_CXX_STANDARD=${CMAKE_CXX_STANDARD}")
 # compile argments setup
 if(CMAKE_COMPILER_IS_GNUCXX)
 	SET(CMAKE_CXX_FLAGS "-fcoroutines ${CMAKE_CXX_FLAGS}")
+	SET(CMAKE_CXX_FLAGS "-Wall -Wextra ${CMAKE_CXX_FLAGS}")
+	SET(CMAKE_CXX_FLAGS "-Wno-unused-variable -Wno-unused-function -Wno-unused-parameter ${CMAKE_CXX_FLAGS}")
 	SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g")
 	SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Os")
 elseif(MSVC)
