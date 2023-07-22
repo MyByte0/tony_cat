@@ -14,6 +14,7 @@ uint32_t CRC32(const void* data, size_t len);
 uint32_t CRC32(const std::string& data);
 uint32_t CRC32(const void* dataHead, size_t lenHead, const void* data,
                size_t len);
+uint32_t CRC32(const std::string& dataHead, const std::string& data);
 
 TONY_CAT_SPACE_END
 

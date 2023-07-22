@@ -107,4 +107,9 @@ uint32_t CRC32(const void* dataHead, size_t lenHead, const void* data,
     return crc ^ 0xFFFFFFFF;
 }
 
+uint32_t CRC32(const std::string& dataHead, const std::string& data) {
+    return CRC32(dataHead.c_str(), dataHead.length(), data.c_str(),
+                 data.length());
+}
+
 TONY_CAT_SPACE_END
