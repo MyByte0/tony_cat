@@ -6,7 +6,7 @@
 #include "common/database/db_utils.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
-#include "protocol/db_data.pb.h"
+#include "common/service/service_government_module.h"
 #include "protocol/server_base.pb.h"
 
 TONY_CAT_SPACE_BEGIN
@@ -20,8 +20,16 @@ MysqlModule::~MysqlModule() {}
 
 void MysqlModule::BeforeInit() {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
+    m_pServiceGovernmentModule =
+        FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
 
     MysqlInit();
+}
+
+void MysqlModule::OnInit() {
+    m_strDBInstanceName = m_pServiceGovernmentModule->GetServerName();
+    m_strDBInstanceName.append(
+        std::to_string(m_pServiceGovernmentModule->GetServerId()));
 }
 
 void MysqlModule::AfterStop() {
@@ -116,6 +124,10 @@ int32_t MysqlModule::QuerySelectRows(uint32_t nIndex,
     return 0;
 }
 
+const std::string& MysqlModule::GetCurrentHashSlat() {
+    return m_strDBInstanceName;
+}
+
 std::string MysqlModule::QueryStringReplace(
     const std::string& strQueryString,
     const std::vector<std::vector<char>>& vecBuff) {
@@ -156,8 +168,7 @@ int32_t MysqlModule::MysqlQuery(MYSQL* pMysqlHandle,
 
     std::vector<std::vector<char>> vecBuff(vecArgs.size(), std::vector<char>());
 
-    int32_t iArgs = 0;
-    for (; iArgs < vecArgs.size(); ++iArgs) {
+    for (std::size_t iArgs = 0; iArgs < vecArgs.size(); ++iArgs) {
         auto& strArg = vecArgs[iArgs];
         auto& elemBuff = vecBuff[iArgs];
         elemBuff.resize(strArg.length() * 2 + 1);
@@ -207,7 +218,7 @@ MysqlModule::QuerySelectRowsInCurrentThread(
             unsigned long* length = mysql_fetch_lengths(result);
             for (int i = 0; i < num_fields; i++) {
                 if (i == 0) {
-                    while (field = mysql_fetch_field(result)) {
+                    while ((field = mysql_fetch_field(result))) {
                         vecFieldName.emplace_back(field->name);
                     }
                 }
@@ -720,14 +731,14 @@ void MysqlModule::OnTest() {
     // msgRsp.set_user_id("user_1");
     // MessageLoad(*pUserData);
 
-    Db::KVData msgReq;
-    msgReq.mutable_user_data()->set_user_id("user_1");
-    // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
-    msgReq.mutable_user_data()->add_user_counts()->set_count_type(1);
-    msgReq.mutable_user_data()->add_user_counts()->set_count_type(3);
+    // Db::KVData msgReq;
+    // msgReq.mutable_user_data()->set_user_id("user_1");
+    // // msgReqmutable_user_data()->mutable_user_base()->set_user_name("hi");
+    // msgReq.mutable_user_data()->add_user_counts()->set_count_type(1);
+    // msgReq.mutable_user_data()->add_user_counts()->set_count_type(3);
 
-    msgReq.mutable_user_data()->mutable_client_login_info()->set_login_tick(10);
-    MessageLoad(*msgReq.mutable_user_data());
+    // msgReq.mutable_user_data()->mutable_client_login_info()->set_login_tick(10);
+    // MessageLoad(*msgReq.mutable_user_data());
 }
 
 TONY_CAT_SPACE_END

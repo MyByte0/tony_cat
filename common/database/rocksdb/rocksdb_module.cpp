@@ -3,16 +3,22 @@
 #include "rocksdb_module.h"
 
 #include <atomic>
+#include <filesystem>
 #include <memory>
 
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
+#include "common/service/service_government_module.h"
+#include "common/utility/defer.h"
 #include "protocol/server_base.pb.h"
 
 TONY_CAT_SPACE_BEGIN
 
 THREAD_LOCAL_POD_VAR void* RocksDBModule::t_pRocksDB = nullptr;
+
+static const char* s_strDataPathPrefix = "shard_";
+static const char* s_strMetaPathPrefix = "meta";
 
 RocksDBModule::RocksDBModule(ModuleManager* pModuleManager)
     : ModuleBase(pModuleManager) {
@@ -36,6 +42,8 @@ RocksDBModule::~RocksDBModule() {}
 
 void RocksDBModule::BeforeInit() {
     m_pXmlConfigModule = FIND_MODULE(m_pModuleManager, XmlConfigModule);
+    m_pServiceGovernmentModule =
+        FIND_MODULE(m_pModuleManager, ServiceGovernmentModule);
 
     std::string strDBType = "rocksdb";
     auto pDataBaseConfig =
@@ -44,8 +52,26 @@ void RocksDBModule::BeforeInit() {
         LOG_ERROR("get DataBase Config {}", strDBType);
         return;
     }
-    std::string strPath = pDataBaseConfig->strAddress;
-    InitLoopsRocksDb(strPath);
+
+    if (pDataBaseConfig->strAddress.empty()) {
+        LOG_ERROR("get DataBase strAddress empty {}", strDBType);
+        return;
+    }
+    if (!std::filesystem::exists(pDataBaseConfig->strAddress)) {
+        std::filesystem::create_directories(pDataBaseConfig->strAddress);
+    }
+
+    if (pDataBaseConfig->strAddress.back() != '/') {
+        const_cast<std::string&>(pDataBaseConfig->strAddress).append("/");
+    }
+
+    InitRocksDb(*pDataBaseConfig);
+}
+
+void RocksDBModule::OnInit() {
+    m_strDBInstanceName = m_pServiceGovernmentModule->GetServerName();
+    m_strDBInstanceName.append(
+        std::to_string(m_pServiceGovernmentModule->GetServerId()));
 }
 
 void RocksDBModule::AfterStop() {
@@ -63,31 +89,222 @@ rocksdb::DB* RocksDBModule::GetThreadRocksDB() {
     return db;
 }
 
-bool RocksDBModule::CheckDBBaseData(const std::string& strDBBasePath) {
-    // \TODO: check rocks database schema and table schema
+const std::string& RocksDBModule::GetCurrentHashSlat() {
+    return m_strDBInstanceName;
+}
+
+rocksdb::DB* RocksDBModule::CreateDBToc(
+    const DataBaseConfigData& dataBaseConfigData,
+    const std::string& strPathSub) {
+    rocksdb::DB* pRocksDB = nullptr;
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    std::string strDbPath = dataBaseConfigData.strAddress;
+    strDbPath.append(strPathSub);
+
+    rocksdb::Status status =
+        rocksdb::DB::Open(options, strDbPath.c_str(), &pRocksDB);
+    if (!status.ok()) {
+        LOG_ERROR("open db error, path: {}, error: {}", strDbPath,
+                  status.ToString());
+    }
+    return pRocksDB;
+}
+
+void RocksDBModule::DestoryDBToc(const DataBaseConfigData& dataBaseConfigData,
+                                 rocksdb::DB* pRocksDB) {
+    if (pRocksDB != nullptr) {
+        pRocksDB->Close();
+    }
+}
+
+bool RocksDBModule::CheckDBBaseData(
+    const DataBaseConfigData& dataBaseConfigData) {
+    auto pRocksDB = CreateDBToc(dataBaseConfigData, s_strMetaPathPrefix);
+    if (pRocksDB == nullptr) {
+        LOG_ERROR("CreateDBToc fail");
+        return false;
+    }
+
+    // \TODO: make a tool, auto gen meta data define
+    std::string strValShardNum;
+    pRocksDB->Get(rocksdb::ReadOptions(), "shared_num", &strValShardNum);
+    std::string strValShardPrefix;
+    pRocksDB->Get(rocksdb::ReadOptions(), "shared_hash_slat",
+                  &strValShardPrefix);
+
+    DestoryDBToc(dataBaseConfigData, pRocksDB);
+
+    if (strValShardNum.empty() ||
+        ::atoll(strValShardNum.c_str()) != dataBaseConfigData.nShardNum ||
+        strValShardPrefix != GetCurrentHashSlat()) {
+        return false;
+    }
     return true;
 }
 
-void RocksDBModule::RemapDBData() {
-    // \TODO remap onchange rocks database schema / table schema
-}
-
-void RocksDBModule::InitLoopsRocksDb(const std::string& strDBBasePath) {
-    if (CheckDBBaseData(strDBBasePath) == false) {
-        LOG_ERROR("rocksdb save infomation change, please remap this database");
+void RocksDBModule::RemapDBDataAndStart(
+    const DataBaseConfigData& dataBaseConfigData) {
+    if (dataBaseConfigData.nShardNum <= 0) {
+        LOG_ERROR("dataBaseConfigData nShardNum error, size: {}",
+                  dataBaseConfigData.nShardNum);
         return;
     }
 
-    std::shared_ptr<std::atomic<int32_t>> pDBIndex =
+    auto pRocksDBMeta = CreateDBToc(dataBaseConfigData, s_strMetaPathPrefix);
+    if (pRocksDBMeta == nullptr) {
+        LOG_ERROR("CreateDBToc fail");
+        return;
+    }
+
+    std::string strValShardNum;
+    pRocksDBMeta->Get(rocksdb::ReadOptions(), "shared_num", &strValShardNum);
+    std::string strValShardPrefix;
+    pRocksDBMeta->Get(rocksdb::ReadOptions(), "shared_hash_slat",
+                      &strValShardPrefix);
+
+    std::shared_ptr<std::atomic<int32_t>> pReadShardFinishCount =
         std::make_shared<std::atomic<int32_t>>(0);
-    m_loopPool.Start(1);
+    auto nOldShardNum = ::atoll(strValShardNum.c_str());
+
+    defer([pReadShardFinishCount]() { ++(*pReadShardFinishCount); });
+
+    if (nOldShardNum != dataBaseConfigData.nShardNum ||
+        strValShardPrefix != GetCurrentHashSlat()) {
+        LOG_INFO(
+            "dataBaseConfigData nShardNum changed, old ShardNum: {}, new "
+            "ShardNum: {}",
+            nOldShardNum, dataBaseConfigData.nShardNum);
+
+        std::shared_ptr<std::vector<rocksdb::DB*>> pNewDBIndex =
+            std::make_shared<std::vector<rocksdb::DB*>>(
+                dataBaseConfigData.nShardNum, nullptr);
+        std::shared_ptr<LoopPool> pPutNewloopPool =
+            std::make_shared<LoopPool>();
+        pPutNewloopPool->Start(dataBaseConfigData.nShardNum);
+        pPutNewloopPool->Broadcast([=, this]() {
+            auto index = LoopPool::GetIndexInLoopPool();
+            (*pNewDBIndex)[index] = CreateDBToc(
+                dataBaseConfigData,
+                std::string("tmp_remap").append(std::to_string(index)));
+        });
+
+        if (nOldShardNum != 0) {
+            LoopPool readOldloopPool;
+            readOldloopPool.Start(nOldShardNum);
+            readOldloopPool.Broadcast([=, this]() {
+                auto nDBIndex = LoopPool::GetIndexInLoopPool();
+                auto pOldRocksDB = CreateDBToc(
+                    dataBaseConfigData, std::string(s_strDataPathPrefix)
+                                            .append(std::to_string(nDBIndex)));
+                if (pOldRocksDB == nullptr) {
+                    LOG_ERROR("CreateDBToc fail");
+                    return;
+                }
+
+                // scan load old db data
+                rocksdb::ReadOptions read_options;
+                auto sliceEnd = rocksdb::Slice("\xFF");
+                read_options.iterate_upper_bound = &sliceEnd;
+                rocksdb::Iterator* iter =
+                    pOldRocksDB->NewIterator(read_options);
+
+                for (iter->Seek("\x00"); iter->Valid(); iter->Next()) {
+                    auto strKey = iter->key().ToString();
+                    auto strValue = iter->value().ToString();
+
+                    // \TODO: batch put will better
+                    // Put Data to new db path
+                    pPutNewloopPool->Exec(
+                        CRC32(GetCurrentHashSlat(), strKey),
+                        [strKey = std::move(strKey),
+                         strValue = std::move(strValue), pNewDBIndex]() {
+                            auto index = LoopPool::GetIndexInLoopPool();
+                            auto pNewDB = (*pNewDBIndex)[index];
+                            pNewDB->Put(rocksdb::WriteOptions(), strKey,
+                                        strValue);
+                        });
+                }
+
+                if (!iter->status().ok()) {
+                    LOG_ERROR("range read fail: {}", iter->status().ToString());
+                }
+
+                delete iter;
+                DestoryDBToc(dataBaseConfigData, pOldRocksDB);
+            });
+
+            // block thread until fiinish
+            while (*pReadShardFinishCount < nOldShardNum) {
+                std::this_thread::yield();
+                readOldloopPool.Stop();
+            }
+        }
+
+        pPutNewloopPool->BroadcastAndDone(
+            [=, this]() {
+                auto index = LoopPool::GetIndexInLoopPool();
+                auto pNewDB = (*pNewDBIndex)[index];
+                DestoryDBToc(dataBaseConfigData, pNewDB);
+            },
+            [=, this]() {
+                pPutNewloopPool->Stop();
+
+                // \TODO: a switch stat maybe crash
+                // add a recovery status
+
+                // remove old
+                for (int64_t index = 0; index < nOldShardNum; ++index) {
+                    std::string strOldPath = dataBaseConfigData.strAddress;
+                    strOldPath.append(std::to_string(index));
+                    std::filesystem::remove_all(strOldPath);
+                }
+
+                // switch new
+                for (int64_t index = 0; index < dataBaseConfigData.nShardNum;
+                     ++index) {
+                    std::string strTmpPath = dataBaseConfigData.strAddress;
+                    strTmpPath.append(
+                        std::string("tmp_remap").append(std::to_string(index)));
+                    std::string strNewPath = dataBaseConfigData.strAddress;
+                    strNewPath.append(s_strDataPathPrefix)
+                        .append(std::to_string(index));
+                    std::filesystem::rename(strTmpPath, strNewPath);
+                }
+
+                // update meta
+                pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_num",
+                                  std::to_string(dataBaseConfigData.nShardNum));
+                pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_hash_slat",
+                                  GetCurrentHashSlat());
+                DestoryDBToc(dataBaseConfigData, pRocksDBMeta);
+                StartRocksDb(dataBaseConfigData);
+            });
+    }
+
+    return;
+}
+
+void RocksDBModule::InitRocksDb(const DataBaseConfigData& dataBaseConfigData) {
+    if (CheckDBBaseData(dataBaseConfigData) == false) {
+        LOG_INFO("rocksdb save infomation change, auto remap this database");
+        RemapDBDataAndStart(dataBaseConfigData);
+        LOG_INFO("rocksdb save infomation change, finish remap this database");
+        return;
+    } else {
+        StartRocksDb(dataBaseConfigData);
+    }
+}
+
+void RocksDBModule::StartRocksDb(const DataBaseConfigData& dataBaseConfigData) {
+    m_loopPool.Start(dataBaseConfigData.nShardNum);
     m_loopPool.Broadcast([=, this]() {
         rocksdb::DB** db = reinterpret_cast<rocksdb::DB**>(&t_pRocksDB);
         rocksdb::Options options;
         options.create_if_missing = true;
-        std::string strDbPath = strDBBasePath;
-        auto indexDb = (*pDBIndex)++;
-        strDbPath.append(std::to_string(indexDb));
+        std::string strDbPath = dataBaseConfigData.strAddress;
+        auto indexDb = LoopPool::GetIndexInLoopPool();
+        strDbPath.append(s_strDataPathPrefix).append(std::to_string(indexDb));
         rocksdb::Status status =
             rocksdb::DB::Open(options, strDbPath.c_str(), db);
     });
@@ -109,8 +326,9 @@ int32_t RocksDBModule::MessageDelete(google::protobuf::Message& message) {
 }
 
 void RocksDBModule::Test() {
-    std::string strDbPath = "/data/test";
-    InitLoopsRocksDb(strDbPath);
+    DataBaseConfigData dataBaseConfigData;
+    dataBaseConfigData.strAddress = "/data/test";
+    InitRocksDb(dataBaseConfigData);
 
     m_loopPool.Exec(0, [this]() mutable {
         // Db::KVData msgReq1;

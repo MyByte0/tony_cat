@@ -8,30 +8,33 @@
 #include <mysql/mysql.h>
 
 #include <functional>
-#include <utility>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "common/core_define.h"
 #include "common/loop/loop_pool.h"
 #include "common/module_base.h"
+#include "common/utility/crc.h"
 
 TONY_CAT_SPACE_BEGIN
 
 class XmlConfigModule;
+class ServiceGovernmentModule;
 
 class MysqlQuery {};
 
 class MysqlModule : public ModuleBase {
- public:
+public:
     explicit MysqlModule(ModuleManager* pModuleManager);
     virtual ~MysqlModule();
 
     void BeforeInit() override;
+    void OnInit() override;
     void AfterStop() override;
 
- public:
+public:
     enum : int {
         kArgNumMax = 100,
         kArgLenMax = 128000000,
@@ -57,7 +60,11 @@ class MysqlModule : public ModuleBase {
         return reinterpret_cast<MYSQL*>(t_pMysql);
     }
 
-    LoopPool& GetLoopPool() { return m_loopPool; }
+    void DBLoopExec(const std::string strIndexKey,
+                    std::function<void()>&& funcDo) {
+        m_loopPool.Exec(CRC32(strIndexKey, GetCurrentHashSlat()),
+                        std::move(funcDo));
+    }
     // return: (nError, mapResult)
     std::tuple<int32_t, MysqlSelectResultMap> QuerySelectRowsInCurrentThread(
         const std::string& strQueryString,
@@ -67,12 +74,12 @@ class MysqlModule : public ModuleBase {
         const std::string& strQueryString,
         const std::vector<std::string>& vecArgs);
 
- public:
+public:
     int32_t MessageLoad(google::protobuf::Message& message);
     int32_t MessageUpdate(google::protobuf::Message& message);
     int32_t MessageDelete(google::protobuf::Message& message);
 
- private:
+private:
     const char* GetProtoSqlStringPlaceholder(
         const google::protobuf::FieldDescriptor& fieldDescriptor);
 
@@ -92,16 +99,20 @@ class MysqlModule : public ModuleBase {
     int32_t MysqlQuery(MYSQL* pMysqlHandle, const std::string& strQueryString,
                        const std::vector<std::string>& vecArgs);
 
- private:
+    const std::string& GetCurrentHashSlat();
+
+private:
     void MysqlInit();
 
     void OnTest();
 
- private:
+private:
     XmlConfigModule* m_pXmlConfigModule = nullptr;
+    ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
 
- private:
+private:
     LoopPool m_loopPool;
+    std::string m_strDBInstanceName;
     static THREAD_LOCAL_POD_VAR void* t_pMysql;
 };
 
