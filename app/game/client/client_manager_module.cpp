@@ -2,6 +2,7 @@
 
 #include <cassert>
 
+#include "app/game/server_define.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/net/net_module.h"
@@ -11,7 +12,6 @@
 #include "protoc/server_db.pb.h"
 #include "protocol/client_base.pb.h"
 #include "protocol/server_base.pb.h"
-#include "app/game/server_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
@@ -58,6 +58,9 @@ CoroutineTask<void> ClientManagerModule::StartTestClient() {
 }
 
 CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
+    static int32_t s_nCLientNum = 0;
+    auto nCurClient = ++s_nCLientNum;
+
     co_await AwaitableExecAfter(1000);
     // connect to gate server
     auto pServerInstanceInfo =
@@ -67,7 +70,7 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
         LOG_ERROR("not find gate info");
         co_return 1;
     }
-    LOG_TRACE("client login start");
+    LOG_TRACE("client login start on:{}", nCurClient);
     auto nSessionId = co_await NetPbModule::AwaitableConnect(
         pServerInstanceInfo->strPublicIp, pServerInstanceInfo->nPublicPort);
     if (0 == nSessionId) {
@@ -77,10 +80,8 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
         co_return 1;
     }
 
-    static int32_t s_nCLientNum = 0;
-
     ACCOUNT_ID strAccount =
-        std::string("test").append(std::to_string(++s_nCLientNum));
+        std::string("test").append(std::to_string(nCurClient));
     auto pClientData = std::make_shared<ClientData>();
     pClientData->strAccount = strAccount;
     pClientData->nSessionId = nSessionId;
