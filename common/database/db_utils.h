@@ -13,6 +13,10 @@
 
 TONY_CAT_SPACE_BEGIN
 
+enum EDbConfig {
+    RangeLimit = 100000,
+};
+
 bool IsDBKey(const google::protobuf::Message& message,
              const google::protobuf::FieldDescriptor& fieldDescriptor);
 
@@ -41,7 +45,7 @@ struct PbMessageKVHandle {
     typedef std::function<int32_t(const std::string&, const std::string&)>
         KVPutCb;
     typedef std::function<int32_t(const std::string&)> KVDelCb;
-    typedef std::function<int32_t(const std::string&, const std::string&,
+    typedef std::function<int32_t(const std::string&, const std::string&, std::size_t,
         std::vector<std::pair<std::string, std::string>>&)> KVRangCb;
     typedef std::function<int32_t(const std::string&, const std::string&)>
         KVAppendCb;

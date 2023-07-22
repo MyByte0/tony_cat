@@ -341,7 +341,7 @@ int32_t PbMessageKVHandle::MessageLoadOnKV(google::protobuf::Message& message) {
                 auto keyBegin = strCommonKey;
                 auto keyEnd = strCommonKey;
                 keyEnd.append(1, 0xff);
-                funRang(strCommonKey, "", vecRangeResult);
+                funRang(strCommonKey, keyEnd, EDbConfig::RangeLimit, vecRangeResult);
                 for (auto& [elemKey , elemValue]: vecRangeResult) {
                     if (pFieldDescriptor->cpp_type() !=
                         google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
