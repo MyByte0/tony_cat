@@ -33,7 +33,7 @@ class XmlConfigModule;
 // || 4 bytes PbPacketHead Len || PbPacketHead || PbPacketBody ||
 
 class NetPbModule : public ModuleBase {
- public:
+public:
     explicit NetPbModule(ModuleManager* pModuleManager);
     virtual ~NetPbModule();
 
@@ -42,7 +42,7 @@ class NetPbModule : public ModuleBase {
     void AfterStop() override;
     void OnUpdate() override;
 
- public:
+public:
     enum : int {
         kHeadLen = 12,
         kPacketHeadMaxLen = 16 * 1024,
@@ -94,7 +94,7 @@ class NetPbModule : public ModuleBase {
 
     template <typename _Fn, typename _TypeRet, typename _TypeHead,
               typename _TypeMessage>
-    struct GetFunctionMessage<_TypeRet (_Fn::*) (
+    struct GetFunctionMessage<_TypeRet (_Fn::*)(
         Session::session_id_t, _TypeHead&, _TypeMessage&) const> {
         using TypeHead = _TypeHead;
         using TypeBody = _TypeMessage;
@@ -141,7 +141,7 @@ class NetPbModule : public ModuleBase {
         return true;
     }
 
- private:
+private:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody,
               class _TypeRet>
     FuncPacketHandleType GeneratePaserPacketFunc(
@@ -205,7 +205,7 @@ class NetPbModule : public ModuleBase {
                                     _TypeRet>(func));
     }
 
- public:
+public:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
     bool SendPacket(Session::session_id_t sessionId,
                     _TypeMsgPacketHead& packetHead,
@@ -289,7 +289,7 @@ class NetPbModule : public ModuleBase {
         RegisterHandle(funHandle);
     }
 
- public:
+public:
     struct AwaitableConnect {
         AwaitableConnect(const std::string& strIP, uint16_t nPort)
             : m_strIP(strIP), m_nPort(nPort), m_nSessionId(0) {}
@@ -306,16 +306,16 @@ class NetPbModule : public ModuleBase {
                 });
         }
 
-     private:
+    private:
         const std::string& m_strIP;
         uint16_t m_nPort;
         Session::session_id_t m_nSessionId;
     };
 
- private:
+private:
     static NetPbModule* GetInstance();
 
- protected:
+protected:
     uint32_t GetPacketHeadLength(const uint32_t* pData);
     void SetPacketHeadLength(uint32_t* pData, uint32_t lenHead);
     uint32_t CheckCode(const char* data, size_t length);
@@ -323,14 +323,14 @@ class NetPbModule : public ModuleBase {
                        size_t len);
     uint32_t SwapUint32(uint32_t value);
 
- private:
+private:
     void FillHeadCommon(Pb::ClientHead& packetHead);
     void FillHeadCommon(Pb::ServerHead& packetHead);
     bool CheckHeadTTLError(Pb::ClientHead& packetHead);
     bool CheckHeadTTLError(Pb::ServerHead& packetHead);
     void GenTransId(std::string& strTransId);
 
- protected:
+protected:
     std::unordered_map<uint32_t, FuncPacketHandleType> m_mapPackethandle;
     FuncPacketHandleType m_funDefaultPacketHandle;
     LoopPoolPtr m_workLoop = nullptr;
@@ -338,12 +338,12 @@ class NetPbModule : public ModuleBase {
     SpinLock m_lockMsgFunction;
     std::vector<std::function<void()>> m_vecMsgFunction;
 
- protected:
+protected:
     NetModule* m_pNetModule = nullptr;
     ServiceGovernmentModule* m_pServiceGovernmentModule = nullptr;
     XmlConfigModule* m_pXmlConfigModule = nullptr;
 
- private:
+private:
     static NetPbModule* m_pNetPbModule;
 };
 

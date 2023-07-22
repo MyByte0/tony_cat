@@ -1,5 +1,6 @@
 #include "client_pb_module.h"
 
+#include "app/game/server_define.h"
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
@@ -10,7 +11,6 @@
 #include "common/utility/crc.h"
 #include "protocol/client_base.pb.h"
 #include "protocol/server_base.pb.h"
-#include "app/game/server_define.h"
 
 TONY_CAT_SPACE_BEGIN
 
@@ -111,8 +111,9 @@ void ClientPbModule::OnHandleCSPlayerLoginReq(
                                 Pb::ServerHead& headRsp,
                                 Pb::CSPlayerLoginRsp& queryDataRsp) mutable {
             if (headRsp.error_code() != Pb::SSMessageCode::ss_msg_success) {
-                LOG_ERROR("server PlayerLogin request error:{}, sessionId:{}",
-                          headRsp.error_code(), serverSessionId);
+                LOG_ERROR(
+                    "server PlayerLogin request error:{}, sessionId:{} user{}",
+                    headRsp.error_code(), serverSessionId, headRsp.user_id());
                 return;
             }
 
