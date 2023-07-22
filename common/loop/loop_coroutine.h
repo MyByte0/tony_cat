@@ -7,7 +7,7 @@
 #include "common/core_define.h"
 #include "common/loop/loop.h"
 
-//#include <windows.h>
+// #include <windows.h>
 
 TONY_CAT_SPACE_BEGIN
 
@@ -116,7 +116,7 @@ struct CoroutineAsyncTask {
         return std::move(coro.promise().result);
     }
 
- private:
+private:
     std::coroutine_handle<promise_type> coro;
 };
 
@@ -166,7 +166,7 @@ struct CoroutineAsyncTask<void> {
         return;
     }
 
- private:
+private:
     std::coroutine_handle<promise_type> coro;
 };
 
@@ -181,7 +181,7 @@ struct AwaitableLoopSwitch {
 
     void await_resume() { return; }
 
- private:
+private:
     Loop& m_loop;
 };
 
@@ -195,7 +195,7 @@ struct AwaitableExecAfter {
                                                [handle]() { handle.resume(); });
     }
 
- private:
+private:
     uint32_t m_nWaitMillSecond;
 };
 
@@ -208,9 +208,9 @@ struct AwaitableExecAfterOnLoop {
         m_loop.ExecAfter(m_nWaitMillSecond, [handle]() { handle.resume(); });
     }
 
- private:
-    uint32_t m_nWaitMillSecond;
+private:
     Loop& m_loop;
+    uint32_t m_nWaitMillSecond;
 };
 
 TONY_CAT_SPACE_END
