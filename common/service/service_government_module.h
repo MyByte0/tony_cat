@@ -22,7 +22,7 @@ class XmlConfigModule;
 class RpcModule;
 
 class ServiceGovernmentModule : public ModuleBase {
- public:
+public:
     explicit ServiceGovernmentModule(ModuleManager* pModuleManager);
     virtual ~ServiceGovernmentModule();
 
@@ -33,7 +33,7 @@ class ServiceGovernmentModule : public ModuleBase {
     void InitListen();
     void InitConnect();
 
- public:
+public:
     enum : int {
         kReconnectServerTimeMillSeconds = 10000,
         kHeartbeatServerTimeMillSeconds = 12000,
@@ -54,14 +54,14 @@ class ServiceGovernmentModule : public ModuleBase {
 
     DEFINE_MEMBER_STR_PUBLIC(ServerName);
     DEFINE_MEMBER_INT32_PUBLIC(ServerType);
-    DEFINE_MEMBER_UINT32_PUBLIC(ServerId);
+    DEFINE_MEMBER_INT32_PUBLIC(ServerId);
     DEFINE_MEMBER_STR_PUBLIC(ServerIp);
     DEFINE_MEMBER_INT32_PUBLIC(ServerPort);
     DEFINE_MEMBER_STR_PUBLIC(PublicIp);
     DEFINE_MEMBER_INT32_PUBLIC(PublicPort);
     DEFINE_MEMBER_VAR_PUBLIC(ServerInstanceInfo, MineServerInfo);
 
- public:
+public:
     void SetServerInstance(const std::string& strName, int32_t nServerType,
                            uint32_t nServerId) {
         SetServerName(strName);
@@ -76,7 +76,7 @@ class ServiceGovernmentModule : public ModuleBase {
         SetServerType(nServerType);
     }
 
- public:
+public:
     int32_t GetServerKeyIndex(int32_t nServerType, const ::std::string& strKey);
     ServerInstanceInfo* GetServerInstanceInfo(int32_t nServerType,
                                               int32_t nServerId);
@@ -88,9 +88,8 @@ class ServiceGovernmentModule : public ModuleBase {
                                 Pb::ServerHead& head,
                                 Pb::SSHeartbeatReq& heartbeat);
 
- private:
-    void ConnectServerInstance(
-        const ServerInstanceInfo& stServerInstanceInfo);
+private:
+    void ConnectServerInstance(const ServerInstanceInfo& stServerInstanceInfo);
     void OnConnectSucess(Session::session_id_t nSessionId,
                          const ServerInstanceInfo& stServerInstanceInfo,
                          bool bSuccess);
@@ -99,11 +98,11 @@ class ServiceGovernmentModule : public ModuleBase {
 
     CoroutineTask<void> OnHeartbeat(ServerInstanceInfo stServerInstanceInfo);
 
- public:
+public:
     static bool AddressToIpPort(const std::string& strAddress,
                                 std::string& strIp, int32_t& nPort);
 
- private:
+private:
     NetModule* m_pNetModule = nullptr;
     NetPbModule* m_pNetPbModule = nullptr;
     RpcModule* m_pRpcModule = nullptr;

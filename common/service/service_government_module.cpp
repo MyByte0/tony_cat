@@ -139,11 +139,10 @@ void ServiceGovernmentModule::ConnectServerInstance(
                   std::placeholders::_2),
         std::bind(&ServiceGovernmentModule::OnDisconnect, this,
                   std::placeholders::_1, stServerInstanceInfo));
-    LOG_INFO(
-        "server connect, dest server type:{}, index:{}, ip:{} {}",
-        stServerInstanceInfo.nServerType,
-        stServerInstanceInfo.nServerIndex, stServerInstanceInfo.strServerIp,
-        stServerInstanceInfo.nPort);
+    LOG_INFO("server connect, dest server type:{}, index:{}, ip:{} {}",
+             stServerInstanceInfo.nServerType,
+             stServerInstanceInfo.nServerIndex,
+             stServerInstanceInfo.strServerIp, stServerInstanceInfo.nPort);
     return;
 }
 
@@ -211,7 +210,7 @@ void ServiceGovernmentModule::OnDisconnect(
                 auto pServerInstanceInfo =
                     GetServerInstanceInfo(stServerInstanceInfo.nServerType,
                                           stServerInstanceInfo.nServerIndex);
-                    ConnectServerInstance(*pServerInstanceInfo);
+                ConnectServerInstance(*pServerInstanceInfo);
             });
 }
 
