@@ -26,6 +26,7 @@ struct DataBaseConfigData {
     int64_t nPort = 0;
     std::string strUser;
     std::string strPassword;
+    int64_t nShardNum = 0;
 
     bool LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttribute);
 };

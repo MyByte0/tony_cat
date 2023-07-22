@@ -40,6 +40,12 @@ bool DataBaseConfigData::LoadXmlElement(const tinyxml2::XMLAttribute* pNodeAttri
             return false;
         }
     }
+    else if (std::string("ShardNum") == pNodeAttribute->Name()) {
+        if (false == ConfigValueToInt64(pNodeAttribute->Value(), nShardNum)) {
+            LOG_ERROR("Paser error on Id:{}", strId);
+            return false;
+        }
+    }
     return true;
 }
 
