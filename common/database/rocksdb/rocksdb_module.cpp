@@ -167,120 +167,129 @@ void RocksDBModule::RemapDBDataAndStart(
         std::make_shared<std::atomic<int32_t>>(0);
     auto nOldShardNum = ::atoll(strValShardNum.c_str());
 
-    defer([pReadShardFinishCount]() { ++(*pReadShardFinishCount); });
-
-    if (nOldShardNum != dataBaseConfigData.nShardNum ||
-        strValShardPrefix != GetCurrentHashSlat()) {
+    if (nOldShardNum == dataBaseConfigData.nShardNum &&
+        strValShardPrefix == GetCurrentHashSlat()) {
         LOG_INFO(
-            "dataBaseConfigData nShardNum changed, old ShardNum: {}, new "
-            "ShardNum: {}",
-            nOldShardNum, dataBaseConfigData.nShardNum);
+            "dataBaseConfigData nShardNum not changed, ShardNum: {}, HashSlat: "
+            "{}",
+            nOldShardNum, strValShardPrefix);
+        return;
+    }
 
-        std::shared_ptr<std::vector<rocksdb::DB*>> pNewDBIndex =
-            std::make_shared<std::vector<rocksdb::DB*>>(
-                dataBaseConfigData.nShardNum, nullptr);
-        std::shared_ptr<LoopPool> pPutNewloopPool =
-            std::make_shared<LoopPool>();
-        pPutNewloopPool->Start(dataBaseConfigData.nShardNum);
-        pPutNewloopPool->Broadcast([=, this]() {
-            auto index = LoopPool::GetIndexInLoopPool();
-            (*pNewDBIndex)[index] = CreateDBToc(
-                dataBaseConfigData,
-                std::string("tmp_remap").append(std::to_string(index)));
+    LOG_INFO(
+        "dataBaseConfigData nShardNum changed, old ShardNum: {}, new "
+        "ShardNum: {}",
+        nOldShardNum, dataBaseConfigData.nShardNum);
+
+    std::shared_ptr<std::vector<rocksdb::DB*>> pNewDBIndex =
+        std::make_shared<std::vector<rocksdb::DB*>>(
+            dataBaseConfigData.nShardNum, nullptr);
+    std::shared_ptr<LoopPool> pPutNewloopPool = std::make_shared<LoopPool>();
+    pPutNewloopPool->Start(dataBaseConfigData.nShardNum);
+    pPutNewloopPool->Broadcast([=, this]() {
+        auto index = LoopPool::GetIndexInLoopPool();
+        (*pNewDBIndex)[index] =
+            CreateDBToc(dataBaseConfigData,
+                        std::string("tmp_remap").append(std::to_string(index)));
+    });
+
+    if (nOldShardNum != 0) {
+        LoopPool readOldloopPool;
+        readOldloopPool.Start(nOldShardNum);
+        readOldloopPool.Broadcast([=, this]() {
+            LOG_INFO("on shard remap.");
+            defer([pReadShardFinishCount]() {
+                auto nCount = ++(*pReadShardFinishCount);
+                LOG_INFO("thread: {} finish.", nCount);
+            });
+
+            auto nDBIndex = LoopPool::GetIndexInLoopPool();
+            auto pOldRocksDB = CreateDBToc(
+                dataBaseConfigData, std::string(s_strDataPathPrefix)
+                                        .append(std::to_string(nDBIndex)));
+            if (pOldRocksDB == nullptr) {
+                LOG_ERROR("CreateDBToc fail");
+                abort();
+                return;
+            }
+
+            // scan load old db data
+            rocksdb::ReadOptions read_options;
+            auto sliceEnd = rocksdb::Slice("\xFF");
+            read_options.iterate_upper_bound = &sliceEnd;
+            rocksdb::Iterator* iter = pOldRocksDB->NewIterator(read_options);
+
+            for (iter->Seek("\x00"); iter->Valid(); iter->Next()) {
+                auto strKey = iter->key().ToString();
+                auto strValue = iter->value().ToString();
+
+                // \TODO: batch put will better
+                // Put Data to new db path
+                pPutNewloopPool->Exec(
+                    CRC32(GetCurrentHashSlat(), strKey),
+                    [strKey = std::move(strKey), strValue = std::move(strValue),
+                     pNewDBIndex]() {
+                        auto index = LoopPool::GetIndexInLoopPool();
+                        auto pNewDB = (*pNewDBIndex)[index];
+                        pNewDB->Put(rocksdb::WriteOptions(), strKey, strValue);
+                    });
+            }
+
+            if (!iter->status().ok()) {
+                LOG_ERROR("range read fail: {}", iter->status().ToString());
+                abort();
+            }
+
+            delete iter;
+            DestoryDBToc(dataBaseConfigData, pOldRocksDB);
         });
 
-        if (nOldShardNum != 0) {
-            LoopPool readOldloopPool;
-            readOldloopPool.Start(nOldShardNum);
-            readOldloopPool.Broadcast([=, this]() {
-                auto nDBIndex = LoopPool::GetIndexInLoopPool();
-                auto pOldRocksDB = CreateDBToc(
-                    dataBaseConfigData, std::string(s_strDataPathPrefix)
-                                            .append(std::to_string(nDBIndex)));
-                if (pOldRocksDB == nullptr) {
-                    LOG_ERROR("CreateDBToc fail");
-                    return;
-                }
-
-                // scan load old db data
-                rocksdb::ReadOptions read_options;
-                auto sliceEnd = rocksdb::Slice("\xFF");
-                read_options.iterate_upper_bound = &sliceEnd;
-                rocksdb::Iterator* iter =
-                    pOldRocksDB->NewIterator(read_options);
-
-                for (iter->Seek("\x00"); iter->Valid(); iter->Next()) {
-                    auto strKey = iter->key().ToString();
-                    auto strValue = iter->value().ToString();
-
-                    // \TODO: batch put will better
-                    // Put Data to new db path
-                    pPutNewloopPool->Exec(
-                        CRC32(GetCurrentHashSlat(), strKey),
-                        [strKey = std::move(strKey),
-                         strValue = std::move(strValue), pNewDBIndex]() {
-                            auto index = LoopPool::GetIndexInLoopPool();
-                            auto pNewDB = (*pNewDBIndex)[index];
-                            pNewDB->Put(rocksdb::WriteOptions(), strKey,
-                                        strValue);
-                        });
-                }
-
-                if (!iter->status().ok()) {
-                    LOG_ERROR("range read fail: {}", iter->status().ToString());
-                }
-
-                delete iter;
-                DestoryDBToc(dataBaseConfigData, pOldRocksDB);
-            });
-
-            // block thread until fiinish
-            while (*pReadShardFinishCount < nOldShardNum) {
-                std::this_thread::yield();
-                readOldloopPool.Stop();
-            }
+        // block thread until fiinish
+        while (*pReadShardFinishCount < nOldShardNum) {
+            std::this_thread::yield();
         }
-
-        pPutNewloopPool->BroadcastAndDone(
-            [=, this]() {
-                auto index = LoopPool::GetIndexInLoopPool();
-                auto pNewDB = (*pNewDBIndex)[index];
-                DestoryDBToc(dataBaseConfigData, pNewDB);
-            },
-            [=, this]() {
-                pPutNewloopPool->Stop();
-
-                // \TODO: a switch stat maybe crash
-                // add a recovery status
-
-                // remove old
-                for (int64_t index = 0; index < nOldShardNum; ++index) {
-                    std::string strOldPath = dataBaseConfigData.strAddress;
-                    strOldPath.append(std::to_string(index));
-                    std::filesystem::remove_all(strOldPath);
-                }
-
-                // switch new
-                for (int64_t index = 0; index < dataBaseConfigData.nShardNum;
-                     ++index) {
-                    std::string strTmpPath = dataBaseConfigData.strAddress;
-                    strTmpPath.append(
-                        std::string("tmp_remap").append(std::to_string(index)));
-                    std::string strNewPath = dataBaseConfigData.strAddress;
-                    strNewPath.append(s_strDataPathPrefix)
-                        .append(std::to_string(index));
-                    std::filesystem::rename(strTmpPath, strNewPath);
-                }
-
-                // update meta
-                pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_num",
-                                  std::to_string(dataBaseConfigData.nShardNum));
-                pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_hash_slat",
-                                  GetCurrentHashSlat());
-                DestoryDBToc(dataBaseConfigData, pRocksDBMeta);
-                StartRocksDb(dataBaseConfigData);
-            });
+        readOldloopPool.Stop();
     }
+
+    pPutNewloopPool->BroadcastAndDone(
+        [=, this]() {
+            auto index = LoopPool::GetIndexInLoopPool();
+            auto pNewDB = (*pNewDBIndex)[index];
+            DestoryDBToc(dataBaseConfigData, pNewDB);
+        },
+        [=, this]() {
+            pPutNewloopPool->Stop();
+
+            // \TODO: a switch stat maybe crash
+            // add a recovery status
+
+            // remove old
+            for (int64_t index = 0; index < nOldShardNum; ++index) {
+                std::string strOldPath = dataBaseConfigData.strAddress;
+                strOldPath.append(std::to_string(index));
+                std::filesystem::remove_all(strOldPath);
+            }
+
+            // switch new
+            for (int64_t index = 0; index < dataBaseConfigData.nShardNum;
+                 ++index) {
+                std::string strTmpPath = dataBaseConfigData.strAddress;
+                strTmpPath.append(
+                    std::string("tmp_remap").append(std::to_string(index)));
+                std::string strNewPath = dataBaseConfigData.strAddress;
+                strNewPath.append(s_strDataPathPrefix)
+                    .append(std::to_string(index));
+                std::filesystem::rename(strTmpPath, strNewPath);
+            }
+
+            // update meta
+            pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_num",
+                              std::to_string(dataBaseConfigData.nShardNum));
+            pRocksDBMeta->Put(rocksdb::WriteOptions(), "shared_hash_slat",
+                              GetCurrentHashSlat());
+            DestoryDBToc(dataBaseConfigData, pRocksDBMeta);
+            StartRocksDb(dataBaseConfigData);
+        });
 
     return;
 }
