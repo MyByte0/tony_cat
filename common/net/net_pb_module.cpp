@@ -96,8 +96,9 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId,
             break;
         }
 
-        uint32_t remoteCheck = CheckCode(readBuff + sizeof(checkCode),
-                    packetLen + kHeadLen - sizeof(checkCode));
+        uint32_t remoteCheck =
+            CheckCode(readBuff + sizeof(checkCode),
+                      packetLen + kHeadLen - sizeof(checkCode));
         if (checkCode != remoteCheck) {
             LOG_ERROR(
                 "check code error, remote code: {}, remote data check: {}",
@@ -132,11 +133,15 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     if constexpr (std::endian::native == std::endian::big) {
         *((uint32_t*)head + 1) = (uint32_t)length;
         *((uint32_t*)head + 2) = msgType;
-        *(uint32_t*)head = CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t), data, length);
+        *(uint32_t*)head =
+            CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t),
+                      data, length);
     } else {
         *((uint32_t*)head + 1) = SwapUint32((uint32_t)length);
         *((uint32_t*)head + 2) = SwapUint32(msgType);
-        *(uint32_t*)head = SwapUint32(CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t), data, length));
+        *(uint32_t*)head = SwapUint32(
+            CheckCode((uint32_t*)head + 1, size_t(kHeadLen) - sizeof(uint32_t),
+                      data, length));
     }
 
     pSession->WriteAppend((const char*)head, sizeof(head), data, length);
@@ -164,11 +169,16 @@ bool NetPbModule::WriteData(Session::session_id_t sessionId, uint32_t msgType,
     if constexpr (std::endian::native == std::endian::big) {
         *((uint32_t*)head + 1) = (uint32_t)(lengthHead + lengthBody);
         *((uint32_t*)head + 2) = msgType;
-        *(uint32_t*)head = CheckCode((uint32_t*)head + 1, lengthHead + kHeadLen - sizeof(uint32_t), dataBody, lengthBody);
+        *(uint32_t*)head = CheckCode((uint32_t*)head + 1,
+                                     lengthHead + kHeadLen - sizeof(uint32_t),
+                                     dataBody, lengthBody);
     } else {
-        *((uint32_t*)head + 1) = SwapUint32((uint32_t)(lengthHead + lengthBody));
+        *((uint32_t*)head + 1) =
+            SwapUint32((uint32_t)(lengthHead + lengthBody));
         *((uint32_t*)head + 2) = SwapUint32(msgType);
-        *(uint32_t*)head = SwapUint32(CheckCode((uint32_t*)head + 1, lengthHead + kHeadLen - sizeof(uint32_t), dataBody, lengthBody));
+        *(uint32_t*)head = SwapUint32(CheckCode(
+            (uint32_t*)head + 1, lengthHead + kHeadLen - sizeof(uint32_t),
+            dataBody, lengthBody));
     }
 
     pSession->WriteAppend((const char*)head, sizeof(head) + lengthHead,

@@ -120,7 +120,7 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId,
         }
 
         if (result == Http::RequestParser::ResultType::good) {
-            auto&& http_request = pContext->FetchResult();
+            auto http_request = std::move(pContext->FetchResult());
             {
                 std::lock_guard<SpinLock> lockGuard(m_lockMsgFunction);
                 m_vecMsgFunction.emplace_back(

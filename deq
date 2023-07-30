@@ -1,0 +1,508 @@
+[33mcommit 3fceb4cfcdb96e6e3dfe3f403d04deda380c26de[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 23:02:27 2023 +0800
+
+    feat multi thread for db module
+
+[33mcommit 81a612c0ddfa2d60df8b71a9e4b6019e973f2c0c[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 23:01:18 2023 +0800
+
+    format
+
+[33mcommit 7908aa38b66cfcf9e36582148bee975ac6aebc49[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 23:00:52 2023 +0800
+
+    ii
+
+[33mcommit 0191177d4728df604f9745b0cd38d27aa559ccc4[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 23:00:32 2023 +0800
+
+    cpp format
+
+[33mcommit 3a797388ab79c3ba91b695e77ed8e4b5c0d0603f[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:59:56 2023 +0800
+
+    client test add log info on UserIndex
+
+[33mcommit e63c8728236ed1c90b8c1e87f260d5963b25f502[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:59:10 2023 +0800
+
+    ServiceGovernmentModule singed unsigend warning fix
+
+[33mcommit 8aa2b4db39c92ea82da5c94e556376ebb84a01cb[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:58:12 2023 +0800
+
+    crc add interface for strings
+
+[33mcommit 04e928849bce6f71e94c7291e5ed35c87828710c[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:57:33 2023 +0800
+
+    AwaitableExecAfterOnLoop fix init member order
+
+[33mcommit d6b3e2a0d4447733c0108fbaa53cbfb5fa593280[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:56:56 2023 +0800
+
+    looppool add GetLoopIndex interface
+
+[33mcommit 2e27a45dee722d6d95443ef86a878c38b433064d[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:55:45 2023 +0800
+
+    db_utils funRang add arg limit
+
+[33mcommit 13e0ee767961d1412cb35dc63c3b7bca7939201d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jul 22 22:54:32 2023 +0800
+
+    database config add ShardNum
+    
+    database config ShardNum for multi thread sharding operator
+
+[33mcommit e2eb2d82a04f8a8b03aad937507bf0727966e099[m
+Author: Mybyte0 <my_byte@outlook.com>
+Date:   Mon Jul 17 18:43:44 2023 +0800
+
+    open client test
+
+[33mcommit 676c7942b43e4f3089dbd2f4b3ffab61e5ada2e9[m
+Author: Mybyte0 <my_byte@outlook.com>
+Date:   Mon Jul 17 18:40:59 2023 +0800
+
+    rename enum ServerType member symbol
+
+[33mcommit cfecd7c986e379cdc79cbebab0e7b1e4303bac50[m
+Author: Mybyte0 <my_byte@outlook.com>
+Date:   Mon Jul 17 18:37:58 2023 +0800
+
+    net module connect fix
+
+[33mcommit 78ed3784c29e405cb9c6f5459ecb7cac846b75ea[m
+Author: Mybyte0 <my_byte@outlook.com>
+Date:   Sun Jul 2 11:15:13 2023 +0800
+
+    net pb modify protoc
+
+[33mcommit f8df205b2b2ef37f9c90e917f6743eeae4fcba35[m
+Author: Mybyte0 <mybyte@outlook.com>
+Date:   Sun Jul 2 10:56:38 2023 +0800
+
+    windows vcpkg adapt
+
+[33mcommit ec4782702b6d1c7869d7b95e637bc05b40d58517[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed May 3 22:51:51 2023 +0800
+
+    db_utils add callback get_range
+
+[33mcommit 525aa0f76aeda26005bf52bd8cc3bdf832a9c21e[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Apr 1 21:22:56 2023 +0800
+
+    Readme vcpkg upfate
+
+[33mcommit 9a942ea04cefa7d12c3cec3107364e1346f95c7d[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Apr 1 21:13:48 2023 +0800
+
+    format code files
+
+[33mcommit 64058fe25957c690c5e0915bc2f51844e2c23c5c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Apr 1 21:02:52 2023 +0800
+
+    add dev dockerfile
+
+[33mcommit 307a08c111759f3ec6a3e36b0890792749894f74[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Apr 1 20:09:58 2023 +0800
+
+    python tools fix path
+
+[33mcommit 7ea41f1cc6775fc0de3e62b63274c17047f2f1dd[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:20:20 2023 +0800
+
+    remove NetThreadNum on service module
+
+[33mcommit bcffa8a8682ac56062feb4584a7e850e10c7a3fb[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:18:54 2023 +0800
+
+    build http interface
+
+[33mcommit 9ff5bd004b01a9534d1ada606a8aea6e3339a126[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:18:08 2023 +0800
+
+    optimize net session & net module
+
+[33mcommit f69968856d3ee3d6528b5ca45b8d655d91de8bbb[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:16:52 2023 +0800
+
+    fix: remove listen port on CientPbModule
+
+[33mcommit 47f6cc06ed8bfeca362e315d108f9b6774068fde[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:16:02 2023 +0800
+
+    add define type LoopPoolPtr
+
+[33mcommit 989cde5d50c38330c7aaec8e49de1b1fc0b8d14e[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Mar 12 10:15:45 2023 +0800
+
+    add define type LoopPtr
+
+[33mcommit e7f155110ae4c297e1c7ea085d936f7ee65e8c07[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:57:19 2023 +0800
+
+    add http module on gateserver
+
+[33mcommit d932f05f39296901bc12b7a0965c25b745e00e90[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:56:50 2023 +0800
+
+    refactor net session
+
+[33mcommit 7abf6bf9d396555c83193367622b897909a49f68[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:55:11 2023 +0800
+
+    build http_request
+
+[33mcommit 8c0245f8e3b32c97516ae0f953c57aded5a781d0[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:54:04 2023 +0800
+
+    add http address config on serverlist
+
+[33mcommit 8a5a47c57d373d787d45ddd617f0812fa4af7946[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:53:05 2023 +0800
+
+    fix var_define warning on string macro
+
+[33mcommit cebbef6fd2679d325c5ad4d5ccb08382b28cd28e[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:49:17 2023 +0800
+
+    add gen config script in cmakelists.txt
+
+[33mcommit dfd447b684a127e0e6fca4fa641e107a51183bfe[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Mar 1 22:48:12 2023 +0800
+
+    fix log_trace add header file
+
+[33mcommit c1b65929b893079ded7918f3420ecef935cac065[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Feb 15 21:01:04 2023 +0800
+
+    var_definevar_define separate public and private
+
+[33mcommit 558279379d67e3f74094ae3ca05935642faa6a77[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Feb 15 20:59:06 2023 +0800
+
+    add anonymous_var define
+
+[33mcommit de8d28eb53c51738d2cc02354443feec1cf7c612[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Tue Jan 31 20:57:35 2023 +0800
+
+    add http_module
+
+[33mcommit 5775040a3c8c43c910074287e2291c644bd522d2[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Dec 31 18:03:18 2022 +0800
+
+    rename proto lib in app
+
+[33mcommit 5e54b87d740cbb2554823ac6233523d3e1564c57[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Dec 31 17:54:59 2022 +0800
+
+    mv path example to app
+
+[33mcommit 6e98fbcdb28796b7c3d4a0d5eb58ec2b65b3b45f[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Mon Dec 19 21:31:26 2022 +0800
+
+    data base interface modify
+
+[33mcommit be0e8a7247a3f1bf5997f2cee9bbca0d2e565db6[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Dec 18 22:54:43 2022 +0800
+
+    modify database config
+
+[33mcommit 95319422ddcf013d24938d7b1365579c14e2a9d7[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Dec 14 23:28:51 2022 +0800
+
+    default use rocksdb
+
+[33mcommit 7beace963a049f05067ca8496de77f32887821f8[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Sun Dec 11 23:41:32 2022 +0800
+
+    Delete common/mysql directory
+    
+    remove  common/mysql because it move to  common/database
+
+[33mcommit 653f68d9b5d85c67eb283ec18bb385f542a269a5[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Dec 14 23:26:00 2022 +0800
+
+    modify database on message kv save
+
+[33mcommit 8a9a3199da629a6a4478ccfbdfc21f2a04164e11[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sat Dec 3 21:45:13 2022 +0800
+
+    add rocksdb db api
+
+[33mcommit 8091f5c4ab687f8e1081dfd3485b01095c8c0955[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 16 23:33:16 2022 +0800
+
+    fixed README.md docker cmd error
+
+[33mcommit 5d004b96266e84a113f5ef9b3bb56183d2b63ff1[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 16 23:32:44 2022 +0800
+
+    i
+
+[33mcommit 11e9c743e86288d63c226ed0b731450aa4ac370e[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 16 23:32:14 2022 +0800
+
+    rd
+
+[33mcommit 2ffcf5751c646e3d4c813465bb6b58fbf23d6f84[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 16 23:30:47 2022 +0800
+
+    README build
+
+[33mcommit fb87c867d14249353ba7099a656f82c4c11b5e4c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 16 23:25:35 2022 +0800
+
+    cmake optimize
+
+[33mcommit 1122e5111dcef61097625419010cee5015276cd0[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 9 23:11:12 2022 +0800
+
+    add db_exec_module switch
+
+[33mcommit a4fd1c8689d8cf2ef7c4d60fd9fbd563b672cb9c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 9 22:47:14 2022 +0800
+
+    modify database interface
+
+[33mcommit 66bd1aaaa59cd68b0a4b50979c92d5f4f833f34c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Wed Nov 9 20:46:06 2022 +0800
+
+    var_define.h add string_view str define
+
+[33mcommit d34205eb9f44f0ed431246843415b02d41b5abed[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Sun Nov 6 23:59:23 2022 +0800
+
+    optimize the warnning
+
+[33mcommit 48debf4aded7b8d74cd411f4a0eb413d1264c244[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Mon Sep 12 23:36:46 2022 +0800
+
+    orm tool
+
+[33mcommit 54b23d4f955fd01c4c823c4cf0ab021930919e9a[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Mon Sep 12 23:36:12 2022 +0800
+
+    add orm tool
+
+[33mcommit 2aff1dd3f8e735eeed4585103b16bc2ba7bd2b7c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Mon Sep 12 23:34:04 2022 +0800
+
+    fixed in win vc
+
+[33mcommit 221a0aabfdb6cd94269dfff5c05fb8c9d7948c43[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Jul 14 22:57:13 2022 +0800
+
+    update dockerhub link
+
+[33mcommit 27818dfa9100ddd140c68d95dfde444f8add9376[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Mon May 16 14:10:12 2022 +0800
+
+    Create README.md
+
+[33mcommit 969c58675e32f6f8e272c0ffd4fcd6e589af13d6[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Jul 14 22:13:47 2022 +0800
+
+     config path modify
+
+[33mcommit be5405983f123885c7f709c0d1e97cbc5151e584[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Jul 14 22:13:14 2022 +0800
+
+    add mysql module
+
+[33mcommit 4faa2f385677e86659f9d68c84a9ff558e63d371[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Mar 13 13:59:57 2022 +0800
+
+    clang-format fix
+
+[33mcommit d8a64a6645a7b6bfcfd2b2b04e441581e9592ee6[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:33:20 2022 +0800
+
+    clang format
+
+[33mcommit 8425bc28ad7d85f23983d18f9b7e8857f544b068[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:28:58 2022 +0800
+
+    clang format modify
+
+[33mcommit 637e4654a5979cab6be16bd099990842ef030fc5[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:28:03 2022 +0800
+
+     client manager add waitable task
+
+[33mcommit 8418a6daa384668b4b4fca4fc91f25db333899f0[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:27:13 2022 +0800
+
+    optimize login
+
+[33mcommit 4e6c7281f08235d45fb6220f3861c32e1cf6462e[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:26:31 2022 +0800
+
+    service optimize
+
+[33mcommit a478e9fa34bb2c1dde4a94789682355e60b0e113[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:25:41 2022 +0800
+
+    rpc add assert thread check
+
+[33mcommit ab1a9965ff22321b43affbe05b5a518c527bfded[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:24:57 2022 +0800
+
+    modify common net modules
+
+[33mcommit 9402ae884ebe6c575c16e35ef28e035f9adcae05[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:23:38 2022 +0800
+
+    proto scrpit move
+
+[33mcommit 22e916727b8d1d172d2f1d845bb2d0f66b462ca6[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:22:25 2022 +0800
+
+    cmake win use env proto exec
+
+[33mcommit fa8ce2f7b5385e000f9e0882c3a1852fdb4a770e[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Sun Mar 6 23:26:34 2022 +0800
+
+    optimize net_pb_module RegisterHandle
+    optimize client manager module
+
+[33mcommit 537fd69507c7e85083da5cbac5cf72c13300edfc[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Thu Mar 10 23:19:08 2022 +0800
+
+    add waitable task coroutine
+
+[33mcommit ce130ab93d376ab6a74846f7bf4b0117b882ea3b[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Mar 6 23:25:09 2022 +0800
+
+    fix AwaitableExecAfterOnLoop bug
+
+[33mcommit 3518bb850bf7b0612904174a62cd3eed41fa66b4[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Sun Mar 6 22:49:23 2022 +0800
+
+    Update README.md
+
+[33mcommit eacd5679bab1ae0be2b511df5983e03d61ffed38[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Mar 6 22:12:54 2022 +0800
+
+    add test
+
+[33mcommit 64bf4d5d9396b3e191ce0f63b8eefca452e5eccd[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Mar 6 02:17:05 2022 +0800
+
+    optimize file_path,add coroutine rpc api, cmake modify pb
+
+[33mcommit 3e585d0c9831bc1579e0913a12a56fc2aa65b322[m
+Author: MyByte0 <my_byte@outlook.com>
+Date:   Sat Jan 29 21:30:05 2022 +0800
+
+    fix rpc module
+
+[33mcommit 3cf64956557b079b0697c9c7d58f191f25cd2553[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Sun Jan 16 21:50:46 2022 +0800
+
+    Create README.md
+
+[33mcommit 04fc434cf9e56c427a6a0282eec83b3e454489a8[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Jan 16 21:01:15 2022 +0800
+
+     rm config invalid file
+
+[33mcommit 46a96c4462fc7f0f2c262a3b1b6b538c7744385e[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sun Jan 9 22:24:42 2022 +0800
+
+    add rpc module
+
+[33mcommit 000ea7368208060c04ffe2c520d6a7a7b2d0dbda[m
+Author: mybyte0 <my_byte@outlook.com>
+Date:   Sat Jan 8 11:13:08 2022 +0800
+
+    build proto
+
+[33mcommit 705197edcb3b88d885d6009c6882f5248473df52[m
+Author: my_byte <My_Byte@outlook.com>
+Date:   Thu Jan 6 21:49:07 2022 +0800
+
+    add proto
+
+[33mcommit 2a8e539242a43e5d9b2e380fd7b18b6c9d3e948c[m
+Author: “mybyte” <my_byte@outlook.com>
+Date:   Thu Jan 6 21:19:32 2022 +0800
+
+    build
