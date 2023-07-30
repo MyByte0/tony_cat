@@ -21,14 +21,14 @@ TONY_CAT_SPACE_BEGIN
 class XmlConfigModule;
 
 class RpcModule : public ModuleBase {
- public:
+public:
     explicit RpcModule(ModuleManager* pModuleManager);
     virtual ~RpcModule();
 
     void BeforeInit() override;
     void OnStop() override;
 
- private:
+private:
     template <class _TypeMsgPacketHead, class _TypeMsgPacketBody>
     struct RpcContext {
         using PbFunction = std::function<void(Session::session_id_t sessionId,
@@ -38,7 +38,7 @@ class RpcModule : public ModuleBase {
         std::unordered_map<int64_t, PbFunction> mapCurrentCallback;
     };
 
- public:
+public:
     enum : int {
         kRpcTimeoutMillSeconds = 15000,
     };
@@ -72,20 +72,22 @@ class RpcModule : public ModuleBase {
             if (auto itContext =
                     pRpcContext->mapCurrentCallback.find(nRspQueryId);
                 itContext != pRpcContext->mapCurrentCallback.end()) {
-                if (const auto& func = itContext->second; nullptr != func) {
+                if (auto func = std::move(itContext->second); nullptr != func) {
+                    pRpcContext->mapCurrentCallback.erase(itContext);
                     func(sessionId, headRsp, bodyRsp);
                 }
-                pRpcContext->mapCurrentCallback.erase(itContext);
             } else {
                 if (itContext = pRpcContext->mapLastCallback.find(nRspQueryId);
                     itContext != pRpcContext->mapLastCallback.end()) {
-                    if (const auto& func = itContext->second; nullptr != func) {
+                    if (auto func = std::move(itContext->second);
+                        nullptr != func) {
+                        pRpcContext->mapLastCallback.erase(itContext);
                         func(sessionId, headRsp, bodyRsp);
                     }
-                    pRpcContext->mapLastCallback.erase(itContext);
                 } else {
-                    LOG_ERROR("can not find rpc callback, query_id:{}",
-                              nRspQueryId);
+                    LOG_ERROR(
+                        "can not find rpc callback, session:{}, query_id:{}",
+                        sessionId, nRspQueryId);
                 }
             }
         });
@@ -143,6 +145,8 @@ class RpcModule : public ModuleBase {
 
         // store cb by query_id
         auto nCurrentQueryId = GenQueryId();
+        LOG_TRACE("request meseage:{}. query_id:{}", _TypeMsgPacketBody::msgid,
+                  nCurrentQueryId);
         auto pRpcContext = GetRpcContext<RspRpcContext>(msgId);
         pRpcContext->mapCurrentCallback.emplace(nCurrentQueryId,
                                                 PbRspFunction(funcResult));
@@ -222,11 +226,11 @@ class RpcModule : public ModuleBase {
         _TypeMsgPacketBodyRsp rspMsg_;
     };
 
- private:
+private:
     int64_t GenQueryId();
     static RpcModule* GetInstance();
 
- private:
+private:
     static RpcModule* m_pRpcModule;
     NetPbModule* m_pNetPbModule = nullptr;
 
