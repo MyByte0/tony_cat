@@ -18,7 +18,7 @@
 TONY_CAT_SPACE_BEGIN
 
 class XmlConfigModule;
-class DataBaseConfigData;
+struct DataBaseConfigData;
 
 class ServiceGovernmentModule;
 
