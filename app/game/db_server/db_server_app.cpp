@@ -54,6 +54,10 @@ void DBServerApp::InitModule(int32_t nServerIndex) {
     pServiceGovernmentModule->SetServerInstance(
         magic_enum::enum_name(ServerType::DBServer),
         ServerType::DBServer, nServerIndex);
+    auto pLogModule =
+        FIND_MODULE(&m_moduleManager, LogModule);
+    pLogModule->SetLogName(
+        std::string(magic_enum::enum_name(ServerType::DBServer)).append(std::to_string(nServerIndex)));
 
     m_moduleManager.Init();
 

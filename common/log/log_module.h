@@ -29,7 +29,7 @@
 TONY_CAT_SPACE_BEGIN
 
 class LogModule : public ModuleBase {
- public:
+public:
     explicit LogModule(ModuleManager* pModuleManager);
     virtual ~LogModule();
 
@@ -41,7 +41,7 @@ class LogModule : public ModuleBase {
 
     virtual void OnLoadConfig();
 
- public:
+public:
     enum class LOG_LEVEL_TYPE {
         LOG_LEVEL_TRACE = 0,
         LOG_LEVEL_DEBUG,
@@ -52,15 +52,18 @@ class LogModule : public ModuleBase {
         LOG_LEVEL_MAX,
     };
 
- public:
+public:
+    // SetLogName before BeforeInit
+    void SetLogName(const std::string& strLogName);
     void SetLogLevel(LOG_LEVEL_TYPE log_level);
     LOG_LEVEL_TYPE GetLogLevel() const;
     static LogModule* GetInstance();
 
- protected:
+protected:
     static LogModule* m_pLogModule;
 
-    LOG_LEVEL_TYPE m_log_level = LOG_LEVEL_TYPE::LOG_LEVEL_TRACE;
+    std::string m_strLogName;
+    LOG_LEVEL_TYPE m_eLogLevel = LOG_LEVEL_TYPE::LOG_LEVEL_TRACE;
 };
 
 TONY_CAT_SPACE_END
@@ -72,7 +75,7 @@ TONY_CAT_SPACE_END
             LOG(INFO) << "TRACE: "                                       \
                       << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__);       \
             std::cout << "TRACE: " << __FILE__ << ":" << __LINE__ << " " \
-                      << __FUNCTION__                                    \
+                      << __FUNCTION__ << " "                             \
                       << STR_FORMAT(_STR_FMT_TEXT, ##__VA_ARGS__)        \
                       << std::endl;                                      \
         }                                                                \

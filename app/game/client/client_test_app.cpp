@@ -49,6 +49,11 @@ void ClientTestApp::RegisterModule() {
 }
 
 void ClientTestApp::InitModule(int32_t nServerIndex) {
+    auto pLogModule =
+        FIND_MODULE(&m_moduleManager, LogModule);
+    pLogModule->SetLogName(
+        std::string("TestClient").append(std::to_string(nServerIndex)));
+
     m_moduleManager.Init();
 
     LOG_INFO("init server {}", m_name);
