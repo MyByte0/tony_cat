@@ -39,6 +39,10 @@ void LoopPool::Exec(std::size_t index, const Loop::FunctionRun& func) {
 }
 
 void LoopPool::Broadcast(Loop::FunctionRun&& func) {
+    if (func == nullptr) {
+        return;
+    }
+
     auto pFunDo = std::make_shared<Loop::FunctionRun>(std::move(func));
     std::for_each(m_vecLoops.begin(), m_vecLoops.end(),
                   [pFunDo](Loop& loop) mutable {
@@ -46,27 +50,24 @@ void LoopPool::Broadcast(Loop::FunctionRun&& func) {
                   });
 }
 
-void LoopPool::Broadcast(const Loop::FunctionRun& func) {
-    std::for_each(m_vecLoops.begin(), m_vecLoops.end(),
-                  [func](Loop& loop) { loop.Exec(func); });
-}
-
 void LoopPool::BroadcastAndDone(Loop::FunctionRun&& funcDo,
                                 Loop::FunctionRun&& funcFinish) {
     auto& curLoop = Loop::GetCurrentThreadLoop();
-    auto pFinishCount = std::make_shared<std::atomic<uint64_t>>(0);
-    auto nFinishSize = m_vecLoops.size();
-    auto pFinishDo = std::make_shared<Loop::FunctionRun>(std::move(funcFinish));
-    auto pFunDo = std::make_shared<Loop::FunctionRun>(std::move(funcDo));
-    for (std::size_t iVecLoops = 0; iVecLoops < nFinishSize; ++iVecLoops) {
-        m_vecLoops[iVecLoops].Exec(
-            [pFunDo, pFinishDo, &curLoop, pFinishCount, nFinishSize]() {
+    auto pFunDo = std::shared_ptr<Loop::FunctionRun>(
+        new Loop::FunctionRun(std::move(funcDo)),
+        [&curLoop,
+         funcFinish = std::move(funcFinish)](Loop::FunctionRun* pData) {
+            delete pData;
+            curLoop.Exec(
+                [funcFinish = std::move(funcFinish)]() { funcFinish(); });
+        });
+    for (std::size_t iVecLoops = 0; iVecLoops < m_vecLoops.size();
+         ++iVecLoops) {
+        m_vecLoops[iVecLoops].Exec([pFunDo]() {
+            if (*pFunDo) {
                 (*pFunDo)();
-                auto nCurCount = ++(*pFinishCount);
-                if (nCurCount == nFinishSize) {
-                    curLoop.Exec([pFinishDo]() { (*pFinishDo)(); });
-                }
-            });
+            }
+        });
     }
 }
 

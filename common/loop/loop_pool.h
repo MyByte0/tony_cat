@@ -25,7 +25,6 @@ public:
     void Exec(std::size_t index, const Loop::FunctionRun& func);
 
     void Broadcast(Loop::FunctionRun&& func);
-    void Broadcast(const Loop::FunctionRun& func);
 
     void BroadcastAndDone(Loop::FunctionRun&& funcDo,
                           Loop::FunctionRun&& funcFinish);
