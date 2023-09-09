@@ -9,7 +9,7 @@
 TONY_CAT_SPACE_BEGIN
 
 class GateServerApp {
- public:
+public:
     GateServerApp();
     ~GateServerApp() = default;
 
@@ -17,14 +17,14 @@ class GateServerApp {
     void RegisterSignal();
     void Start(int32_t nServerIndex);
 
- private:
+private:
     void RegisterModule();
 
     void InitModule(int32_t nServerIndex);
     void Run();
     void DestoryModule();
 
- private:
+private:
     static ModuleManager m_moduleManager;
     std::string m_name;
 };
