@@ -60,7 +60,7 @@ public:
         return reinterpret_cast<MYSQL*>(t_pMysql);
     }
 
-    void DBLoopExec(const std::string strIndexKey,
+    void DBLoopExec(const std::string& strIndexKey,
                     std::function<void()>&& funcDo) {
         m_loopPool.Exec(CRC32(strIndexKey, GetCurrentHashSlat()),
                         std::move(funcDo));
