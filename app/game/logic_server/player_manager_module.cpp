@@ -55,12 +55,13 @@ void PlayerManagerModule::OnHandleCSPlayerLoginReq(
 
     // request msg data
     auto pQueryDataReq = NetMemoryPool::PacketCreate<Pb::SSQueryDataReq>();
+    auto pQueryHeadReq = NetMemoryPool::PacketCreate<Pb::ServerHead>(*head);
     pQueryDataReq->set_user_id(head->user_id());
     auto querySessionId = m_pServiceGovernmentModule->GetServerSessionIdByKey(
         ServerType::DBServer, head->user_id());
     // respond msg data
     return m_pRpcModule->RpcRequest(
-        querySessionId, head, pQueryDataReq,
+        querySessionId, pQueryHeadReq, pQueryDataReq,
         [=, this](
             Session::session_id_t nSessionIdRsp,
             NetMemoryPool::PacketNode<Pb::ServerHead> headRsp,
