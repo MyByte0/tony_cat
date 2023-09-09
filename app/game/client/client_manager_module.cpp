@@ -48,11 +48,12 @@ CoroutineTask<void> ClientManagerModule::StartTestClient() {
     nWaitMillSecond = 1000;
     for (int i = 0; i < 1000000; ++i) {
         LOG_TRACE("start login client");
+        co_await AwaitableExecAfter(nWaitMillSecond);
 
         if (auto nResult = co_await CreateNewClient(); nResult != 0) {
             LOG_ERROR("connect to server error:{}", nResult);
         } else {
-            LOG_TRACE("start login success");
+            LOG_TRACE("login success");
         }
     }
 }
@@ -61,7 +62,6 @@ CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {
     static int32_t s_nCLientNum = 0;
     auto nCurClient = ++s_nCLientNum;
 
-    co_await AwaitableExecAfter(10);
     // connect to gate server
     auto pServerInstanceInfo =
         m_pServiceGovernmentModule->GetServerInstanceInfo(
