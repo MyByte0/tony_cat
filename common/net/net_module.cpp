@@ -25,7 +25,7 @@ void NetModule::OnInit() {
 }
 
 void NetModule::OnStop() {
-    for (auto& elemMapSession : m_mapSession) {
+    for (const auto& elemMapSession : m_mapSession) {
         DoSessionAsyncClose(elemMapSession.second);
     }
 
@@ -113,9 +113,6 @@ void NetModule::Accept(AcceptorPtr pAcceptor) {
     assert(session_loop != nullptr);
 
     auto pSession = std::make_shared<Session>(*session_loop, session_id);
-    pSession->m_timerSessionAlive = session_loop->ExecAfter(
-        kDefaultTimeoutMillseconds,
-        [this, session_id]() { this->DoTimerSessionReadTimeout(session_id); });
     pSession->SetSessionReadCb(std::bind(&NetModule::OnReadSession, this,
                                          pAcceptor, std::placeholders::_1,
                                          std::placeholders::_2));
@@ -126,6 +123,11 @@ void NetModule::Accept(AcceptorPtr pAcceptor) {
             pSession->GetLoop().Exec([this, pSession] {
                 t_mapSessionInNetLoop.emplace(pSession->GetSessionId(),
                                               pSession);
+                auto session_id = pSession->GetSessionId();
+                pSession->m_timerSessionAlive = pSession->GetLoop().ExecAfter(
+                    kDefaultTimeoutMillseconds, [this, session_id]() {
+                        this->DoTimerSessionReadTimeout(session_id);
+                    });
 
                 m_pModuleManager->GetMainLoop().Exec([this, pSession]() {
                     uint32_t port =

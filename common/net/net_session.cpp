@@ -9,7 +9,11 @@ TONY_CAT_SPACE_BEGIN
 Session::Session(Loop& loop, session_id_t session_id)
     : m_loopIO(loop), m_socket(loop.GetIoContext()), m_nSessionId(session_id) {}
 
-Session::~Session() {}
+Session::~Session() {
+    if (m_timerSessionAlive != nullptr) {
+        GetLoop().Cancel(m_timerSessionAlive);
+    }
+}
 
 void Session::AcceptInitialize() {
     asio::socket_base::linger lingerOpt(false, 0);

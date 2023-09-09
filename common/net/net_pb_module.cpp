@@ -73,8 +73,7 @@ void NetPbModule::Connect(
     const Session::FunSessionClose& funOnSessionClose /* = nullptr*/) {
     static uint64_t cnt = 0;
     return m_pNetModule->Connect(
-        strAddress, addressPort,
-        *m_workLoop->GetLoop(cnt++),
+        strAddress, addressPort, *m_workLoop->GetLoop(cnt++),
         std::bind(&NetPbModule::ReadData, this, std::placeholders::_1,
                   std::placeholders::_2),
         funOnSessionConnect, funOnSessionClose);
@@ -88,11 +87,13 @@ bool NetPbModule::ReadData(Session::session_id_t sessionId,
                            SessionBuffer& buf) {
     while (buf.GetReadableSize() >= kHeadLen) {
         auto readBuff = buf.GetReadData();
+        const uint32_t* readBuffAlig =
+            reinterpret_cast<const uint32_t*>(readBuff);
         uint32_t checkCode = 0, msgType = 0;
         size_t packetLen = 0;
-        checkCode = SwapUint32(*(uint32_t*)readBuff);
-        packetLen = SwapUint32(*((uint32_t*)readBuff + 1));
-        msgType = SwapUint32(*((uint32_t*)readBuff + 2));
+        checkCode = SwapUint32(*readBuffAlig);
+        packetLen = SwapUint32(*(readBuffAlig + 1));
+        msgType = SwapUint32(*(readBuffAlig + 2));
 
         if (buf.GetReadableSize() < packetLen + kHeadLen) {
             break;
@@ -169,7 +170,7 @@ uint32_t NetPbModule::GetPacketHeadLength(const uint32_t* pData) {
 }
 
 void NetPbModule::SetPacketHeadLength(uint32_t* pData, uint32_t lenHead) {
-    *(uint32_t*)pData = SwapUint32(lenHead);
+    *reinterpret_cast<uint32_t*>(pData) = SwapUint32(lenHead);
 }
 
 uint32_t NetPbModule::SwapUint32(uint32_t value) {
