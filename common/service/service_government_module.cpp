@@ -113,7 +113,7 @@ void ServiceGovernmentModule::InitConfig() {
 void ServiceGovernmentModule::InitListen() {
     if (GetMineServerInfo().strServerIp.empty() ||
         GetMineServerInfo().nPort == 0) {
-        LOG_ERROR("Get App Address Empty");
+        LOG_INFO("Get App Address Empty");
         return;
     }
     m_pNetPbModule->Listen(GetMineServerInfo().strServerIp,
@@ -121,10 +121,10 @@ void ServiceGovernmentModule::InitListen() {
 }
 
 void ServiceGovernmentModule::InitConnect() {
-    for (auto& elemMapServerConnectList : m_mapConnectServerList) {
-        auto& mapServerInstanceInfo = elemMapServerConnectList.second;
-        for (auto& elemMapServerInstanceInfo : mapServerInstanceInfo) {
-            auto& stServerInstanceInfo = elemMapServerInstanceInfo.second;
+    for (const auto& elemMapServerConnectList : m_mapConnectServerList) {
+        const auto& mapServerInstanceInfo = elemMapServerConnectList.second;
+        for (const auto& elemMapServerInstanceInfo : mapServerInstanceInfo) {
+            const auto& stServerInstanceInfo = elemMapServerInstanceInfo.second;
             ConnectServerInstance(stServerInstanceInfo);
         }
     }

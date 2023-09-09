@@ -363,18 +363,19 @@ private:
 
         // Serialize packet
         char* pLenPacketHead = pData + kHeadLen;
-        *((uint32_t*)pLenPacketHead) = SwapUint32(pbPacketHeadLen);
+        *(reinterpret_cast<uint32_t*>(pLenPacketHead)) =
+            SwapUint32(pbPacketHeadLen);
         char* pPacketHead = pData + kHeadLen + sizeof pbPacketHeadLen;
         packetHead->SerializeToArray(pPacketHead, pbPacketHeadLen);
         char* pPacketBody =
             pData + kHeadLen + sizeof pbPacketHeadLen + pbPacketHeadLen;
         packetBody->SerializeToArray(pPacketBody, pbPacketBodyLen);
 
-        uint8_t* head = (uint8_t*)pData;
-        *((uint32_t*)head + 1) = SwapUint32(nPbPacketLen);
-        *((uint32_t*)head + 2) = SwapUint32(msgType);
-        *(uint32_t*)head =
-            SwapUint32(CheckCode((const char*)((uint32_t*)pData + 1),
+        uint32_t* pHeadAlig = reinterpret_cast<uint32_t*>(pData);
+        *(pHeadAlig + 1) = SwapUint32(nPbPacketLen);
+        *(pHeadAlig + 2) = SwapUint32(msgType);
+        *(pHeadAlig) =
+            SwapUint32(CheckCode(reinterpret_cast<const char*>(pHeadAlig + 1),
                                  nPbPacketLen + kHeadLen - sizeof(uint32_t)));
 
         pSession->MoveWritePos(nAllDataLen);
