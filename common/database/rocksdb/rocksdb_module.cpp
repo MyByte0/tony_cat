@@ -4,13 +4,13 @@
 
 #include <atomic>
 #include <filesystem>
+#include <latch>
 #include <memory>
 
 #include "common/config/xml_config_module.h"
 #include "common/log/log_module.h"
 #include "common/module_manager.h"
 #include "common/service/service_government_module.h"
-#include "common/utility/defer.h"
 #include "protocol/server_base.pb.h"
 
 TONY_CAT_SPACE_BEGIN
@@ -166,14 +166,12 @@ void RocksDBModule::RemapDBDataAndStart(
     pRocksDBMeta->Get(rocksdb::ReadOptions(), "shared_hash_slat",
                       &strValShardPrefix);
 
-    std::shared_ptr<std::atomic<int32_t>> pReadShardFinishCount =
-        std::make_shared<std::atomic<int32_t>>(0);
     auto nOldShardNum = ::atoll(strValShardNum.c_str());
 
     if (nOldShardNum == dataBaseConfigData.nShardNum &&
         strValShardPrefix == GetCurrentHashSlat()) {
         LOG_INFO(
-            "dataBaseConfigData nShardNum not changed, ShardNum: {}, HashSlat: "
+            "dataBaseConfigData nShardNum not changed, ShardNum: {},HashSlat: "
             "{}",
             nOldShardNum, strValShardPrefix);
         return;
@@ -199,12 +197,9 @@ void RocksDBModule::RemapDBDataAndStart(
     if (nOldShardNum != 0) {
         LoopPool readOldloopPool;
         readOldloopPool.Start(nOldShardNum);
-        readOldloopPool.Broadcast([=, this]() {
+        std::latch sigLoad(nOldShardNum);
+        readOldloopPool.Broadcast([=, &sigLoad, this]() mutable {
             LOG_INFO("on shard remap.");
-            defer([pReadShardFinishCount]() {
-                auto nCount = ++(*pReadShardFinishCount);
-                LOG_INFO("thread: {} finish.", nCount);
-            });
 
             auto nDBIndex = LoopPool::GetIndexInLoopPool();
             auto pOldRocksDB = CreateDBToc(
@@ -222,6 +217,7 @@ void RocksDBModule::RemapDBDataAndStart(
             read_options.iterate_upper_bound = &sliceEnd;
             rocksdb::Iterator* iter = pOldRocksDB->NewIterator(read_options);
 
+            // \TODO: memory control
             for (iter->Seek("\x00"); iter->Valid(); iter->Next()) {
                 auto strKey = iter->key().ToString();
                 auto strValue = iter->value().ToString();
@@ -245,12 +241,11 @@ void RocksDBModule::RemapDBDataAndStart(
 
             delete iter;
             DestoryDBToc(dataBaseConfigData, pOldRocksDB);
+            sigLoad.count_down();
         });
 
         // block thread until fiinish
-        while (*pReadShardFinishCount < nOldShardNum) {
-            std::this_thread::yield();
-        }
+        sigLoad.wait();
         readOldloopPool.Stop();
     }
 
@@ -269,7 +264,8 @@ void RocksDBModule::RemapDBDataAndStart(
             // remove old
             for (int64_t index = 0; index < nOldShardNum; ++index) {
                 std::string strOldPath = dataBaseConfigData.strAddress;
-                strOldPath.append(std::to_string(index));
+                strOldPath.append(s_strDataPathPrefix)
+                    .append(std::to_string(index));
                 std::filesystem::remove_all(strOldPath);
             }
 
