@@ -98,7 +98,7 @@ struct CoroutineAsyncTask {
 
     CoroutineAsyncTask(std::coroutine_handle<promise_type> h) : coro(h) {}
     CoroutineAsyncTask(CoroutineAsyncTask&& t) = delete;
-    ~CoroutineAsyncTask() { coro.destroy(); }
+    ~CoroutineAsyncTask() {}
 
     struct awaiter {
         bool await_ready() { return false; }
@@ -148,7 +148,7 @@ struct CoroutineAsyncTask<void> {
 
     CoroutineAsyncTask(std::coroutine_handle<promise_type> h) : coro(h) {}
     CoroutineAsyncTask(CoroutineAsyncTask&& t) = delete;
-    ~CoroutineAsyncTask() { coro.destroy(); }
+    ~CoroutineAsyncTask() {}
 
     struct awaiter {
         bool await_ready() { return false; }
