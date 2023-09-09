@@ -61,7 +61,7 @@ static const uint32_t crc32table[] = {
 TONY_CAT_SPACE_BEGIN
 
 uint16_t CRC16(const void* data, size_t len) {
-    const uint8_t* pData = (const uint8_t*)data;
+    const uint8_t* pData = reinterpret_cast<const uint8_t*>(data);
     uint16_t crc16 = 0x0000;
 
     while (len--) {
@@ -83,7 +83,7 @@ uint32_t CRC32(const std::string& data) {
 }
 
 uint32_t CRC32(const void* data, size_t len) {
-    const uint8_t* buf = (const uint8_t*)data;
+    const uint8_t* buf = reinterpret_cast<const uint8_t*>(data);
     uint32_t i = 0, crc = 0;
     crc = 0xFFFFFFFF;
 
@@ -95,13 +95,13 @@ uint32_t CRC32(const void* data, size_t len) {
 
 uint32_t CRC32(const void* dataHead, size_t lenHead, const void* data,
                size_t len) {
-    const uint8_t* buf = (const uint8_t*)dataHead;
+    const uint8_t* buf = reinterpret_cast<const uint8_t*>(dataHead);
     uint32_t i = 0, crc = 0;
     crc = 0xFFFFFFFF;
 
     for (i = 0; i < lenHead; i++)
         crc = crc32table[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
-    buf = (const uint8_t*)data;
+    buf = reinterpret_cast<const uint8_t*>(data);
     for (i = 0; i < len; i++)
         crc = crc32table[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
     return crc ^ 0xFFFFFFFF;
