@@ -101,7 +101,7 @@ bool NetHttpModule::ReadData(Session::session_id_t sessionId,
     if (nullptr == pContext) {
         pContext = new Http::RequestParser();
         pSession->SetSessionProtoContext(pContext, [this](auto pProtoContext) {
-            m_pModuleManager->GetMainLoop().Exec([this, pProtoContext]() {
+            m_pModuleManager->GetMainLoop().Exec([pProtoContext]() {
                 delete reinterpret_cast<Http::RequestParser*>(pProtoContext);
             });
         });
@@ -177,6 +177,7 @@ void NetHttpModule::SetDefaultPacketHandle(FuncHttpHandleType func) {
 
 bool NetHttpModule::ReadHttpPacket(Session::session_id_t sessionId,
                                    Http::Request& req) {
+    // find the regisistered path
     if (auto itMapPackethandle = m_mapPackethandle.find(req.path);
         itMapPackethandle != m_mapPackethandle.end()) {
         const auto& funcCb = itMapPackethandle->second;
@@ -184,11 +185,28 @@ bool NetHttpModule::ReadHttpPacket(Session::session_id_t sessionId,
         return true;
     }
 
+    // find the path with the prefix
+    int64_t nPos = req.path.length();
+    do {
+        nPos = req.path.rfind('/', nPos);
+        auto strPath = req.path.substr(0, nPos + 1);
+        if (auto itMapPackethandle = m_mapPackethandle.find(strPath);
+            itMapPackethandle != m_mapPackethandle.end()) {
+            const auto& funcCb = itMapPackethandle->second;
+            funcCb(sessionId, req);
+            return true;
+        }
+        nPos = nPos - 1;
+
+    } while (nPos > 0);
+
+    // find the default path
     if (nullptr != m_funDefaultPacketHandle) {
         m_funDefaultPacketHandle(sessionId, req);
         return true;
     }
 
+    // not found
     Http::Reply replyError;
     replyError.statusCode = Http::Reply::HttpStatusCode::not_found;
     LOG_WARN("send not found to sessionID: {}", sessionId);
