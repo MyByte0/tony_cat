@@ -1,2 +1,2 @@
 #!/bin/bash
-protoc --cpp_out=./ `find ./ -name "*proto"`
+protoc --cpp_out=./ `find ./ -name "*.proto"`

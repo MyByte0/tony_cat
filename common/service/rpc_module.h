@@ -153,7 +153,7 @@ public:
 
         // _TypeMsgPacketBody first call, register handle to NetPbModule
         if (m_mapRpcContext.count(msgId) == 0) {
-            auto pRpcContext = InitRpcContextMap<RspRpcContext>(msgId);
+            (void)InitRpcContextMap<RspRpcContext>(msgId);
             RegisterNetHandle<PbRspHeadType, PbRspBodyType, RspRpcContext>();
             RegisterTimeoutHandle<PbRspHeadType, PbRspBodyType,
                                   RspRpcContext>();

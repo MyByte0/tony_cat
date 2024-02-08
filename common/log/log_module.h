@@ -35,11 +35,11 @@ public:
 
     void BeforeInit() override;
 
-    virtual void AfterStop();
+    virtual void AfterStop() override;
 
-    virtual void OnUpdate();
+    virtual void OnUpdate() override;
 
-    virtual void OnLoadConfig();
+    virtual void OnLoadConfig() override;
 
 public:
     enum class LOG_LEVEL_TYPE {

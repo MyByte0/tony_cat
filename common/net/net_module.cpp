@@ -34,6 +34,10 @@ void NetModule::OnStop() {
             []() { t_mapSessionInNetLoop.clear(); });
     }
 
+    for (auto pAccepter : m_vecAcceptors) {
+        pAccepter->GetWorkLoop()->Stop();
+    }
+
     m_vecAcceptors.clear();
     if (m_defaultListenLoop) {
         m_defaultListenLoop->Stop();
@@ -162,7 +166,7 @@ void NetModule::Connect(
     pSession->SetSessionReadCb(funOnSessionRead);
     // ensure call CloseCb in current loop
     pSession->SetSessionCloseCb(
-        [this, funOnSessionClose, &loopRun](auto nSessionId) {
+        [this, funOnSessionClose](auto nSessionId) {
             m_pModuleManager->GetMainLoop().Exec(
                 [this, funOnSessionClose, nSessionId]() {
                     if (nullptr != funOnSessionClose) {
@@ -181,8 +185,7 @@ void NetModule::Connect(
         });
 
     m_pModuleManager->GetMainLoop().Exec([this, pSession, endpoints,
-                                          funOnSessionConnect(
-                                              funOnSessionConnect)]() mutable {
+                                          funOnSessionConnect]() mutable {
         // ensure call ConnectCb in current loop
         DoSessionConnect(
             pSession, endpoints,
@@ -196,7 +199,6 @@ void NetModule::Connect(
                 // insert to net session map
                 pSession->SetSessionId(CreateSessionId());
                 pSession->GetLoop().Exec([this, pSession, endpoints, bSuccess,
-                                          nSessionId,
                                           funOnSessionConnect(std::move(
                                               funOnSessionConnect))]() mutable {
                     t_mapSessionInNetLoop.emplace(pSession->GetSessionId(),

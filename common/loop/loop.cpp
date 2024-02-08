@@ -78,7 +78,7 @@ void Loop::Exec(const FunctionRun& func) { m_pIoContext->post(func); }
 Loop::TimerHandle Loop::ExecAfter(uint32_t millSeconds, FunctionRun&& func) {
     auto pTimer = std::make_shared<asio::steady_timer>(GetIoContext());
     pTimer->expires_after(asio::chrono::milliseconds(millSeconds));
-    pTimer->async_wait([this, pTimer, func = std::move(func)](auto ec) {
+    pTimer->async_wait([pTimer, func = std::move(func)](auto ec) {
         if (!ec) {
             func();
         }
@@ -91,7 +91,7 @@ Loop::TimerHandle Loop::ExecAfter(uint32_t millSeconds,
                                   const FunctionRun& func) {
     auto pTimer = std::make_shared<asio::steady_timer>(GetIoContext());
     pTimer->expires_after(asio::chrono::milliseconds(millSeconds));
-    pTimer->async_wait([this, pTimer, func](auto ec) {
+    pTimer->async_wait([pTimer, func](auto ec) {
         if (!ec) {
             func();
         }

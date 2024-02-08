@@ -56,6 +56,7 @@ CoroutineTask<void> ClientManagerModule::StartTestClient() {
             LOG_TRACE("login success");
         }
     }
+    co_return;
 }
 
 CoroutineAsyncTask<int32_t> ClientManagerModule::CreateNewClient() {

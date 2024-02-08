@@ -306,7 +306,7 @@ void RocksDBModule::InitRocksDb(const DataBaseConfigData& dataBaseConfigData) {
 
 void RocksDBModule::StartRocksDb(const DataBaseConfigData& dataBaseConfigData) {
     m_loopPool.Start(dataBaseConfigData.nShardNum);
-    m_loopPool.Broadcast([=, this]() {
+    m_loopPool.Broadcast([=]() {
         rocksdb::DB** db = reinterpret_cast<rocksdb::DB**>(&t_pRocksDB);
         rocksdb::Options options;
         options.create_if_missing = true;
@@ -338,7 +338,8 @@ void RocksDBModule::Test() {
     dataBaseConfigData.strAddress = "/data/test";
     InitRocksDb(dataBaseConfigData);
 
-    m_loopPool.Exec(0, [this]() mutable {
+    // test
+    //m_loopPool.Exec(0, [this]() mutable {
         // Db::KVData msgReq1;
         // msgReq1.mutable_user_data()->set_user_id("user_1");
         ////
@@ -360,7 +361,7 @@ void RocksDBModule::Test() {
         // msgRsp1.mutable_user_data()->set_user_id("user_1");
         // MessageLoad(*msgRsp1.mutable_user_data());
         // msgRsp1.Clear();
-    });
+    //});
 }
 
 TONY_CAT_SPACE_END
