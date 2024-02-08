@@ -8,7 +8,7 @@ TONY_CAT_SPACE_BEGIN
 Acceptor::Acceptor() {}
 Acceptor::~Acceptor() {
     if (nullptr != m_acceptor) {
-        m_acceptor->cancel();
+        m_acceptor->close();
         delete m_acceptor;
     }
 };
